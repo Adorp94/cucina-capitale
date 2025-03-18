@@ -140,7 +140,7 @@ export default function CotizacionForm() {
                         <FormLabel>Cliente</FormLabel>
                         <Select 
                           onValueChange={field.onChange} 
-                          defaultValue={field.value}
+                          value={field.value?.toString() || undefined}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -196,7 +196,14 @@ export default function CotizacionForm() {
                     <FormItem>
                       <FormLabel>Descripción</FormLabel>
                       <FormControl>
-                        <Textarea {...field} />
+                        <Textarea 
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={field.disabled}
+                          value={field.value || ''}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -221,7 +228,7 @@ export default function CotizacionForm() {
                                     field.onChange(value);
                                     handleProductSelect(value, index);
                                   }} 
-                                  defaultValue={field.value}
+                                  value={field.value?.toString() || undefined}
                                 >
                                   <FormControl>
                                     <SelectTrigger>
@@ -250,7 +257,14 @@ export default function CotizacionForm() {
                               <FormItem>
                                 <FormLabel>Descripción</FormLabel>
                                 <FormControl>
-                                  <Input {...field} />
+                                  <Textarea 
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                    disabled={field.disabled}
+                                    value={field.value || ''}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -382,7 +396,15 @@ export default function CotizacionForm() {
                     <FormItem>
                       <FormLabel>Términos y Condiciones</FormLabel>
                       <FormControl>
-                        <Textarea {...field} rows={8} />
+                        <Textarea 
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={field.disabled}
+                          value={field.value || ''}
+                          rows={8}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -396,7 +418,15 @@ export default function CotizacionForm() {
                     <FormItem>
                       <FormLabel>Notas Adicionales</FormLabel>
                       <FormControl>
-                        <Textarea {...field} rows={4} />
+                        <Textarea 
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={field.disabled}
+                          value={field.value || ''}
+                          rows={4}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

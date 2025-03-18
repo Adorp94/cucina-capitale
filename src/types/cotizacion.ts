@@ -58,6 +58,8 @@ export const quotationSchema = z.object({
   notes: z.string().optional().nullable(),
   items: z.array(quotationItemSchema),
   metadata: z.record(z.any()).optional().nullable(),
+  createdAt: z.string().or(z.date()).optional(),
+  updatedAt: z.string().or(z.date()).optional(),
 });
 
 export type Quotation = z.infer<typeof quotationSchema>;
