@@ -370,7 +370,7 @@ export default function PDFGenerator({ cotizacion, cliente }: PDFGeneratorProps)
 
   return (
     <div>
-      <Button onClick={handlePrint} className="mb-4">
+      <Button onClick={handlePrint} className="mb-4 shadow-sm">
         Imprimir Cotización
       </Button>
       

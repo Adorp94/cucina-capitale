@@ -18,16 +18,16 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="container py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+    <div className="container px-4 md:px-6 py-8 md:py-10 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight mb-2">Dashboard</h1>
         <p className="text-muted-foreground">
           Bienvenido al panel de administración de Cucina Capital.
         </p>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Cotizaciones del Mes
@@ -55,7 +55,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Cotizaciones Pendientes
@@ -81,7 +81,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Cotizaciones Aprobadas
@@ -108,7 +108,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Ventas del Mes
@@ -137,8 +137,8 @@ export default function DashboardPage() {
         </Card>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="col-span-1">
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="col-span-1 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle>Cotizaciones Recientes</CardTitle>
             <CardDescription>
@@ -180,7 +180,7 @@ export default function DashboardPage() {
           </CardFooter>
         </Card>
         
-        <Card className="col-span-1">
+        <Card className="col-span-1 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle>Acciones Rápidas</CardTitle>
             <CardDescription>

@@ -8,8 +8,8 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b bg-white">
-        <div className="container flex h-16 items-center justify-between">
+      <header className="border-b bg-white sticky top-0 z-10 shadow-sm">
+        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="font-bold text-xl">
               Cucina Capital
@@ -37,8 +37,8 @@ export default function DashboardLayout({
       <main className="flex-1 bg-gray-50">
         {children}
       </main>
-      <footer className="border-t py-4 bg-white">
-        <div className="container flex justify-between items-center">
+      <footer className="border-t py-6 bg-white">
+        <div className="container flex justify-between items-center px-4 md:px-6">
           <p className="text-sm text-gray-500">
             © 2024 Cucina Capital. Todos los derechos reservados.
           </p>

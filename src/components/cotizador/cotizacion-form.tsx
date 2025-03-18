@@ -135,21 +135,21 @@ export default function CotizacionForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <Card>
-          <CardHeader>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <Card className="shadow-sm">
+          <CardHeader className="px-6 py-5 border-b">
             <CardTitle>Nueva Cotización</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <Tabs defaultValue="info" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="info">Información General</TabsTrigger>
-                <TabsTrigger value="items">Productos y Servicios</TabsTrigger>
-                <TabsTrigger value="materials">Materiales</TabsTrigger>
-                <TabsTrigger value="terms">Términos y Condiciones</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-4 p-0 rounded-none border-b">
+                <TabsTrigger value="info" className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">Información General</TabsTrigger>
+                <TabsTrigger value="items" className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">Productos y Servicios</TabsTrigger>
+                <TabsTrigger value="materials" className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">Materiales</TabsTrigger>
+                <TabsTrigger value="terms" className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">Términos y Condiciones</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="info" className="space-y-4 pt-4">
+              <TabsContent value="info" className="space-y-6 p-6">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -298,10 +298,26 @@ export default function CotizacionForm() {
                 />
               </TabsContent>
               
-              <TabsContent value="items" className="space-y-4 pt-4">
+              <TabsContent value="items" className="space-y-6 p-6">
                 {fields.map((field, index) => (
-                  <Card key={field.id}>
-                    <CardContent className="pt-4">
+                  <Card key={field.id} className="shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <CardHeader className="bg-gray-50 py-3 px-4 border-b">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium">Item #{index + 1}</CardTitle>
+                        {fields.length > 1 && (
+                          <Button 
+                            type="button" 
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => remove(index)}
+                            className="h-8"
+                          >
+                            Eliminar
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
                       <div className="grid grid-cols-12 gap-4">
                         <div className="col-span-12">
                           <FormField
@@ -510,18 +526,6 @@ export default function CotizacionForm() {
                             )}
                           />
                         </div>
-                        
-                        <div className="col-span-3 flex items-end">
-                          <Button 
-                            type="button" 
-                            variant="destructive"
-                            className="mb-2"
-                            onClick={() => fields.length > 1 && remove(index)}
-                            disabled={fields.length <= 1}
-                          >
-                            Eliminar
-                          </Button>
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -543,11 +547,12 @@ export default function CotizacionForm() {
                     shelves: 0,
                     area: ''
                   })}
+                  className="w-full shadow-sm"
                 >
-                  Agregar Producto
+                  + Agregar Producto
                 </Button>
                 
-                <div className="bg-gray-50 p-4 rounded-lg mt-4">
+                <div className="bg-gray-50 p-6 rounded-lg mt-6 shadow-sm">
                   <div className="flex justify-between py-2">
                     <span className="font-medium">Subtotal:</span>
                     <span>{formatCurrency(totals.subtotal)}</span>
@@ -564,12 +569,12 @@ export default function CotizacionForm() {
                 </div>
               </TabsContent>
               
-              <TabsContent value="materials" className="space-y-4 pt-4">
-                <Card>
-                  <CardHeader>
+              <TabsContent value="materials" className="p-6">
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
                     <CardTitle>Combinación de Materiales</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -694,7 +699,7 @@ export default function CotizacionForm() {
                 </Card>
               </TabsContent>
               
-              <TabsContent value="terms" className="space-y-4 pt-4">
+              <TabsContent value="terms" className="space-y-6 p-6">
                 <FormField
                   control={form.control}
                   name="terms"
@@ -765,14 +770,14 @@ export default function CotizacionForm() {
           </CardContent>
         </Card>
         
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline">
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" className="shadow-sm">
             Cancelar
           </Button>
-          <Button type="button" variant="secondary">
+          <Button type="button" variant="secondary" className="shadow-sm">
             Guardar Borrador
           </Button>
-          <Button type="submit">
+          <Button type="submit" className="shadow-sm">
             Crear Cotización
           </Button>
         </div>

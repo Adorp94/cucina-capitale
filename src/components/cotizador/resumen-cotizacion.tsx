@@ -37,13 +37,14 @@ export default function ResumenCotizacion({
   const statusInfo = QUOTATION_STATUSES[cotizacion.status as keyof typeof QUOTATION_STATUSES];
   
   return (
-    <Card className="shadow-md">
-      <CardHeader className="border-b flex flex-col md:flex-row md:justify-between">
+    <Card className="shadow-md rounded-lg overflow-hidden">
+      <CardHeader className="border-b px-6 py-5 flex flex-col md:flex-row md:justify-between bg-gray-50">
         <div>
           <div className="flex items-center gap-2">
-            <CardTitle>{cotizacion.title}</CardTitle>
+            <CardTitle className="text-xl">{cotizacion.title}</CardTitle>
             <Badge 
               variant={statusInfo.color as "default" | "secondary" | "destructive" | "outline"}
+              className="ml-2"
             >
               {statusInfo.label}
             </Badge>
@@ -56,42 +57,42 @@ export default function ResumenCotizacion({
         </div>
       </CardHeader>
       
-      <CardContent className="pt-6 space-y-6">
+      <CardContent className="px-6 py-8 space-y-8">
         <div className="grid md:grid-cols-2 gap-6">
-          <div>
+          <div className="border rounded-lg overflow-hidden">
             <Table>
               <TableBody>
-                <TableRow>
-                  <TableCell className="font-semibold py-1">Presupuesto para:</TableCell>
-                  <TableCell className="py-1">{cliente?.name || 'Cliente no especificado'}</TableCell>
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="font-semibold py-3 bg-gray-50 border-r w-1/2">Presupuesto para:</TableCell>
+                  <TableCell className="py-3">{cliente?.name || 'Cliente no especificado'}</TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold py-1">Nombre de proyecto:</TableCell>
-                  <TableCell className="py-1">{cotizacion.projectName || 'No especificado'}</TableCell>
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="font-semibold py-3 bg-gray-50 border-r">Nombre de proyecto:</TableCell>
+                  <TableCell className="py-3">{cotizacion.projectName || 'No especificado'}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </div>
           
-          <div>
+          <div className="border rounded-lg overflow-hidden">
             <Table>
               <TableBody>
-                <TableRow>
-                  <TableCell className="font-semibold py-1">Fecha de cotización:</TableCell>
-                  <TableCell className="py-1">{format(new Date(cotizacion.createdAt || new Date()), 'dd-MMM-yyyy', { locale: es })}</TableCell>
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="font-semibold py-3 bg-gray-50 border-r w-1/2">Fecha de cotización:</TableCell>
+                  <TableCell className="py-3">{format(new Date(cotizacion.createdAt || new Date()), 'dd-MMM-yyyy', { locale: es })}</TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold py-1">Vigencia de cotización:</TableCell>
-                  <TableCell className="py-1">
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="font-semibold py-3 bg-gray-50 border-r">Vigencia de cotización:</TableCell>
+                  <TableCell className="py-3">
                     {cotizacion.validUntil 
                       ? format(new Date(cotizacion.validUntil), 'dd-MMM-yyyy', { locale: es })
                       : 'No especificado'
                     }
                   </TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold py-1">Tipo de Proyecto:</TableCell>
-                  <TableCell className="py-1">Desarrollo</TableCell>
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="font-semibold py-3 bg-gray-50 border-r">Tipo de Proyecto:</TableCell>
+                  <TableCell className="py-3">Desarrollo</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -99,71 +100,71 @@ export default function ResumenCotizacion({
         </div>
         
         {cotizacion.materialsCombination && (
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Materiales</h3>
+          <div className="border rounded-lg overflow-hidden">
+            <h3 className="text-sm font-semibold py-3 px-4 bg-gray-100 border-b">Materiales</h3>
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-100">
-                  <TableHead className="text-center py-1">Mat Huacal</TableHead>
-                  <TableHead className="text-center py-1">Chap. Huacal</TableHead>
-                  <TableHead className="text-center py-1">Jaladera</TableHead>
-                  <TableHead className="text-center py-1">Bisagras</TableHead>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="text-center py-3">Mat Huacal</TableHead>
+                  <TableHead className="text-center py-3">Chap. Huacal</TableHead>
+                  <TableHead className="text-center py-3">Jaladera</TableHead>
+                  <TableHead className="text-center py-3">Bisagras</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell className="py-1">{cotizacion.materialsCombination.matHuacal}</TableCell>
-                  <TableCell className="py-1">{cotizacion.materialsCombination.chapHuacal}</TableCell>
-                  <TableCell className="py-1">{cotizacion.materialsCombination.jaladera}</TableCell>
-                  <TableCell className="py-1">{cotizacion.materialsCombination.bisagra}</TableCell>
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="py-3">{cotizacion.materialsCombination.matHuacal}</TableCell>
+                  <TableCell className="py-3">{cotizacion.materialsCombination.chapHuacal}</TableCell>
+                  <TableCell className="py-3">{cotizacion.materialsCombination.jaladera}</TableCell>
+                  <TableCell className="py-3">{cotizacion.materialsCombination.bisagra}</TableCell>
                 </TableRow>
               </TableBody>
               <TableHeader>
-                <TableRow className="bg-slate-100">
-                  <TableHead className="text-center py-1">Mat Vista</TableHead>
-                  <TableHead className="text-center py-1">Chap. Vista</TableHead>
-                  <TableHead className="text-center py-1">Corredera</TableHead>
-                  <TableHead className="text-center py-1"></TableHead>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="text-center py-3">Mat Vista</TableHead>
+                  <TableHead className="text-center py-3">Chap. Vista</TableHead>
+                  <TableHead className="text-center py-3">Corredera</TableHead>
+                  <TableHead className="text-center py-3"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell className="py-1">{cotizacion.materialsCombination.matVista}</TableCell>
-                  <TableCell className="py-1">{cotizacion.materialsCombination.chapVista}</TableCell>
-                  <TableCell className="py-1">{cotizacion.materialsCombination.corredera}</TableCell>
-                  <TableCell className="py-1 font-bold">Combinación #1</TableCell>
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="py-3">{cotizacion.materialsCombination.matVista}</TableCell>
+                  <TableCell className="py-3">{cotizacion.materialsCombination.chapVista}</TableCell>
+                  <TableCell className="py-3">{cotizacion.materialsCombination.corredera}</TableCell>
+                  <TableCell className="py-3 font-bold text-center">Combinación #1</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </div>
         )}
         
-        <div>
-          <h3 className="text-sm font-semibold mb-2">Productos y Servicios</h3>
+        <div className="border rounded-lg overflow-hidden">
+          <h3 className="text-sm font-semibold py-3 px-4 bg-gray-100 border-b">Productos y Servicios</h3>
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-100">
-                <TableHead className="py-1">Área</TableHead>
-                <TableHead className="py-1">Mueble</TableHead>
-                <TableHead className="text-center py-1">Cant.</TableHead>
-                <TableHead className="text-center py-1">Cajones</TableHead>
-                <TableHead className="text-center py-1">Puertas</TableHead>
-                <TableHead className="text-center py-1">Entrepaños</TableHead>
-                <TableHead className="text-right py-1">P. Unit</TableHead>
-                <TableHead className="text-right py-1">P. Total</TableHead>
+              <TableRow className="bg-gray-50">
+                <TableHead className="py-3">Área</TableHead>
+                <TableHead className="py-3">Mueble</TableHead>
+                <TableHead className="text-center py-3">Cant.</TableHead>
+                <TableHead className="text-center py-3">Cajones</TableHead>
+                <TableHead className="text-center py-3">Puertas</TableHead>
+                <TableHead className="text-center py-3">Entrepaños</TableHead>
+                <TableHead className="text-right py-3">P. Unit</TableHead>
+                <TableHead className="text-right py-3">P. Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {cotizacion.items.map((item, index) => (
-                <TableRow key={item.id || index}>
-                  <TableCell className="py-1">{item.area || '-'}</TableCell>
-                  <TableCell className="py-1">{item.description}</TableCell>
-                  <TableCell className="text-center py-1">{item.quantity}</TableCell>
-                  <TableCell className="text-center py-1">{item.drawers || 0}</TableCell>
-                  <TableCell className="text-center py-1">{item.doors || 0}</TableCell>
-                  <TableCell className="text-center py-1">{item.shelves || 0}</TableCell>
-                  <TableCell className="text-right py-1">${formatCurrency(item.unitPrice)}</TableCell>
-                  <TableCell className="text-right py-1">${formatCurrency(item.subtotal || (item.unitPrice * item.quantity))}</TableCell>
+                <TableRow key={item.id || index} className="hover:bg-gray-50">
+                  <TableCell className="py-3">{item.area || '-'}</TableCell>
+                  <TableCell className="py-3">{item.description}</TableCell>
+                  <TableCell className="text-center py-3">{item.quantity}</TableCell>
+                  <TableCell className="text-center py-3">{item.drawers || 0}</TableCell>
+                  <TableCell className="text-center py-3">{item.doors || 0}</TableCell>
+                  <TableCell className="text-center py-3">{item.shelves || 0}</TableCell>
+                  <TableCell className="text-right py-3">${formatCurrency(item.unitPrice)}</TableCell>
+                  <TableCell className="text-right py-3">${formatCurrency(item.subtotal || (item.unitPrice * item.quantity))}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -174,34 +175,34 @@ export default function ResumenCotizacion({
             <div className="space-y-2">
               <Table>
                 <TableBody>
-                  <TableRow>
-                    <TableCell className="font-semibold text-right py-1">Subtotal:</TableCell>
-                    <TableCell className="text-right py-1 w-1/3">${formatCurrency(cotizacion.subtotal)}</TableCell>
+                  <TableRow className="hover:bg-gray-50">
+                    <TableCell className="font-semibold text-right py-3">Subtotal:</TableCell>
+                    <TableCell className="text-right py-3 w-1/3">${formatCurrency(cotizacion.subtotal)}</TableCell>
                   </TableRow>
-                  <TableRow>
-                    <TableCell className="font-semibold text-right py-1">IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%):</TableCell>
-                    <TableCell className="text-right py-1">${formatCurrency(cotizacion.taxes)}</TableCell>
+                  <TableRow className="hover:bg-gray-50">
+                    <TableCell className="font-semibold text-right py-3">IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%):</TableCell>
+                    <TableCell className="text-right py-3">${formatCurrency(cotizacion.taxes)}</TableCell>
                   </TableRow>
-                  <TableRow className="border-t-2">
-                    <TableCell className="font-bold text-right py-1">TOTAL:</TableCell>
-                    <TableCell className="text-right font-bold py-1">${formatCurrency(cotizacion.total)}</TableCell>
+                  <TableRow className="border-t-2 hover:bg-gray-50">
+                    <TableCell className="font-bold text-right py-3">TOTAL:</TableCell>
+                    <TableCell className="text-right font-bold py-3">${formatCurrency(cotizacion.total)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
               
               <Table>
                 <TableBody>
-                  <TableRow>
-                    <TableCell className="font-semibold text-right py-1">Desglose:</TableCell>
-                    <TableCell className="text-right py-1 w-1/3">70 / 30</TableCell>
+                  <TableRow className="hover:bg-gray-50">
+                    <TableCell className="font-semibold text-right py-3">Desglose:</TableCell>
+                    <TableCell className="text-right py-3 w-1/3">70 / 30</TableCell>
                   </TableRow>
-                  <TableRow>
-                    <TableCell className="font-semibold text-right py-1">Anticipo:</TableCell>
-                    <TableCell className="text-right py-1">${formatCurrency(cotizacion.anticipo || 0)}</TableCell>
+                  <TableRow className="hover:bg-gray-50">
+                    <TableCell className="font-semibold text-right py-3">Anticipo:</TableCell>
+                    <TableCell className="text-right py-3">${formatCurrency(cotizacion.anticipo || 0)}</TableCell>
                   </TableRow>
-                  <TableRow>
-                    <TableCell className="font-semibold text-right py-1">Liquidación:</TableCell>
-                    <TableCell className="text-right py-1">${formatCurrency(cotizacion.liquidacion || 0)}</TableCell>
+                  <TableRow className="hover:bg-gray-50">
+                    <TableCell className="font-semibold text-right py-3">Liquidación:</TableCell>
+                    <TableCell className="text-right py-3">${formatCurrency(cotizacion.liquidacion || 0)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -218,13 +219,13 @@ export default function ResumenCotizacion({
           <div>
             <Table>
               <TableBody>
-                <TableRow>
-                  <TableCell className="font-semibold text-right py-1">Tiempo de entrega:</TableCell>
-                  <TableCell className="py-1">{cotizacion.deliveryTime}</TableCell>
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="font-semibold text-right py-3">Tiempo de entrega:</TableCell>
+                  <TableCell className="py-3">{cotizacion.deliveryTime}</TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell className="font-semibold text-right py-1">Términos:</TableCell>
-                  <TableCell className="py-1">{cotizacion.paymentTerms}</TableCell>
+                <TableRow className="hover:bg-gray-50">
+                  <TableCell className="font-semibold text-right py-3">Términos:</TableCell>
+                  <TableCell className="py-3">{cotizacion.paymentTerms}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>

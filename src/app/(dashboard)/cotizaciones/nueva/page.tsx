@@ -10,15 +10,15 @@ export const metadata: Metadata = {
 
 export default function NuevaCotizacionPage() {
   return (
-    <div className="container py-6">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="container px-4 md:px-6 py-8 md:py-10 max-w-7xl mx-auto">
+      <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Nueva Cotización</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Nueva Cotización</h1>
           <p className="text-muted-foreground">
             Crea una nueva cotización para un cliente.
           </p>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="shadow-sm">
           <Link href="/cotizaciones">
             Volver a Cotizaciones
           </Link>
