@@ -1,15 +1,14 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import ResumenCotizacion from '@/components/cotizador/resumen-cotizacion';
-import PDFGenerator from '@/components/cotizador/pdf-generator';
+import CotizacionForm from '@/components/cotizador/cotizacion-form';
 import { Quotation } from '@/types/cotizacion';
 
 // En un enfoque real, estos metadatos serían generados dinámicamente
 // basados en los datos de la cotización
 export const metadata: Metadata = {
-  title: 'Detalle de Cotización | GRUPO UCMV',
-  description: 'Ver detalles de cotización',
+  title: 'Editar Cotización | GRUPO UCMV',
+  description: 'Edición de cotización existente',
 };
 
 // Mock data para la vista de ejemplo
@@ -87,33 +86,18 @@ const MOCK_QUOTATION: Quotation = {
   ]
 };
 
-const MOCK_CLIENT = {
-  id: '1',
-  name: 'Capital Cocinas y Equipos',
-  email: 'contacto@capitalcocinas.com',
-  phone: '55 1234 5678',
-  address: 'Av. Principal #123, Col. Centro, CDMX',
-  rfc: 'CCE123456ABC'
-};
-
-export default function CotizacionDetallePage({ params }: { params: { id: string } }) {
+export default function EditarCotizacionPage({ params }: { params: { id: string } }) {
   const id = params.id;
   // En producción, aquí se obtendría la cotización de la base de datos
   const cotizacion = MOCK_QUOTATION;
-  const cliente = MOCK_CLIENT;
-  
-  // Mock functions
-  const handleEdit = () => console.log('Editar cotización', id);
-  const handlePrint = () => console.log('Imprimir cotización', id);
-  const handleSendEmail = () => console.log('Enviar cotización por email', id);
   
   return (
     <div className="container px-4 md:px-6 py-8 md:py-10 max-w-7xl mx-auto">
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Detalle de Cotización</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Editar Cotización</h1>
           <p className="text-muted-foreground">
-            Visualiza y gestiona los detalles de esta cotización.
+            Modifica los detalles de esta cotización.
           </p>
         </div>
         <div className="flex gap-3">
@@ -122,34 +106,16 @@ export default function CotizacionDetallePage({ params }: { params: { id: string
             variant="outline"
             className="shadow-sm"
           >
-            <Link href="/cotizaciones">
-              Volver a Cotizaciones
-            </Link>
-          </Button>
-          <Button 
-            asChild
-            className="shadow-sm"
-          >
-            <Link href={`/cotizaciones/${id}/editar`}>
-              Editar Cotización
+            <Link href={`/cotizaciones/${id}`}>
+              Cancelar
             </Link>
           </Button>
         </div>
       </div>
       
-      <div className="grid gap-6 mb-6">
-        <ResumenCotizacion 
-          cotizacion={cotizacion} 
-          cliente={cliente}
-          onEdit={handleEdit}
-          onPrint={handlePrint}
-          onSendEmail={handleSendEmail}
-        />
-      </div>
-      
-      <div className="flex justify-center my-6">
-        <PDFGenerator cotizacion={cotizacion} cliente={cliente} />
-      </div>
+      {/* Nota: El componente CotizacionForm necesitaría adaptarse para recibir 
+          datos iniciales de una cotización existente */}
+      <CotizacionForm />
     </div>
   );
-}
+} 
