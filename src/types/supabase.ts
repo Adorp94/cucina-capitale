@@ -254,6 +254,105 @@ export interface Database {
           }
         ]
       }
+      inventario: {
+        Row: {
+          mueble_id: number
+          nombre_mueble: string | null
+          cajones: number | null
+          puertas: number | null
+          entrepaños: number | null
+          cif: number | null
+          created_at: string | null
+          updated_at: string | null
+          precio: number | null
+          descripcion: string | null
+          dimensiones: string | null
+          color: string | null
+          estilo: string | null
+          imagen_url: string | null
+          estado: string | null
+        }
+        Insert: {
+          mueble_id?: number
+          nombre_mueble?: string | null
+          cajones?: number | null
+          puertas?: number | null
+          entrepaños?: number | null
+          cif?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+          precio?: number | null
+          descripcion?: string | null
+          dimensiones?: string | null
+          color?: string | null
+          estilo?: string | null
+          imagen_url?: string | null
+          estado?: string | null
+        }
+        Update: {
+          mueble_id?: number
+          nombre_mueble?: string | null
+          cajones?: number | null
+          puertas?: number | null
+          entrepaños?: number | null
+          cif?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+          precio?: number | null
+          descripcion?: string | null
+          dimensiones?: string | null
+          color?: string | null
+          estilo?: string | null
+          imagen_url?: string | null
+          estado?: string | null
+        }
+        Relationships: []
+      }
+      materiales: {
+        Row: {
+          id_material: number
+          nombre: string | null
+          tipo: string | null
+          categoria: string | null
+          costo: number | null
+          comentario: string | null
+          created_at: string | null
+          updated_at: string | null
+          unidad_medida: string | null
+          stock: number | null
+          proveedor: string | null
+          imagen_url: string | null
+        }
+        Insert: {
+          id_material?: number
+          nombre?: string | null
+          tipo?: string | null
+          categoria?: string | null
+          costo?: number | null
+          comentario?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          unidad_medida?: string | null
+          stock?: number | null
+          proveedor?: string | null
+          imagen_url?: string | null
+        }
+        Update: {
+          id_material?: number
+          nombre?: string | null
+          tipo?: string | null
+          categoria?: string | null
+          costo?: number | null
+          comentario?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          unidad_medida?: string | null
+          stock?: number | null
+          proveedor?: string | null
+          imagen_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
