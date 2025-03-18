@@ -5,31 +5,32 @@ export const DEFAULT_COTIZADOR_CONFIG: CotizadorConfig = {
   taxRate: 16, // IVA en México (16%)
   defaultTerms: `
 1. Los precios están sujetos a cambios sin previo aviso.
-2. Esta cotización tiene una validez de 30 días.
+2. Esta cotización tiene una validez de 15 días.
 3. Los tiempos de entrega se confirmarán al momento de la orden.
-4. Se requiere un anticipo del 50% para iniciar el proyecto.
+4. Se requiere un anticipo del 70% para iniciar el proyecto.
 5. El precio no incluye instalación, a menos que se indique expresamente.
   `.trim(),
-  validityDays: 30,
+  validityDays: 15,
   companyInfo: {
-    name: 'Cucina Capital',
+    name: 'GRUPO UCMV S.A. de C.V.',
     logo: '/logo.png',
     address: 'Av. Principal #123, Col. Centro, Ciudad de México, CP 01000',
     phone: '+52 55 1234 5678',
-    email: 'contacto@cucinacapital.com',
-    website: 'www.cucinacapital.com',
-    rfc: 'CCA123456ABC',
+    email: 'contacto@grupoucmv.com',
+    website: 'www.grupoucmv.com',
+    rfc: 'UCM123456ABC',
   },
 };
 
 // Categorías de productos
 export const PRODUCT_CATEGORIES = [
-  'Mobiliario',
-  'Electrodomésticos',
-  'Acabados',
-  'Accesorios',
-  'Instalación',
-  'Servicios',
+  'Cocina',
+  'Vestidor',
+  'Baño',
+  'Sala',
+  'Comedor',
+  'Recámara',
+  'Oficina',
   'Otros',
 ];
 

@@ -50,7 +50,12 @@ export default function CotizacionForm() {
       number: generateQuotationNumber(),
       title: 'Cotización para proyecto de cocina',
       description: '',
+      projectName: '',
+      deliveryTime: '4-6 semanas',
+      paymentTerms: 'Anticipo 70%, Liquidación 30%',
+      paymentInfo: 'BANCO XYZ\nCuenta: 000000000000\nCLABE: 000000000000000000',
       status: 'draft',
+      generalNotes: '',
       items: [{ 
         productId: '', 
         description: '', 
@@ -58,11 +63,24 @@ export default function CotizacionForm() {
         unitPrice: 0, 
         discount: 0, 
         position: 0, 
-        notes: null 
+        notes: null,
+        drawers: 0,
+        doors: 0,
+        shelves: 0,
+        area: ''
       }],
       validUntil: addDays(new Date(), DEFAULT_COTIZADOR_CONFIG.validityDays),
       terms: DEFAULT_COTIZADOR_CONFIG.defaultTerms,
       notes: '',
+      materialsCombination: {
+        matHuacal: '',
+        chapHuacal: '',
+        matVista: '',
+        chapVista: '',
+        jaladera: '',
+        corredera: '',
+        bisagra: ''
+      }
     },
   });
 
@@ -124,9 +142,10 @@ export default function CotizacionForm() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="info" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="info">Información General</TabsTrigger>
                 <TabsTrigger value="items">Productos y Servicios</TabsTrigger>
+                <TabsTrigger value="materials">Materiales</TabsTrigger>
                 <TabsTrigger value="terms">Términos y Condiciones</TabsTrigger>
               </TabsList>
               
@@ -175,19 +194,35 @@ export default function CotizacionForm() {
                   />
                 </div>
                 
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Título</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Título</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="projectName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre del Proyecto</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 
                 <FormField
                   control={form.control}
@@ -209,6 +244,58 @@ export default function CotizacionForm() {
                     </FormItem>
                   )}
                 />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="deliveryTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tiempo de Entrega</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="paymentTerms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Términos de Pago</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="paymentInfo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Información de Pago</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={field.disabled}
+                          value={field.value || ''}
+                          placeholder="Información para transferencias o pagos..."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </TabsContent>
               
               <TabsContent value="items" className="space-y-4 pt-4">
@@ -216,7 +303,7 @@ export default function CotizacionForm() {
                   <Card key={field.id}>
                     <CardContent className="pt-4">
                       <div className="grid grid-cols-12 gap-4">
-                        <div className="col-span-4">
+                        <div className="col-span-12">
                           <FormField
                             control={form.control}
                             name={`items.${index}.productId`}
@@ -249,7 +336,7 @@ export default function CotizacionForm() {
                           />
                         </div>
                         
-                        <div className="col-span-8">
+                        <div className="col-span-9">
                           <FormField
                             control={form.control}
                             name={`items.${index}.description`}
@@ -263,6 +350,25 @@ export default function CotizacionForm() {
                                     name={field.name}
                                     ref={field.ref}
                                     disabled={field.disabled}
+                                    value={field.value || ''}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        <div className="col-span-3">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.area`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Área</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
                                     value={field.value || ''}
                                   />
                                 </FormControl>
@@ -339,6 +445,72 @@ export default function CotizacionForm() {
                           />
                         </div>
                         
+                        <div className="col-span-3">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.drawers`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Cajones</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type="number" 
+                                    min="0" 
+                                    step="1"
+                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="col-span-3">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.doors`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Puertas</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type="number" 
+                                    min="0" 
+                                    step="1"
+                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="col-span-3">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.shelves`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Entrepaños</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type="number" 
+                                    min="0" 
+                                    step="1"
+                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
                         <div className="col-span-3 flex items-end">
                           <Button 
                             type="button" 
@@ -365,7 +537,11 @@ export default function CotizacionForm() {
                     unitPrice: 0, 
                     discount: 0,
                     position: fields.length,
-                    notes: null
+                    notes: null,
+                    drawers: 0,
+                    doors: 0,
+                    shelves: 0,
+                    area: ''
                   })}
                 >
                   Agregar Producto
@@ -388,6 +564,136 @@ export default function CotizacionForm() {
                 </div>
               </TabsContent>
               
+              <TabsContent value="materials" className="space-y-4 pt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Combinación de Materiales</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="materialsCombination.matHuacal"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Material de Huacal</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="materialsCombination.chapHuacal"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Chapacinta de Huacal</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="materialsCombination.matVista"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Material de Vista</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="materialsCombination.chapVista"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Chapacinta de Vista</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="materialsCombination.jaladera"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Jaladera</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="materialsCombination.corredera"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Corredera</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="materialsCombination.bisagra"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bisagra</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
               <TabsContent value="terms" className="space-y-4 pt-4">
                 <FormField
                   control={form.control}
@@ -404,6 +710,28 @@ export default function CotizacionForm() {
                           disabled={field.disabled}
                           value={field.value || ''}
                           rows={8}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="generalNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observaciones Generales</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={field.disabled}
+                          value={field.value || ''}
+                          rows={4}
                         />
                       </FormControl>
                       <FormMessage />
