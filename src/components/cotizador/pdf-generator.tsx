@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale';
 import { Quotation } from '@/types/cotizacion';
 import { formatCurrency } from '@/lib/cotizador/calculator';
 import { DEFAULT_COTIZADOR_CONFIG } from '@/lib/cotizador/constants';
+import { Download, Printer } from 'lucide-react';
 
 interface PDFGeneratorProps {
   cotizacion: Quotation;
@@ -33,133 +34,216 @@ export default function PDFGenerator({ cotizacion, cliente }: PDFGeneratorProps)
       return;
     }
 
-    // Añade estilos básicos para impresión
+    // Añade estilos Apple-inspired para la cotización
     printWindow.document.write(`
       <html>
         <head>
           <title>Cotización ${cotizacion.number}</title>
           <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            
             body {
-              font-family: 'Helvetica', 'Arial', sans-serif;
-              line-height: 1.6;
-              color: #333;
-              padding: 20px;
+              font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+              line-height: 1.5;
+              color: #1d1d1f;
+              padding: 40px;
               max-width: 1000px;
               margin: 0 auto;
+              font-weight: 300;
             }
+            
             .header {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 20px;
+              margin-bottom: 40px;
               padding-bottom: 20px;
-              border-bottom: 1px solid #e2e8f0;
+              border-bottom: 1px solid #f5f5f7;
             }
+            
             .company-info {
               text-align: right;
             }
+            
             .company-name {
-              font-size: 1.5rem;
-              font-weight: bold;
+              font-size: 1.8rem;
+              font-weight: 600;
+              letter-spacing: -0.02em;
             }
+            
+            .quotation-label {
+              color: #86868b;
+              font-size: 0.875rem;
+              letter-spacing: 0.02em;
+              text-transform: uppercase;
+              margin-top: 4px;
+            }
+            
             .quote-title {
-              font-size: 1.5rem;
-              font-weight: bold;
+              font-size: 2rem;
+              font-weight: 500;
+              letter-spacing: -0.02em;
               margin-bottom: 5px;
             }
+            
             .quote-number {
-              color: #6b7280;
-              margin-bottom: 10px;
-            }
-            .section {
-              margin-bottom: 20px;
-            }
-            .section-title {
-              font-size: 1rem;
-              font-weight: 600;
+              color: #86868b;
               margin-bottom: 8px;
+              font-size: 0.9rem;
             }
+            
+            .section {
+              margin-bottom: 32px;
+            }
+            
+            .section-title {
+              font-size: 1.1rem;
+              font-weight: 500;
+              margin-bottom: 16px;
+              letter-spacing: -0.01em;
+            }
+            
+            .card {
+              background-color: #fbfbfd;
+              border-radius: 12px;
+              padding: 24px;
+              margin-bottom: 24px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            }
+            
+            .grid {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 24px;
+            }
+            
+            .grid-col-2 {
+              flex: 1 1 calc(50% - 12px);
+              min-width: 280px;
+            }
+            
+            .client-info-card {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+            
+            .info-label {
+              font-size: 0.75rem;
+              color: #86868b;
+              text-transform: uppercase;
+              letter-spacing: 0.02em;
+              margin-bottom: 2px;
+            }
+            
+            .info-value {
+              font-weight: 400;
+            }
+            
             .table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 20px;
+              margin-bottom: 32px;
             }
+            
             .table th {
-              background-color: #f9fafb;
+              background-color: #f5f5f7;
               text-align: left;
-              padding: 8px;
-              font-weight: 600;
-              border-bottom: 1px solid #e2e8f0;
+              padding: 12px 16px;
+              font-weight: 500;
+              font-size: 0.85rem;
+              letter-spacing: 0.01em;
+              color: #1d1d1f;
+              border-bottom: none;
             }
+            
             .table td {
-              padding: 8px;
-              border-bottom: 1px solid #e2e8f0;
+              padding: 16px;
+              border-bottom: 1px solid #f5f5f7;
+              font-size: 0.95rem;
             }
+            
             .text-right {
               text-align: right;
             }
+            
             .text-center {
               text-align: center;
             }
-            .info-table {
-              width: 100%;
+            
+            .materials-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 16px;
+              margin-bottom: 24px;
             }
-            .info-table td {
-              padding: 4px;
-              vertical-align: top;
+            
+            .material-item {
+              padding: 16px;
+              background-color: #fbfbfd;
+              border-radius: 8px;
             }
-            .label {
-              font-weight: 600;
-            }
-            .materials-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 15px;
-            }
-            .materials-table th, 
-            .materials-table td {
-              border: 1px solid #e2e8f0;
-              padding: 6px;
-              text-align: center;
-            }
-            .materials-table th {
-              background-color: #f9fafb;
-            }
-            .payment-box {
-              background-color: #ebf5ff;
-              padding: 15px;
-              border-radius: 5px;
-              margin-bottom: 20px;
-            }
-            .totals-box {
-              margin-left: auto;
-              width: 300px;
-            }
+            
             .totals-table {
               width: 100%;
+              margin-left: auto;
+              max-width: 320px;
             }
+            
             .totals-table td {
-              padding: 4px;
+              padding: 8px 0;
             }
+            
             .total-row {
-              font-weight: bold;
-              border-top: 2px solid #e2e8f0;
+              font-weight: 600;
+              font-size: 1.1rem;
+              border-top: 1px solid #e2e2e7;
+              padding-top: 12px;
+              margin-top: 8px;
             }
+            
+            .payment-box {
+              background-color: #f5f5f7;
+              padding: 24px;
+              border-radius: 12px;
+              margin-bottom: 24px;
+            }
+            
+            .payment-title {
+              font-weight: 500;
+              margin-bottom: 12px;
+            }
+            
             .observations {
               font-size: 0.9rem;
               white-space: pre-line;
+              line-height: 1.6;
             }
+            
             .footer {
-              margin-top: 40px;
+              margin-top: 64px;
               text-align: center;
-              font-size: 0.8rem;
-              color: #6b7280;
+              font-size: 0.85rem;
+              color: #86868b;
+              padding-top: 16px;
+              border-top: 1px solid #f5f5f7;
             }
+            
             @media print {
               body {
                 padding: 0;
               }
+              
               button {
                 display: none;
+              }
+              
+              .card, .payment-box {
+                box-shadow: none;
+                border: 1px solid #f5f5f7;
+              }
+              
+              @page {
+                margin: 0.5cm;
               }
             }
           </style>
@@ -168,81 +252,106 @@ export default function PDFGenerator({ cotizacion, cliente }: PDFGeneratorProps)
           <div class="header">
             <div>
               <div class="quote-title">${cotizacion.title}</div>
-              <div class="quote-number">No. ${cotizacion.number}</div>
+              <div class="quote-number">Nº ${cotizacion.number}</div>
             </div>
             <div class="company-info">
               <div class="company-name">${DEFAULT_COTIZADOR_CONFIG.companyInfo.name}</div>
-              <div>COTIZACIÓN</div>
+              <div class="quotation-label">Presupuesto</div>
             </div>
           </div>
           
-          <table class="info-table">
-            <tr>
-              <td width="50%">
-                <table>
-                  <tr>
-                    <td class="label">Presupuesto para:</td>
-                    <td>${cliente?.name || 'Cliente no especificado'}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">Nombre de proyecto:</td>
-                    <td>${cotizacion.projectName || 'No especificado'}</td>
-                  </tr>
-                </table>
-              </td>
-              <td width="50%">
-                <table>
-                  <tr>
-                    <td class="label">Fecha de cotización:</td>
-                    <td>${format(new Date(cotizacion.createdAt || new Date()), 'dd-MMM-yyyy', { locale: es })}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">Vigencia de cotización:</td>
-                    <td>${cotizacion.validUntil ? format(new Date(cotizacion.validUntil), 'dd-MMM-yyyy', { locale: es }) : 'No especificado'}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">Tipo de Proyecto:</td>
-                    <td>Desarrollo</td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
+          <div class="grid">
+            <div class="grid-col-2 card">
+              <div class="client-info-card">
+                <div>
+                  <div class="info-label">Cliente</div>
+                  <div class="info-value">${cliente?.name || 'Cliente no especificado'}</div>
+                </div>
+                ${cliente?.email ? `
+                <div>
+                  <div class="info-label">Email</div>
+                  <div class="info-value">${cliente.email}</div>
+                </div>
+                ` : ''}
+                ${cliente?.phone ? `
+                <div>
+                  <div class="info-label">Teléfono</div>
+                  <div class="info-value">${cliente.phone}</div>
+                </div>
+                ` : ''}
+                ${cliente?.address ? `
+                <div>
+                  <div class="info-label">Dirección</div>
+                  <div class="info-value">${cliente.address}</div>
+                </div>
+                ` : ''}
+              </div>
+            </div>
+            
+            <div class="grid-col-2 card">
+              <div class="client-info-card">
+                <div>
+                  <div class="info-label">Proyecto</div>
+                  <div class="info-value">${cotizacion.projectName || 'No especificado'}</div>
+                </div>
+                <div>
+                  <div class="info-label">Fecha de cotización</div>
+                  <div class="info-value">${format(new Date(cotizacion.createdAt || new Date()), 'dd MMMM, yyyy', { locale: es })}</div>
+                </div>
+                <div>
+                  <div class="info-label">Vigencia</div>
+                  <div class="info-value">${cotizacion.validUntil ? format(new Date(cotizacion.validUntil), 'dd MMMM, yyyy', { locale: es }) : 'No especificado'}</div>
+                </div>
+                <div>
+                  <div class="info-label">Tiempo de entrega</div>
+                  <div class="info-value">${cotizacion.deliveryTime || 'No especificado'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
           
           ${cotizacion.materialsCombination ? `
           <div class="section">
-            <div class="section-title">Materiales</div>
-            <table class="materials-table">
-              <tr>
-                <th>Mat Huacal</th>
-                <th>Chap. Huacal</th>
-                <th>Jaladera</th>
-                <th>Bisagras</th>
-              </tr>
-              <tr>
-                <td>${cotizacion.materialsCombination.matHuacal || ''}</td>
-                <td>${cotizacion.materialsCombination.chapHuacal || ''}</td>
-                <td>${cotizacion.materialsCombination.jaladera || ''}</td>
-                <td>${cotizacion.materialsCombination.bisagra || ''}</td>
-              </tr>
-              <tr>
-                <th>Mat Vista</th>
-                <th>Chap. Vista</th>
-                <th>Corredera</th>
-                <th>Combinación #1</th>
-              </tr>
-              <tr>
-                <td>${cotizacion.materialsCombination.matVista || ''}</td>
-                <td>${cotizacion.materialsCombination.chapVista || ''}</td>
-                <td>${cotizacion.materialsCombination.corredera || ''}</td>
-                <td><strong>Combinación #1</strong></td>
-              </tr>
-            </table>
+            <div class="section-title">Especificaciones de materiales</div>
+            <div class="materials-grid">
+              <div class="material-item">
+                <div class="info-label">Material Huacal</div>
+                <div class="info-value">${cotizacion.materialsCombination.matHuacal || 'No especificado'}</div>
+              </div>
+              <div class="material-item">
+                <div class="info-label">Chapacinta Huacal</div>
+                <div class="info-value">${cotizacion.materialsCombination.chapHuacal || 'No especificado'}</div>
+              </div>
+              <div class="material-item">
+                <div class="info-label">Material Vista</div>
+                <div class="info-value">${cotizacion.materialsCombination.matVista || 'No especificado'}</div>
+              </div>
+              <div class="material-item">
+                <div class="info-label">Chapacinta Vista</div>
+                <div class="info-value">${cotizacion.materialsCombination.chapVista || 'No especificado'}</div>
+              </div>
+              <div class="material-item">
+                <div class="info-label">Jaladera</div>
+                <div class="info-value">${cotizacion.materialsCombination.jaladera || 'No especificado'}</div>
+              </div>
+              <div class="material-item">
+                <div class="info-label">Corredera</div>
+                <div class="info-value">${cotizacion.materialsCombination.corredera || 'No especificado'}</div>
+              </div>
+              <div class="material-item">
+                <div class="info-label">Bisagra</div>
+                <div class="info-value">${cotizacion.materialsCombination.bisagra || 'No especificado'}</div>
+              </div>
+              <div class="material-item">
+                <div class="info-label">Combinación</div>
+                <div class="info-value" style="font-weight: 500;">Combinación #1</div>
+              </div>
+            </div>
           </div>
           ` : ''}
           
           <div class="section">
-            <div class="section-title">Productos y Servicios</div>
+            <div class="section-title">Productos y servicios</div>
             <table class="table">
               <thead>
                 <tr>
@@ -253,7 +362,7 @@ export default function PDFGenerator({ cotizacion, cliente }: PDFGeneratorProps)
                   <th class="text-center">Puertas</th>
                   <th class="text-center">Entrepaños</th>
                   <th class="text-right">P. Unit</th>
-                  <th class="text-right">P. Total</th>
+                  <th class="text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -265,92 +374,91 @@ export default function PDFGenerator({ cotizacion, cliente }: PDFGeneratorProps)
                   <td class="text-center">${item.drawers || 0}</td>
                   <td class="text-center">${item.doors || 0}</td>
                   <td class="text-center">${item.shelves || 0}</td>
-                  <td class="text-right">${formatCurrency(item.unitPrice)}</td>
-                  <td class="text-right">${formatCurrency(item.subtotal || (item.unitPrice * item.quantity))}</td>
+                  <td class="text-right">$${formatCurrency(item.unitPrice)}</td>
+                  <td class="text-right">$${formatCurrency(item.subtotal || (item.unitPrice * item.quantity))}</td>
                 </tr>
                 `).join('')}
               </tbody>
             </table>
             
             <div style="display: flex; justify-content: flex-end;">
-              <div class="totals-box">
-                <table class="totals-table">
-                  <tr>
-                    <td class="label text-right">Subtotal:</td>
-                    <td class="text-right">${formatCurrency(cotizacion.subtotal)}</td>
-                  </tr>
-                  <tr>
-                    <td class="label text-right">IVA (${DEFAULT_COTIZADOR_CONFIG.taxRate}%):</td>
-                    <td class="text-right">${formatCurrency(cotizacion.taxes)}</td>
-                  </tr>
-                  <tr class="total-row">
-                    <td class="label text-right">TOTAL:</td>
-                    <td class="text-right">${formatCurrency(cotizacion.total)}</td>
-                  </tr>
-                </table>
-                
-                <table class="totals-table" style="margin-top: 15px;">
-                  <tr>
-                    <td class="label text-right">Desglose:</td>
-                    <td class="text-right">70 / 30</td>
-                  </tr>
-                  <tr>
-                    <td class="label text-right">Anticipo:</td>
-                    <td class="text-right">${formatCurrency(cotizacion.anticipo || 0)}</td>
-                  </tr>
-                  <tr>
-                    <td class="label text-right">Liquidación:</td>
-                    <td class="text-right">${formatCurrency(cotizacion.liquidacion || 0)}</td>
-                  </tr>
-                </table>
-              </div>
-            </div>
-          </div>
-          
-          <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;">
-            <div class="payment-box" style="flex: 1; min-width: 300px;">
-              <div class="section-title">Para transferencia o Cheque: Grupo UCMV SA de CV:</div>
-              <div>${cotizacion.paymentInfo?.replace(/\n/g, '<br>') || ''}</div>
-            </div>
-            
-            <div style="flex: 1; min-width: 300px;">
               <table class="totals-table">
                 <tr>
-                  <td class="label text-right">Tiempo de entrega:</td>
-                  <td>${cotizacion.deliveryTime || ''}</td>
+                  <td class="text-right">Subtotal:</td>
+                  <td class="text-right">$${formatCurrency(cotizacion.subtotal)}</td>
                 </tr>
                 <tr>
-                  <td class="label text-right">Términos:</td>
-                  <td>${cotizacion.paymentTerms?.replace(/\n/g, '<br>') || ''}</td>
+                  <td class="text-right">IVA (${DEFAULT_COTIZADOR_CONFIG.taxRate}%):</td>
+                  <td class="text-right">$${formatCurrency(cotizacion.taxes)}</td>
+                </tr>
+                <tr class="total-row">
+                  <td class="text-right">Total:</td>
+                  <td class="text-right">$${formatCurrency(cotizacion.total)}</td>
                 </tr>
               </table>
+            </div>
+            
+            <div class="grid" style="margin-top: 32px;">
+              <div class="grid-col-2">
+                <div class="payment-box">
+                  <div class="payment-title">Condiciones de pago</div>
+                  <div class="client-info-card">
+                    <div>
+                      <div class="info-label">Esquema de pago</div>
+                      <div class="info-value">${cotizacion.paymentTerms || 'No especificado'}</div>
+                    </div>
+                    <div>
+                      <div class="info-label">Anticipo (70%)</div>
+                      <div class="info-value">$${formatCurrency(cotizacion.total * 0.7)}</div>
+                    </div>
+                    <div>
+                      <div class="info-label">Liquidación (30%)</div>
+                      <div class="info-value">$${formatCurrency(cotizacion.total * 0.3)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="grid-col-2">
+                <div class="payment-box">
+                  <div class="payment-title">Información bancaria</div>
+                  <div style="white-space: pre-line;">${cotizacion.paymentInfo?.replace(/\n/g, '<br>') || 'No especificado'}</div>
+                </div>
+              </div>
             </div>
           </div>
           
           ${cotizacion.generalNotes ? `
           <div class="section">
-            <div class="section-title">Observaciones generales:</div>
-            <div class="observations">${cotizacion.generalNotes.replace(/\n/g, '<br>')}</div>
+            <div class="section-title">Observaciones generales</div>
+            <div class="card">
+              <div class="observations">${cotizacion.generalNotes.replace(/\n/g, '<br>')}</div>
+            </div>
           </div>
           ` : ''}
           
           ${cotizacion.terms ? `
           <div class="section">
-            <div class="section-title">Términos y Condiciones</div>
-            <div class="observations">${cotizacion.terms.replace(/\n/g, '<br>')}</div>
+            <div class="section-title">Términos y condiciones</div>
+            <div class="card">
+              <div class="observations">${cotizacion.terms.replace(/\n/g, '<br>')}</div>
+            </div>
           </div>
           ` : ''}
           
           ${cotizacion.notes ? `
           <div class="section">
-            <div class="section-title">Notas Adicionales</div>
-            <div>${cotizacion.notes.replace(/\n/g, '<br>')}</div>
+            <div class="section-title">Notas adicionales</div>
+            <div class="card">
+              <div class="observations">${cotizacion.notes.replace(/\n/g, '<br>')}</div>
+            </div>
           </div>
           ` : ''}
           
           <div class="footer">
-            <p>Cotización generada el ${format(new Date(), 'PPP', { locale: es })}</p>
+            <p>${DEFAULT_COTIZADOR_CONFIG.companyInfo.name} | ${DEFAULT_COTIZADOR_CONFIG.companyInfo.address}</p>
             <p>${DEFAULT_COTIZADOR_CONFIG.companyInfo.website} | ${DEFAULT_COTIZADOR_CONFIG.companyInfo.email} | ${DEFAULT_COTIZADOR_CONFIG.companyInfo.phone}</p>
+            <p>Cotización generada el ${format(new Date(), 'dd MMMM, yyyy', { locale: es })}</p>
           </div>
           
           <script>
@@ -368,10 +476,19 @@ export default function PDFGenerator({ cotizacion, cliente }: PDFGeneratorProps)
     printWindow.document.close();
   };
 
+  const handleDownload = () => {
+    handlePrint(); // Reutilizamos la función de impresión para descargar (el usuario puede guardar como PDF)
+  };
+
   return (
-    <div>
-      <Button onClick={handlePrint} className="mb-4 shadow-sm">
-        Imprimir Cotización
+    <div className="flex gap-2">
+      <Button onClick={handlePrint} variant="outline" className="h-10 gap-1 shadow-sm">
+        <Printer size={16} />
+        Imprimir
+      </Button>
+      <Button onClick={handleDownload} className="h-10 gap-1 shadow-sm bg-black hover:bg-gray-800">
+        <Download size={16} />
+        Descargar PDF
       </Button>
       
       {/* Contenido oculto que se utilizará para la impresión */}

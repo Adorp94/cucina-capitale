@@ -1,11 +1,20 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
+import { UserButton } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
+import { auth } from '@clerk/nextjs/server';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: ReactNode;
 }) {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    redirect('/');
+  }
+  
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-white sticky top-0 z-10 shadow-sm">
@@ -30,7 +39,7 @@ export default function DashboardLayout({
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm">Usuario</span>
+            <UserButton afterSignOutUrl="/" />
           </div>
         </div>
       </header>

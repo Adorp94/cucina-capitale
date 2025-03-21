@@ -34,8 +34,6 @@ type MaterialesTableProps = {
 export default function MaterialesTable({ materiales }: MaterialesTableProps) {
   const [filteredMateriales, setFilteredMateriales] = useState<Material[]>(materiales);
   const [searchQuery, setSearchQuery] = useState('');
-  const [tipoFilter, setTipoFilter] = useState<string>('_');
-  const [categoriaFilter, setCategoriaFilter] = useState<string>('_');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<keyof Material>('id_material');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -49,30 +47,17 @@ export default function MaterialesTable({ materiales }: MaterialesTableProps) {
     }
   }, [materiales]);
 
-  // Extract unique tipo and categoria values for filters
-  const tipoOptions = Array.from(new Set(materiales.map(m => m.tipo).filter(Boolean) as string[]));
-  const categoriaOptions = Array.from(new Set(materiales.map(m => m.categoria).filter(Boolean) as string[]));
-
   useEffect(() => {
-    // Filter materials based on search query and dropdown filters
+    // Filter materials based on search query
     let filtered = [...materiales];
     
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(material => 
         material.nombre?.toLowerCase().includes(query) ||
-        material.id_material.toString().includes(query) ||
         material.tipo?.toLowerCase().includes(query) ||
-        material.categoria?.toLowerCase().includes(query)
+        material.id_material.toString().includes(query)
       );
-    }
-    
-    if (tipoFilter && tipoFilter !== '_') {
-      filtered = filtered.filter(material => material.tipo === tipoFilter);
-    }
-    
-    if (categoriaFilter && categoriaFilter !== '_') {
-      filtered = filtered.filter(material => material.categoria === categoriaFilter);
     }
     
     // Sort the filtered results
@@ -95,7 +80,7 @@ export default function MaterialesTable({ materiales }: MaterialesTableProps) {
     });
     
     setFilteredMateriales(filtered);
-  }, [materiales, searchQuery, tipoFilter, categoriaFilter, sortField, sortDirection]);
+  }, [materiales, searchQuery, sortField, sortDirection]);
 
   // Calculate pagination values
   const totalPages = Math.ceil(filteredMateriales.length / itemsPerPage);
@@ -155,76 +140,38 @@ export default function MaterialesTable({ materiales }: MaterialesTableProps) {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="w-full md:w-1/3">
           <Input
-            placeholder="Buscar material..."
+            placeholder="Buscar por nombre, tipo o ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="max-w-sm"
           />
         </div>
         
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Select
-              value={tipoFilter}
-              onValueChange={setTipoFilter}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_">Todos</SelectItem>
-                {tipoOptions.map(tipo => (
-                  <SelectItem key={tipo} value={tipo}>
-                    {tipo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select
-              value={categoriaFilter}
-              onValueChange={setCategoriaFilter}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_">Todas</SelectItem>
-                {categoriaOptions.map(categoria => (
-                  <SelectItem key={categoria} value={categoria}>
-                    {categoria}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">Ordenar por:</span>
+          <Select
+            value={sortField}
+            onValueChange={(value) => setSortField(value as keyof Material)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Campo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="id_material">ID</SelectItem>
+              <SelectItem value="nombre">Nombre</SelectItem>
+              <SelectItem value="tipo">Tipo</SelectItem>
+              <SelectItem value="categoria">Categoría</SelectItem>
+              <SelectItem value="costo">Costo</SelectItem>
+            </SelectContent>
+          </Select>
           
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-gray-500">Ordenar por:</span>
-            <Select
-              value={sortField}
-              onValueChange={(value) => setSortField(value as keyof Material)}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Campo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="id_material">ID</SelectItem>
-                <SelectItem value="nombre">Nombre</SelectItem>
-                <SelectItem value="tipo">Tipo</SelectItem>
-                <SelectItem value="categoria">Categoría</SelectItem>
-                <SelectItem value="costo">Costo</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-            >
-              {sortDirection === 'asc' ? '↑' : '↓'}
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+          >
+            {sortDirection === 'asc' ? '↑' : '↓'}
+          </Button>
         </div>
       </div>
       
@@ -247,14 +194,13 @@ export default function MaterialesTable({ materiales }: MaterialesTableProps) {
               <TableHead className="cursor-pointer text-right" onClick={() => handleSort('costo')}>
                 Costo {sortField === 'costo' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead>Comentario</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {currentItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No se encontraron materiales
                 </TableCell>
               </TableRow>
@@ -263,21 +209,13 @@ export default function MaterialesTable({ materiales }: MaterialesTableProps) {
                 <TableRow key={material.id_material} className="hover:bg-muted/50">
                   <TableCell className="font-medium">{material.id_material}</TableCell>
                   <TableCell>{material.nombre || '-'}</TableCell>
-                  <TableCell>
-                    <span className="capitalize">{material.tipo || '-'}</span>
-                  </TableCell>
+                  <TableCell>{material.tipo || '-'}</TableCell>
                   <TableCell>{material.categoria || '-'}</TableCell>
                   <TableCell className="text-right">
                     {material.costo 
-                      ? `$${Number(material.costo).toLocaleString('es-MX', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}`
+                      ? `$${Number(material.costo).toLocaleString('es-MX')}`
                       : '-'
                     }
-                  </TableCell>
-                  <TableCell className="max-w-md truncate" title={material.comentario || undefined}>
-                    {material.comentario || '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
