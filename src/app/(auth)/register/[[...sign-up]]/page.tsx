@@ -9,15 +9,15 @@ export const metadata: Metadata = {
 
 export default function RegisterPage() {
   return (
-    <div className="w-full max-w-md mx-auto px-4">
-      <div className="p-8 bg-white rounded-xl shadow-lg w-full">
-        <div className="flex flex-col items-center mb-8">
+    <div className="w-full max-w-[480px] mx-auto px-4">
+      <div className="p-6 sm:p-8 bg-white rounded-xl shadow-lg w-full overflow-hidden">
+        <div className="flex flex-col items-center mb-6">
           <Image 
             src="/logo-completo.png" 
             alt="Cucina Capitale Logo" 
             width={160} 
             height={40} 
-            className="object-contain mb-6"
+            className="object-contain mb-5"
             priority
           />
           <h1 className="text-xl font-bold text-center text-gray-800">Ingresar</h1>
@@ -25,7 +25,13 @@ export default function RegisterPage() {
             Crea tu cuenta para acceder a nuestra plataforma de gestión para carpintería residencial
           </p>
         </div>
-        <SignUp routing="path" path="/register" />
+        <div className="w-full">
+          <SignUp 
+            routing="path" 
+            path="/register" 
+            redirectUrl={`${process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL || '/dashboard'}`}
+          />
+        </div>
       </div>
     </div>
   );
