@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION public.get_furniture_types() RETURNS TABLE(tipo text) LANGUAGE sql AS $$ SELECT DISTINCT tipo FROM public.inventario WHERE tipo IS NOT NULL AND tipo != '' ORDER BY tipo; $$;

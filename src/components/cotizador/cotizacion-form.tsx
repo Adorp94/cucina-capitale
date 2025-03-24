@@ -79,7 +79,10 @@ const cotizacionFormSchema = z.object({
   items: z.array(
     quotationItemSchema
       .omit({ quotationId: true, subtotal: true })
-      .extend({ position: z.number().optional() })
+      .extend({ 
+        position: z.number().optional(),
+        type: z.string().optional() 
+      })
   ),
   
   // Terms and Notes
@@ -354,6 +357,14 @@ export default function CotizacionForm() {
   const [correderasMaterials, setCorrederasMaterials] = useState<any[]>([]);
   const [bisagrasMaterials, setBisagrasMaterials] = useState<any[]>([]);
   
+  // Add state for inventory items
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [rowInventory, setRowInventory] = useState<Record<number, any[]>>({});
+  const [isLoadingInventory, setIsLoadingInventory] = useState(false);
+  const [currentTypeFilter, setCurrentTypeFilter] = useState('');
+  const [furnitureTypes, setFurnitureTypes] = useState<string[]>([]);
+  const [isLoadingFurnitureTypes, setIsLoadingFurnitureTypes] = useState(false);
+  
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
   const [totals, setTotals] = useState({
     subtotal: new Decimal(0),
@@ -398,6 +409,14 @@ export default function CotizacionForm() {
     name: "items"
   });
 
+  // Fetch materials, clients, and other data on component mount
+  useEffect(() => {
+    fetchMaterials();
+    fetchClients();
+    fetchFurnitureTypes();
+    fetchInventory(); // Load initial set of inventory items
+  }, []);
+  
   // Fetch clients from Supabase on mount
   useEffect(() => {
     fetchClients();
@@ -487,6 +506,134 @@ export default function CotizacionForm() {
     }
   };
 
+  // Fetch inventory items with optional filtering by search term and selected type
+  const fetchInventory = async (searchQuery = '', selectedType = '', rowIndex: number | null = null) => {
+    setIsLoadingInventory(true);
+    try {
+      console.log(`Fetching inventory items with search: "${searchQuery}" and type: "${selectedType}" for row: ${rowIndex !== null ? rowIndex : 'global'}`);
+      
+      const supabase = createClientComponentClient();
+      let query = supabase
+        .from('inventario')
+        .select('*');
+      
+      // Filter by type if selected
+      if (selectedType) {
+        console.log(`Filtering by tipo: "${selectedType}"`);
+        query = query.ilike('tipo', selectedType);
+      }
+      
+      // Add search filter or limit results if no search
+      if (searchQuery) {
+        query = query.ilike('nombre_mueble', `%${searchQuery}%`);
+      } else {
+        query = query.limit(50); // Limit to prevent loading too many items
+      }
+      
+      // Order results
+      query = query.order('nombre_mueble');
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching inventory items:', error);
+        throw error;
+      }
+      
+      console.log(`Found ${data.length} inventory items`);
+      
+      // Store the results in row-specific state or global state
+      if (rowIndex !== null) {
+        // Create a copy of the current state to modify
+        const newRowInventory = { ...rowInventory };
+        newRowInventory[rowIndex] = data || [];
+        setRowInventory(newRowInventory);
+      } else {
+        // Update global inventory items
+        setInventoryItems(data || []);
+      }
+    } catch (error) {
+      console.error('Error in fetchInventory:', error);
+      if (rowIndex !== null) {
+        // Update row-specific inventory with empty array
+        const newRowInventory = { ...rowInventory };
+        newRowInventory[rowIndex] = [];
+        setRowInventory(newRowInventory);
+      } else {
+        setInventoryItems([]);
+      }
+    } finally {
+      setIsLoadingInventory(false);
+    }
+  };
+
+  // Function to handle searching inventory items
+  const searchInventoryItems = (searchQuery: string, selectedType: string = '', rowIndex: number | null = null) => {
+    // If this is for a specific row, handle it that way
+    if (rowIndex !== null) {
+      // Maintain the current type filter if not specified in this search
+      const typeFilter = selectedType || (form.watch(`items.${rowIndex}.type`) || '');
+      
+      // Always execute the search when we have a type filter, even with short search terms
+      if (typeFilter || searchQuery.length >= 2 || searchQuery === '') {
+        fetchInventory(searchQuery, typeFilter, rowIndex);
+      }
+    } else {
+      // Global search (legacy behavior)
+      // Maintain the current type filter if not specified in this search
+      if (!selectedType && currentTypeFilter) {
+        selectedType = currentTypeFilter;
+      }
+      
+      // Update current type filter
+      setCurrentTypeFilter(selectedType);
+      
+      // Always execute the search when we have a type filter, even with short search terms
+      if (selectedType || searchQuery.length >= 2 || searchQuery === '') {
+        fetchInventory(searchQuery, selectedType);
+      }
+    }
+  };
+  
+  // Fetch all furniture types using direct SQL query
+  const fetchFurnitureTypes = async () => {
+    setIsLoadingFurnitureTypes(true);
+    console.log('Fetching furniture types...');
+    
+    try {
+      const supabase = createClientComponentClient();
+      
+      // Use the exact query that works in SQL
+      const { data, error } = await supabase
+        .from('inventario')
+        .select('tipo')
+        .not('tipo', 'is', null);
+      
+      if (error) {
+        console.error('Error fetching furniture types:', error);
+        setFurnitureTypes([]);
+        return;
+      }
+      
+      // Extract unique types
+      const uniqueTypes = Array.from(new Set(
+        data
+          .filter(item => item.tipo && item.tipo.trim() !== '')
+          .map(item => item.tipo)
+      )).sort();
+      
+      console.log(`Found ${uniqueTypes.length} distinct furniture types`);
+      console.log('Types:', uniqueTypes);
+      
+      setFurnitureTypes(uniqueTypes);
+    } catch (error) {
+      console.error('Failed to fetch furniture types:', error);
+      setFurnitureTypes([]);
+    } finally {
+      setIsLoadingFurnitureTypes(false);
+    }
+  };
+
   // Filter materials by type - retained for legacy components if needed
   const getMaterialsByType = (tipo: string) => {
     return materials.filter(material => material.tipo === tipo);
@@ -538,6 +685,12 @@ export default function CotizacionForm() {
         
         const bisagras = await fetchMaterialsByType('Bisagras');
         setBisagrasMaterials(bisagras);
+        
+        // Fetch initial set of inventory items (limited to 50)
+        fetchInventory();
+        
+        // Fetch furniture types
+        fetchFurnitureTypes();
       } catch (error) {
         console.error('Error fetching material types:', error);
       } finally {
@@ -1224,13 +1377,44 @@ export default function CotizacionForm() {
 
               {/* Products Table */}
               <div>
-                <h3 className="text-base font-medium mb-4">Productos y servicios</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-base font-medium">Productos y servicios</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-1 h-10"
+                    onClick={() => {
+                      const newIndex = fields.length;
+                      append({
+                        id: "",
+                        description: "",
+                        area: "",
+                        quantity: 1,
+                        unitPrice: 0,
+                        discount: 0,
+                        drawers: 0,
+                        doors: 0,
+                        shelves: 0,
+                        position: newIndex,
+                        type: "",
+                      });
+                      // Clear the row inventory for this new index
+                      const newRowInventory = { ...rowInventory };
+                      newRowInventory[newIndex] = [];
+                      setRowInventory(newRowInventory);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar Producto
+                  </Button>
+                </div>
                 <div className="border rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader>
                       <tr>
                         <TableHead className="w-[100px] bg-muted/30 py-3">Área</TableHead>
-                        <TableHead className="bg-muted/30 py-3">Producto / Descripción</TableHead>
+                        <TableHead className="w-[150px] bg-muted/30 py-3">Tipo mueble</TableHead>
+                        <TableHead className="bg-muted/30 py-3">Mueble</TableHead>
                         <TableHead className="text-center bg-muted/30 py-3">Cant.</TableHead>
                         <TableHead className="text-center bg-muted/30 py-3">Cajones</TableHead>
                         <TableHead className="text-center bg-muted/30 py-3">Puertas</TableHead>
@@ -1243,7 +1427,7 @@ export default function CotizacionForm() {
                     <tbody>
                       {fields.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="h-24 text-center text-muted-foreground">
+                          <td colSpan={10} className="h-24 text-center text-muted-foreground">
                             No hay productos agregados aún
                           </td>
                         </tr>
@@ -1270,14 +1454,68 @@ export default function CotizacionForm() {
                             <td className="py-3 px-3">
                               <FormField
                                 control={form.control}
+                                name={`items.${index}.type`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <CustomCombobox
+                                        options={furnitureTypes.map(type => ({
+                                          label: type,
+                                          value: type,
+                                          data: type
+                                        }))}
+                                        value={field.value || ''}
+                                        onChange={(value) => {
+                                          field.onChange(value);
+                                          // When the type changes, filter the inventory
+                                          searchInventoryItems('', value, index);
+                                          // Clear the current furniture selection
+                                          form.setValue(`items.${index}.description`, '');
+                                        }}
+                                        placeholder={isLoadingFurnitureTypes ? "Cargando..." : "Seleccionar tipo"}
+                                        disabled={isLoadingFurnitureTypes}
+                                        popoverWidth={200}
+                                        className="h-9 w-full"
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </td>
+                            <td className="py-3 px-3">
+                              <FormField
+                                control={form.control}
                                 name={`items.${index}.description`}
                                 render={({ field }) => (
                                   <FormItem className="mb-0">
                                     <FormControl>
-                                      <Input
-                                        {...field}
-                                        placeholder="Descripción"
-                                        className="h-9 px-3"
+                                      <CustomCombobox
+                                        options={(rowInventory[index] || inventoryItems).map(item => ({
+                                          label: item.nombre_mueble,
+                                          value: item.nombre_mueble,
+                                          data: item
+                                        }))}
+                                        value={field.value || ''}
+                                        onChange={(value) => {
+                                          field.onChange(value);
+                                          // Find the selected inventory item to get its price
+                                          const selectedItem = (rowInventory[index] || inventoryItems).find(item => 
+                                            item.nombre_mueble === value
+                                          );
+                                          if (selectedItem && selectedItem.precio) {
+                                            // Update the price field
+                                            form.setValue(`items.${index}.unitPrice`, selectedItem.precio);
+                                          }
+                                        }}
+                                        onSearch={(searchText) => {
+                                          // Pass the current type filter along with the search text
+                                          const typeFilter = form.watch(`items.${index}.type`);
+                                          searchInventoryItems(searchText, typeFilter, index);
+                                        }}
+                                        placeholder={isLoadingInventory ? "Cargando..." : "Seleccionar mueble"}
+                                        disabled={isLoadingInventory || !form.watch(`items.${index}.type`)}
+                                        popoverWidth={320}
+                                        className="h-9 w-full"
                                       />
                                     </FormControl>
                                   </FormItem>
@@ -1397,7 +1635,15 @@ export default function CotizacionForm() {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                onClick={() => remove(index)}
+                                onClick={() => {
+                                  // Remove the row from the form
+                                  remove(index);
+                                  
+                                  // Clean up the row inventory
+                                  const newRowInventory = { ...rowInventory };
+                                  delete newRowInventory[index];
+                                  setRowInventory(newRowInventory);
+                                }}
                               >
                                 <Trash2 className="h-4 w-4 text-muted-foreground" />
                               </Button>
@@ -1407,32 +1653,6 @@ export default function CotizacionForm() {
                       )}
                     </tbody>
                   </Table>
-                </div>
-                
-                {/* Add product button */}
-                <div className="flex justify-start mt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="gap-1 h-10"
-                    onClick={() =>
-                      append({
-                        id: "",
-                        description: "",
-                        area: "",
-                        quantity: 1,
-                        unitPrice: 0,
-                        discount: 0,
-                        drawers: 0,
-                        doors: 0,
-                        shelves: 0,
-                        position: fields.length,
-                      })
-                    }
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Agregar Producto
-                  </Button>
                 </div>
                 
                 {/* Totals area */}

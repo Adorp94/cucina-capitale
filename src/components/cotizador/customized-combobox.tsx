@@ -33,6 +33,7 @@ interface CustomComboboxProps {
   className?: string
   popoverWidth?: number
   displayValue?: (value: string) => string
+  onSearch?: (searchText: string) => void
 }
 
 export function CustomCombobox({
@@ -44,6 +45,7 @@ export function CustomCombobox({
   className,
   popoverWidth,
   displayValue,
+  onSearch,
 }: CustomComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -73,6 +75,14 @@ export function CustomCombobox({
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [options, searchQuery])
+
+  // Handle search query changes
+  const handleSearchChange = (search: string) => {
+    setSearchQuery(search)
+    if (onSearch) {
+      onSearch(search)
+    }
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -104,7 +114,7 @@ export function CustomCombobox({
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
             <CommandInput 
               placeholder="Buscar..." 
-              onValueChange={setSearchQuery}
+              onValueChange={handleSearchChange}
               className="h-9 flex-1 text-sm"
             />
           </div>
