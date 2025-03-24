@@ -9,6 +9,7 @@ export type ToastProps = ToastT & {
   title?: string
   description?: string
   duration?: number
+  variant?: "default" | "destructive" | "success"
 }
 
 export function useToast() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addDays, format } from 'date-fns';
@@ -8,7 +8,7 @@ import { es } from 'date-fns/locale';
 import { Decimal } from 'decimal.js';
 import { 
   Plus, X, ChevronRight, Edit2, PenTool, Trash2, 
-  ChevronDown, ChevronUp, CalendarIcon, ArrowUp, Check, Loader2 
+  ChevronDown, ChevronUp, CalendarIcon, ArrowUp, Check, Loader2, Search 
 } from 'lucide-react';
 import { z } from 'zod';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -37,11 +37,52 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Label } from "@/components/ui/label";
+import { Combobox } from "@/components/ui/combobox";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 
 import { calculateQuotationTotals } from '@/lib/cotizador/calculator';
 import { formatCurrency as formatCurrencyUtil } from '@/lib/cotizador/calculator';
 import { DEFAULT_COTIZADOR_CONFIG, generateQuotationNumber } from '@/lib/cotizador/constants';
-import { CreateQuotationFormData, createQuotationSchema } from '@/types/cotizacion';
+import { CreateQuotationFormData, createQuotationSchema, quotationItemSchema } from '@/types/cotizacion';
+
+// Use a modified schema for the form with fixed QuotationItem issue
+// We'll use this for the form and handle the conversion in onSubmit
+const cotizacionFormSchema = z.object({
+  // Client Information
+  clientId: z.string().optional(),
+  clientName: z.string().min(1, { message: "Nombre del cliente requerido" }),
+  clientEmail: z.string().email({ message: "Email inválido" }).optional().or(z.literal("")),
+  clientPhone: z.string().optional(),
+  clientAddress: z.string().optional(),
+  
+  // Project Information
+  projectName: z.string().min(1, { message: "Nombre del proyecto requerido" }),
+  projectType: z.string().min(1, { message: "Tipo de proyecto requerido" }),
+  cotizacionDate: z.date(),
+  validUntil: z.date(),
+  
+  // Team information
+  vendedor: z.string().min(1, { message: "Vendedor requerido" }),
+  fabricante: z.string().min(1, { message: "Fabricante requerido" }),
+  instalador: z.string().min(1, { message: "Instalador requerido" }),
+  
+  // Delivery and Payment
+  deliveryTime: z.number().int().min(1, { message: "Tiempo de entrega requerido" }),
+  paymentTerms: z.string().min(1, { message: "Condiciones de pago requeridas" }),
+  
+  // Materials
+  materials: z.record(z.string().optional()).optional(),
+  
+  // Products and Items
+  items: z.array(
+    quotationItemSchema
+      .omit({ quotationId: true, subtotal: true })
+      .extend({ position: z.number().optional() })
+  ),
+  
+  // Terms and Notes
+  notes: z.string().optional(),
+});
 
 // Mock data for testing - replace with API calls in production
 const MOCK_CLIENTS = [
@@ -121,7 +162,10 @@ const TIPOS_PROYECTO = [
   { id: "4", name: "Institucional" },
 ];
 
-// Rename local formatting function to avoid conflicts
+// Types for form should match what's used in createQuotationSchema
+type FormValues = z.infer<typeof cotizacionFormSchema>;
+
+// Format currency for display
 const formatCurrencyDisplay = (amount: Decimal) => {
   return `$${amount.toFixed(2)}`;
 };
@@ -136,7 +180,7 @@ function NuevoClienteModal({
   onClose: () => void;
   onSave: (clientData: { id: string; nombre: string; correo?: string; celular?: string; direccion?: string }) => void;
 }) {
-  const { toast, error: toastError, success: toastSuccess } = useToast();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form for the new client with updated schema for celular as text
@@ -178,12 +222,20 @@ function NuevoClienteModal({
         
       if (error) {
         console.error("Error al guardar el cliente:", error);
-        toastError("Error al guardar el cliente: " + error.message);
+        toast({
+          id: "error-cliente",
+          title: "Error",
+          description: "Error al guardar el cliente: " + error.message
+        });
         return;
       }
       
       console.log("Cliente creado:", newClient);
-      toastSuccess(`El cliente "${data.nombre}" ha sido creado exitosamente`);
+      toast({
+        id: "cliente-creado",
+        title: "Cliente creado",
+        description: `El cliente "${data.nombre}" ha sido creado exitosamente`
+      });
       
       onSave({
         id: newClient.id_cliente,
@@ -197,7 +249,11 @@ function NuevoClienteModal({
       onClose();
     } catch (error) {
       console.error("Error:", error);
-      toastError(error instanceof Error ? error.message : 'Error desconocido');
+      toast({
+        id: "error-general",
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Error desconocido'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -311,431 +367,361 @@ function NuevoClienteModal({
   );
 }
 
-// Form schema using zod
-const cotizacionFormSchema = z.object({
-  // Team Information
-  vendedor: z.string().min(1, { message: "Vendedor requerido" }),
-  fabricante: z.string().min(1, { message: "Fabricante requerido" }),
-  instalador: z.string().min(1, { message: "Instalador requerido" }),
-
-  // Client Information
-  clientId: z.string().optional(),
-  clientName: z.string().min(1, { message: "Nombre del cliente requerido" }),
-  clientEmail: z.string().email({ message: "Email inválido" }).optional().or(z.literal("")),
-  clientPhone: z.string().optional(),
-  clientAddress: z.string().optional(),
-  
-  // Project Information
-  projectName: z.string().min(1, { message: "Nombre del proyecto requerido" }),
-  projectType: z.string().min(1, { message: "Tipo de proyecto requerido" }),
-  cotizacionDate: z.date(),
-  validUntil: z.date(),
-  
-  // Delivery and Payment
-  deliveryTime: z.number().min(1, { message: "Tiempo de entrega requerido" }),
-  paymentTerms: z.string().min(1, { message: "Condiciones de pago requeridas" }),
-  
-  // Materials
-  materialsCombination: z.object({
-    matHuacal: z.string().optional(),
-    chapHuacal: z.string().optional(),
-    matVista: z.string().optional(),
-    chapVista: z.string().optional(),
-    jaladera: z.string().optional(),
-    corredera: z.string().optional(),
-    bisagra: z.string().optional(),
-  }),
-  
-  // Products and Items
-  items: z.array(
-    z.object({
-      id: z.string(),
-      area: z.string().optional(),
-      name: z.string().min(1, { message: "Nombre del producto requerido" }),
-      description: z.string().optional(),
-      quantity: z.number().min(0.01, { message: "Cantidad debe ser mayor a 0" }),
-      unitPrice: z.number().min(0, { message: "Precio unitario debe ser mayor o igual a 0" }),
-      discount: z.number().min(0).max(100).optional(),
-      doors: z.number().min(0).optional(),
-      drawers: z.number().min(0).optional(),
-      shelves: z.number().min(0).optional(),
-    })
-  ).min(1, { message: "Agregue al menos un producto" }),
-  
-  // Terms and Notes
-  terms: z.string().optional(),
-  generalNotes: z.string().optional(),
-  notes: z.string().optional(),
-});
-
+// Main component
 export default function CotizacionForm() {
-  const { toast, error: toastError, success: toastSuccess } = useToast();
-  const [clients, setClients] = useState<Array<{id: string; name: string; email: string | null; phone: string | null; address: string | null}>>([]);
-  const [isLoadingClients, setIsLoadingClients] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [openClientCombobox, setOpenClientCombobox] = useState(false);
-  
-  // Default values for the form
-  const defaultValues = {
-    vendedor: "",
-    fabricante: "GRUPO UCMV",
-    instalador: "",
-    clientId: "",
-    clientName: "",
-    clientEmail: "",
-    clientPhone: "",
-    clientAddress: "",
-    projectName: "",
-    projectType: "",
-    cotizacionDate: new Date(),
-    validUntil: addDays(new Date(), 15),
-    deliveryTime: 20,
-    paymentTerms: "70-30",
-    materialsCombination: {
-      matHuacal: "",
-      chapHuacal: "",
-      matVista: "",
-      chapVista: "",
-      jaladera: "",
-      corredera: "",
-      bisagra: "",
-    },
-    items: [] as any[],
-    terms: "Los precios pueden variar según condiciones del mercado. La cotización no incluye instalación a menos que se especifique.",
-    generalNotes: "",
-    notes: "",
-  };
-  
-  // State for the client modal
+  // State for form and UI
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
-  
+  const [currentTab, setCurrentTab] = useState<string>("cotizacion");
+  const [currentSection, setCurrentSection] = useState<string>("cliente-proyecto");
+  const [clients, setClients] = useState<Array<{id: string; name: string; email: string | null; phone: string | null; address: string | null}>>([]);
+  const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [totals, setTotals] = useState({
     subtotal: new Decimal(0),
     taxes: new Decimal(0),
     total: new Decimal(0),
   });
+  const [showBackToTop, setShowBackToTop] = useState(false);
   
-  const form = useForm<z.infer<typeof cotizacionFormSchema>>({
+  // Toast notifications
+  const { toast } = useToast();
+
+  // Initialize form with default values
+  const form = useForm<FormValues>({
     resolver: zodResolver(cotizacionFormSchema),
-    defaultValues,
+    defaultValues: {
+      clientId: "",
+      clientName: "",
+      clientEmail: "",
+      clientPhone: "",
+      clientAddress: "",
+      projectName: "",
+      projectType: "",
+      cotizacionDate: new Date(),
+      validUntil: addDays(new Date(), 15),
+      deliveryTime: 30,
+      materials: {},
+      vendedor: "",
+      fabricante: "",
+      instalador: "",
+      paymentTerms: "70% anticipo, 30% contra entrega",
+      items: [],
+      notes: "",
+    },
   });
-  
-  // Fetch clients from Supabase on component mount
+
+  // Set up fieldArray for items (products)
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "items"
+  });
+
+  // Fetch clients from Supabase on mount
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        console.log("Starting to fetch clients...");
-        setIsLoadingClients(true);
-        const supabase = createClientComponentClient();
-        
-        console.log("Querying 'clientes' table...");
-        const { data, error } = await supabase
-          .from('clientes')
-          .select('*')
-          .order('nombre');
-          
-        if (error) {
-          console.error("Error fetching clients:", error);
-          toastError("Error al cargar clientes: " + error.message);
-          return;
-        }
-        
-        console.log("Raw client data from Supabase:", data);
-        
-        // Transform the data to match the expected format
-        const formattedClients = data.map(client => ({
-          id: client.id_cliente,
-          name: client.nombre,
-          email: client.correo,
-          phone: client.celular,
-          address: client.direccion
-        }));
-        
-        console.log("Formatted clients:", formattedClients);
-        setClients(formattedClients);
-        
-        // Check if there's a selected client in the form and ensure it exists in the loaded clients
-        const currentClientId = form.getValues("clientId");
-        if (currentClientId) {
-          console.log("Current selected client ID:", currentClientId);
-          const selectedClient = formattedClients.find(c => c.id === currentClientId);
-          if (selectedClient) {
-            console.log("Selected client found in loaded clients:", selectedClient);
-            // Ensure the client details are set correctly
-            form.setValue("clientName", selectedClient.name);
-            form.setValue("clientEmail", selectedClient.email || "");
-            form.setValue("clientPhone", selectedClient.phone || "");
-            form.setValue("clientAddress", selectedClient.address || "");
-          } else {
-            console.log("Selected client not found in loaded clients, clearing selection");
-            form.setValue("clientId", "");
-            form.setValue("clientName", "");
-            form.setValue("clientEmail", "");
-            form.setValue("clientPhone", "");
-            form.setValue("clientAddress", "");
-          }
-        }
-      } catch (error) {
-        console.error("Error:", error);
-        toastError(error instanceof Error ? error.message : 'Error desconocido al cargar clientes');
-      } finally {
-        setIsLoadingClients(false);
-      }
-    };
-    
     fetchClients();
   }, []);
   
-  // Log initial form values for debugging
-  useEffect(() => {
-    console.log("Initial form values:", {
-      clientId: form.getValues("clientId"),
-      clientName: form.getValues("clientName"),
-      clientEmail: form.getValues("clientEmail"),
-      clientPhone: form.getValues("clientPhone"),
-      clientAddress: form.getValues("clientAddress")
-    });
-  }, []);
-  
-  // Get items from form for easier access
-  const items = form.watch("items") || [];
-  
-  // Calculate totals when items change
-  useEffect(() => {
-    const calculateTotals = () => {
-      let subtotal = new Decimal(0);
-      
-      items.forEach(item => {
-        const quantity = new Decimal(item.quantity || 0);
-        const unitPrice = new Decimal(item.unitPrice || 0);
-        const discount = new Decimal(item.discount || 0).div(100);
+  // Fetch clients from database
+  const fetchClients = async () => {
+    setIsLoadingClients(true);
+    try {
+      const supabase = createClientComponentClient();
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id_cliente, nombre, correo, celular, direccion')
+        .order('nombre', { ascending: true });
         
-        const itemTotal = quantity.mul(unitPrice).mul(new Decimal(1).minus(discount));
-        subtotal = subtotal.plus(itemTotal);
-      });
+      if (error) {
+        throw error;
+      }
       
-      const taxRate = new Decimal(DEFAULT_COTIZADOR_CONFIG.taxRate).div(100);
-      const taxes = subtotal.mul(taxRate);
-      const total = subtotal.plus(taxes);
+      // Format the data to match our UI needs
+      const formattedClients = data.map(client => ({
+        id: client.id_cliente,
+        name: client.nombre,
+        email: client.correo,
+        phone: client.celular,
+        address: client.direccion
+      }));
       
+      setClients(formattedClients);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      // Use mock data in case of error
+      setClients(MOCK_CLIENTS);
+    } finally {
+      setIsLoadingClients(false);
+    }
+  };
+
+  // Handle new client creation from modal
+  const handleNewClient = (clientData: { id: string; nombre: string; correo?: string; celular?: string; direccion?: string }) => {
+    const newClient = {
+      id: clientData.id,
+      name: clientData.nombre,
+      email: clientData.correo || null,
+      phone: clientData.celular || null,
+      address: clientData.direccion || null
+    };
+    
+    // Add to clients list
+    setClients(prevClients => [
+      newClient,
+      ...prevClients
+    ]);
+    
+    // Select the new client
+    form.setValue("clientId", newClient.id);
+    form.setValue("clientName", newClient.name);
+    form.setValue("clientEmail", newClient.email || "");
+    form.setValue("clientPhone", newClient.phone || "");
+    form.setValue("clientAddress", newClient.address || "");
+  };
+
+  // Recalculate totals whenever form items change
+  useEffect(() => {
+    const items = form.getValues("items") || [];
+    // Add positions if not present to avoid type errors
+    const itemsWithPosition = items.map((item, index) => ({
+      ...item,
+      position: index
+    }));
+    
+    try {
+      const { subtotal, taxes, total } = calculateQuotationTotals(itemsWithPosition, DEFAULT_COTIZADOR_CONFIG.taxRate);
+      
+      // Update totals state
       setTotals({
         subtotal,
         taxes,
-        total,
+        total
       });
-    };
-    
-    calculateTotals();
-  }, [items]);
-
-  // State for tracking scroll position to show/hide back to top button
-  const [showBackToTop, setShowBackToTop] = useState(false);
-
-  // Add scroll event listener
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 400);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Scroll to top function
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-  
-  // Handle new client submission
-  const handleNewClient = async (clientData: { id: string; nombre: string; correo?: string; celular?: string; direccion?: string }) => {
-    try {
-      // Update the form with the new client data
-      form.setValue("clientId", clientData.id);
-      form.setValue("clientName", clientData.nombre);
-      form.setValue("clientEmail", clientData.correo || "");
-      form.setValue("clientPhone", clientData.celular || "");
-      form.setValue("clientAddress", clientData.direccion || "");
-      
-      // Add the new client to the clients list for immediate selection
-      setClients(prevClients => [
-        ...prevClients,
-        {
-          id: clientData.id,
-          name: clientData.nombre,
-          email: clientData.correo || null,
-          phone: clientData.celular || null,
-          address: clientData.direccion || null
-        }
-      ]);
-      
-      console.log("Cliente agregado correctamente:", clientData);
     } catch (error) {
-      console.error("Error handling new client:", error);
-      toastError(error instanceof Error ? error.message : 'Error al procesar cliente');
+      console.error("Error calculating totals:", error);
     }
-  };
-  
-  // Form submission handler
-  const onSubmit = (data: z.infer<typeof cotizacionFormSchema>) => {
-    console.log("Form submitted:", data);
-    console.log("Selected client ID:", data.clientId);
-    // Here you would typically send the data to your API
-  };
+  }, [form.watch("items")]);
 
-  // Calculate the number of filled sections for progress
-  const calculateProgress = () => {
-    let completedSections = 0;
-    const totalSections = 5;
+  // Calculate progress for the progress bar
+  const calculateProgress = useCallback(() => {
+    const values = form.getValues();
+    let progress = 0;
     
-    // Section 1: Client & Project Info
-    if (form.watch("clientName") && form.watch("projectName")) {
-      completedSections++;
+    // Cliente-Proyecto Section - 25%
+    if (values.clientId && values.projectName && values.projectType) {
+      progress += 25;
     }
     
-    // Section 2: Materials
-    const materials = form.watch("materialsCombination");
-    if (materials.matHuacal || materials.matVista) {
-      completedSections++;
+    // Materiales Section - 25%
+    const materialsSelected = values.materials && Object.values(values.materials).some(val => val);
+    if (materialsSelected) {
+      progress += 25;
     }
     
-    // Section 3: Products
-    if (items.length > 0) {
-      completedSections++;
+    // Productos Section - 25%
+    if (values.items && values.items.length > 0) {
+      progress += 25;
     }
     
-    // Section 4: Payment Terms
-    if (form.watch("paymentTerms")) {
-      completedSections++;
+    // Extras Section - 25%
+    if (values.vendedor && values.fabricante && values.instalador) {
+      progress += 25;
     }
     
-    // Section 5: Terms & Conditions
-    if (form.watch("terms")) {
-      completedSections++;
-    }
-    
-    return {
-      completed: completedSections,
-      total: totalSections,
-      percentage: (completedSections / totalSections) * 100
-    };
-  };
+    return progress;
+  }, [form]);
 
   const progress = calculateProgress();
 
-  // Filter clients based on search term
-  const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Scroll to top functionality
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 300);
+    };
+    
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+  
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Submit form
+  const onSubmit = (data: FormValues) => {
+    setIsSubmitting(true);
+    
+    // Process form data here, e.g., save to database
+    console.log("Form submitted:", data);
+    
+    toast({
+      id: "cotizacion-guardada",
+      title: "Cotización guardada",
+      description: "La cotización se ha guardado exitosamente."
+    });
+    
+    setIsSubmitting(false);
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-20">
-        {/* Section 1: Project & Client Information */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Client information card - where we'll focus */}
         <Card className="shadow-sm">
-          <CardHeader className="pb-4 border-b bg-muted/30">
+          <CardHeader className="pb-3 border-b bg-muted/30">
             <div className="flex justify-between items-center">
-              <CardTitle>Información del Proyecto y Cliente</CardTitle>
+              <CardTitle>Información de Cliente y Proyecto</CardTitle>
               <Badge variant="outline" className="text-sm font-normal">Sección 1 de 5</Badge>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
-            {/* Company Information Row */}
-            <div className="mb-8">
-              <h3 className="text-base font-medium mb-4">Información de la Empresa</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField
-                  control={form.control}
-                  name="vendedor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vendedor</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
+          <CardContent className="p-6 space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Cliente selection - first column */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <Label htmlFor="cliente">Cliente</Label>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    className="h-9 ml-auto"
+                    onClick={() => setShowClientModal(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Nuevo Cliente
+                  </Button>
+                </div>
+                <div className="mt-2">
+                  <FormField
+                    control={form.control}
+                    name="clientId"
+                    render={({ field }) => (
+                      <FormItem className="w-full">
                         <FormControl>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Seleccionar vendedor" />
-                          </SelectTrigger>
+                          <Combobox
+                            options={clients.map(client => ({
+                              label: client.name,
+                              value: client.id,
+                              data: client
+                            }))}
+                            value={field.value || ''}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Find the selected client and update form fields
+                              const selectedClient = clients.find(client => client.id === value);
+                              if (selectedClient) {
+                                form.setValue("clientName", selectedClient.name);
+                                form.setValue("clientEmail", selectedClient.email || "");
+                                form.setValue("clientPhone", selectedClient.phone || "");
+                                form.setValue("clientAddress", selectedClient.address || "");
+                              } else {
+                                // Clear client details if no client is selected
+                                form.setValue("clientName", "");
+                                form.setValue("clientEmail", "");
+                                form.setValue("clientPhone", "");
+                                form.setValue("clientAddress", "");
+                              }
+                            }}
+                            placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
+                            emptyMessage="No se encontraron clientes"
+                            disabled={isLoadingClients}
+                            popoverWidth={320}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {VENDEDORES.map(vendedor => (
-                            <SelectItem key={vendedor.id} value={vendedor.name}>
-                              {vendedor.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="fabricante"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fabricante</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Seleccionar fabricante" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {FABRICANTES.map(fabricante => (
-                            <SelectItem key={fabricante.id} value={fabricante.name}>
-                              {fabricante.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="instalador"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Instalador</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Seleccionar instalador" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {INSTALADORES.map(instalador => (
-                            <SelectItem key={instalador.id} value={instalador.name}>
-                              {instalador.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Client details only show when a client is selected */}
+                {form.watch("clientId") && (
+                  <>
+                    {/* Client details - first column bottom */}
+                    <div className="space-y-4 w-full mt-4">
+                      <FormField
+                        control={form.control}
+                        name="clientName"
+                        render={({ field }) => (
+                          <FormItem className="w-full">
+                            <FormLabel>Nombre</FormLabel>
+                            <FormControl>
+                              <Input {...field} className="h-11 w-full" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="clientEmail"
+                        render={({ field }) => (
+                          <FormItem className="w-full">
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="email" className="h-11 w-full" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
+
+              {/* Second column for client details, only show when a client is selected */}
+              {form.watch("clientId") && (
+                <div className="space-y-4 w-full mt-8 md:mt-0">
+                  <FormField
+                    control={form.control}
+                    name="clientPhone"
+                    render={({ field }) => (
+                      <FormItem className="w-full">
+                        <FormLabel>Teléfono</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="h-11 w-full" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="clientAddress"
+                    render={({ field }) => (
+                      <FormItem className="w-full">
+                        <FormLabel>Dirección</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            {...field}
+                            value={field.value || ''}
+                            className="min-h-[80px] resize-none w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
             </div>
-            
-            <Separator className="my-8" />
-            
-            {/* Project Information */}
-            <div className="mb-8">
-              <h3 className="text-base font-medium mb-4">Información del Proyecto</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          </CardContent>
+        </Card>
+        
+        {/* Project information */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 border-b bg-muted/30">
+            <div className="flex justify-between items-center">
+              <CardTitle>Información del Proyecto</CardTitle>
+              <Badge variant="outline" className="text-sm font-normal">Sección 2 de 5</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Project information */}
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="projectName"
@@ -757,17 +743,17 @@ export default function CotizacionForm() {
                     <FormItem>
                       <FormLabel>Tipo de Proyecto</FormLabel>
                       <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
+                        value={field.value} 
+                        onValueChange={field.onChange}
                       >
                         <FormControl>
                           <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Seleccionar tipo" />
+                            <SelectValue placeholder="Seleccionar tipo de proyecto" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {TIPOS_PROYECTO.map(tipo => (
-                            <SelectItem key={tipo.id} value={tipo.name}>
+                            <SelectItem key={tipo.id} value={tipo.id}>
                               {tipo.name}
                             </SelectItem>
                           ))}
@@ -779,7 +765,8 @@ export default function CotizacionForm() {
                 />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Date information */}
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="cotizacionDate"
@@ -809,19 +796,11 @@ export default function CotizacionForm() {
                           <Calendar
                             mode="single"
                             selected={field.value}
-                            onSelect={(date) => {
-                              field.onChange(date);
-                              // When cotizacionDate changes, update validUntil to be 15 days later
-                              if (date) {
-                                const validUntilDate = addDays(date, 15);
-                                form.setValue("validUntil", validUntilDate);
-                              }
-                            }}
-                            disabled={(date: Date) =>
+                            onSelect={field.onChange}
+                            disabled={(date) =>
                               date < new Date("1900-01-01")
                             }
                             initialFocus
-                            locale={es}
                           />
                         </PopoverContent>
                       </Popover>
@@ -835,7 +814,7 @@ export default function CotizacionForm() {
                   name="validUntil"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Válido Hasta</FormLabel>
+                      <FormLabel>Válida Hasta</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -860,11 +839,10 @@ export default function CotizacionForm() {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date: Date) =>
-                              date < new Date("1900-01-01")
+                            disabled={(date) =>
+                              date < new Date()
                             }
                             initialFocus
-                            locale={es}
                           />
                         </PopoverContent>
                       </Popover>
@@ -874,881 +852,462 @@ export default function CotizacionForm() {
                 />
               </div>
             </div>
-            
-            <Separator className="my-8" />
-            
-            {/* Client Information */}
-            <div>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
-                <h3 className="text-base font-medium">Información del Cliente</h3>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  className="h-9 w-full md:w-auto"
-                  onClick={() => setShowClientModal(true)}
-                >
-                  + Nuevo Cliente
-                </Button>
-              </div>
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Cliente selection - first column */}
-                <div>
-                  <Label htmlFor="cliente">Cliente</Label>
-                  <div className="flex items-center space-x-2 mt-2">
-                    <div className="relative w-full md:w-64">
-                      <FormField
-                        control={form.control}
-                        name="clientId"
-                        render={({ field }) => (
-                          <FormItem className="w-full">
-                            <Select
-                              disabled={isLoadingClients}
-                              onValueChange={(value) => {
-                                console.log("Client selected, setting clientId to:", value);
-                                field.onChange(value);
-                                if (value) {
-                                  const selectedClient = clients.find(client => client.id === value);
-                                  if (selectedClient) {
-                                    console.log("Setting client details:", selectedClient);
-                                    form.setValue("clientName", selectedClient.name);
-                                    form.setValue("clientEmail", selectedClient.email || "");
-                                    form.setValue("clientPhone", selectedClient.phone || "");
-                                    form.setValue("clientAddress", selectedClient.address || "");
-                                  }
-                                } else {
-                                  // Clear client details if no client is selected
-                                  form.setValue("clientName", "");
-                                  form.setValue("clientEmail", "");
-                                  form.setValue("clientPhone", "");
-                                  form.setValue("clientAddress", "");
-                                }
-                                // Reset search term after selection
-                                setSearchTerm("");
-                              }}
-                              value={field.value || undefined}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="h-11 w-full">
-                                  <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent className="min-w-[250px]">
-                                <div className="px-2 py-2 sticky top-0 bg-white border-b z-10">
-                                  <Input 
-                                    placeholder="Buscar cliente..." 
-                                    className="h-9"
-                                    value={searchTerm}
-                                    onChange={(e) => {
-                                      setSearchTerm(e.target.value);
-                                    }}
-                                    onClick={(e) => {
-                                      // Stop click from closing the dropdown
-                                      e.stopPropagation();
-                                    }}
-                                  />
-                                </div>
-                                <div className="max-h-[200px] overflow-auto mt-1">
-                                  {isLoadingClients ? (
-                                    <div className="flex items-center justify-center py-2 px-2">
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      <span>Cargando clientes...</span>
-                                    </div>
-                                  ) : filteredClients.length > 0 ? (
-                                    filteredClients.map(client => (
-                                      <SelectItem key={client.id} value={client.id}>
-                                        {client.name}
-                                      </SelectItem>
-                                    ))
-                                  ) : (
-                                    <div className="text-center py-2 text-muted-foreground">
-                                      No se encontraron clientes
-                                    </div>
-                                  )}
-                                </div>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Client details only show when a client is selected */}
-                  {form.watch("clientId") && (
-                    <>
-                      {/* Client details - first column bottom */}
-                      <div className="space-y-4 w-full mt-4">
-                        <FormField
-                          control={form.control}
-                          name="clientName"
-                          render={({ field }) => (
-                            <FormItem className="w-full">
-                              <FormLabel>Nombre</FormLabel>
-                              <FormControl>
-                                <Input {...field} className="h-11 w-full" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="clientEmail"
-                          render={({ field }) => (
-                            <FormItem className="w-full">
-                              <FormLabel>Email</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="email" className="h-11 w-full" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Second column for client details, only show when a client is selected */}
-                {form.watch("clientId") && (
-                  <div className="space-y-4 w-full mt-8 md:mt-0">
-                    <FormField
-                      control={form.control}
-                      name="clientPhone"
-                      render={({ field }) => (
-                        <FormItem className="w-full">
-                          <FormLabel>Teléfono</FormLabel>
-                          <FormControl>
-                            <Input {...field} className="h-11 w-full" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="clientAddress"
-                      render={({ field }) => (
-                        <FormItem className="w-full">
-                          <FormLabel>Dirección</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              {...field}
-                              value={field.value || ''}
-                              className="min-h-[80px] resize-none w-full"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
           </CardContent>
         </Card>
         
-        {/* Section 2: Materials Selection */}
+        {/* Materials selection */}
         <Card className="shadow-sm">
           <CardHeader className="pb-3 border-b bg-muted/30">
             <div className="flex justify-between items-center">
-              <CardTitle>Materiales y Acabados</CardTitle>
-              <Badge variant="outline" className="text-sm font-normal">Sección 2 de 5</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <h3 className="text-lg font-medium">Combinación de Materiales</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Column 1: Estructura */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-700 border-b pb-2">Materiales de Estructura</h4>
-                
-                <FormField
-                  control={form.control}
-                  name="materialsCombination.matHuacal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Material de Huacal</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Seleccionar material" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {MOCK_MATERIALS.matHuacal.map((material) => (
-                            <SelectItem key={material.id_material} value={material.nombre}>
-                              {material.nombre} - ${formatCurrencyDisplay(new Decimal(material.costo))}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="materialsCombination.chapHuacal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Chapacinta de Huacal</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Seleccionar chapacinta" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {MOCK_MATERIALS.chapHuacal.map((material) => (
-                            <SelectItem key={material.id_material} value={material.nombre}>
-                              {material.nombre} - ${formatCurrencyDisplay(new Decimal(material.costo))}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              {/* Column 2: Vista */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-700 border-b pb-2">Materiales de Vista</h4>
-                
-                <FormField
-                  control={form.control}
-                  name="materialsCombination.matVista"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Material de Vista</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Seleccionar material" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {MOCK_MATERIALS.matVista.map((material) => (
-                            <SelectItem key={material.id_material} value={material.nombre}>
-                              {material.nombre} - ${formatCurrencyDisplay(new Decimal(material.costo))}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="materialsCombination.chapVista"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Chapacinta de Vista</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Seleccionar chapacinta" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {MOCK_MATERIALS.chapVista.map((material) => (
-                            <SelectItem key={material.id_material} value={material.nombre}>
-                              {material.nombre} - ${formatCurrencyDisplay(new Decimal(material.costo))}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              {/* Column 3: Herrajes */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-700 border-b pb-2">Herrajes y Accesorios</h4>
-                
-                <FormField
-                  control={form.control}
-                  name="materialsCombination.jaladera"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Jaladera</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Seleccionar jaladera" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {MOCK_MATERIALS.jaladera.map((material) => (
-                            <SelectItem key={material.id_material} value={material.nombre}>
-                              {material.nombre} - ${formatCurrencyDisplay(new Decimal(material.costo))}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="materialsCombination.corredera"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Corredera</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Seleccionar corredera" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {MOCK_MATERIALS.corredera.map((material) => (
-                            <SelectItem key={material.id_material} value={material.nombre}>
-                              {material.nombre} - ${formatCurrencyDisplay(new Decimal(material.costo))}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="materialsCombination.bisagra"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bisagra</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Seleccionar bisagra" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {MOCK_MATERIALS.bisagra.map((material) => (
-                            <SelectItem key={material.id_material} value={material.nombre}>
-                              {material.nombre} - ${formatCurrencyDisplay(new Decimal(material.costo))}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            
-            {/* Vista Previa de Materiales */}
-            <div className="mt-8 bg-muted/20 rounded-lg p-4">
-              <h4 className="font-medium text-gray-700 mb-4">Vista Previa de Especificaciones</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-md shadow-sm">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Estructura</p>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs text-gray-500">Material Huacal:</p>
-                      <p className="font-medium">{form.watch("materialsCombination.matHuacal") || "No seleccionado"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Chapacinta Huacal:</p>
-                      <p className="font-medium">{form.watch("materialsCombination.chapHuacal") || "No seleccionado"}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white p-4 rounded-md shadow-sm">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Vista</p>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs text-gray-500">Material Vista:</p>
-                      <p className="font-medium">{form.watch("materialsCombination.matVista") || "No seleccionado"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Chapacinta Vista:</p>
-                      <p className="font-medium">{form.watch("materialsCombination.chapVista") || "No seleccionado"}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white p-4 rounded-md shadow-sm">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Herrajes</p>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs text-gray-500">Jaladera:</p>
-                      <p className="font-medium">{form.watch("materialsCombination.jaladera") || "No seleccionado"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Corredera:</p>
-                      <p className="font-medium">{form.watch("materialsCombination.corredera") || "No seleccionado"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Bisagra:</p>
-                      <p className="font-medium">{form.watch("materialsCombination.bisagra") || "No seleccionado"}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Section 3: Products and Items */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-              <CardTitle>Productos y Servicios</CardTitle>
+              <CardTitle>Especificación de Materiales</CardTitle>
               <Badge variant="outline" className="text-sm font-normal">Sección 3 de 5</Badge>
             </div>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Lista de Productos</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Material Huacal */}
+              <FormField
+                control={form.control}
+                name="materials.matHuacal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Material Huacal</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar material" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MOCK_MATERIALS.matHuacal.map(material => (
+                          <SelectItem key={material.id_material} value={material.nombre}>
+                            {material.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const items = form.getValues("items") || [];
-                  form.setValue("items", [
-                    ...items,
-                    {
-                      id: crypto.randomUUID(),
-                      area: "",
-                      name: "",
+              {/* Chapacinta Huacal */}
+              <FormField
+                control={form.control}
+                name="materials.chapHuacal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Chapacinta Huacal</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar chapacinta" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MOCK_MATERIALS.chapHuacal.map(material => (
+                          <SelectItem key={material.id_material} value={material.nombre}>
+                            {material.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Material Vista */}
+              <FormField
+                control={form.control}
+                name="materials.matVista"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Material Vista</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar material" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MOCK_MATERIALS.matVista.map(material => (
+                          <SelectItem key={material.id_material} value={material.nombre}>
+                            {material.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Chapacinta Vista */}
+              <FormField
+                control={form.control}
+                name="materials.chapVista"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Chapacinta Vista</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar chapacinta" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MOCK_MATERIALS.chapVista.map(material => (
+                          <SelectItem key={material.id_material} value={material.nombre}>
+                            {material.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Jaladera */}
+              <FormField
+                control={form.control}
+                name="materials.jaladera"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jaladera</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar jaladera" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MOCK_MATERIALS.jaladera.map(material => (
+                          <SelectItem key={material.id_material} value={material.nombre}>
+                            {material.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Corredera */}
+              <FormField
+                control={form.control}
+                name="materials.corredera"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Corredera</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar corredera" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MOCK_MATERIALS.corredera.map(material => (
+                          <SelectItem key={material.id_material} value={material.nombre}>
+                            {material.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Bisagra */}
+              <FormField
+                control={form.control}
+                name="materials.bisagra"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bisagra</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar bisagra" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MOCK_MATERIALS.bisagra.map(material => (
+                          <SelectItem key={material.id_material} value={material.nombre}>
+                            {material.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Products and items section */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 border-b bg-muted/30">
+            <div className="flex justify-between items-center">
+              <CardTitle>Productos y Servicios</CardTitle>
+              <Badge variant="outline" className="text-sm font-normal">Sección 4 de 5</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              {/* List of items */}
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <tr>
+                      <TableHead className="w-[100px]">Área</TableHead>
+                      <TableHead>Producto / Descripción</TableHead>
+                      <TableHead className="text-center">Cant.</TableHead>
+                      <TableHead className="text-center">Cajones</TableHead>
+                      <TableHead className="text-center">Puertas</TableHead>
+                      <TableHead className="text-center">Entrepaños</TableHead>
+                      <TableHead className="text-right">Precio</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </tr>
+                  </TableHeader>
+                  <tbody>
+                    {fields.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="h-24 text-center text-muted-foreground">
+                          No hay productos agregados aún
+                        </td>
+                      </tr>
+                    ) : (
+                      fields.map((field, index) => (
+                        <tr key={field.id} className="border-b">
+                          <td className="py-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.area`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Área"
+                                      className="h-9"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </td>
+                          <td className="py-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.description`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Descripción"
+                                      className="h-9"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </td>
+                          <td className="py-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.quantity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      placeholder="Cant."
+                                      min={1}
+                                      className="h-9 text-center"
+                                      onChange={e => field.onChange(parseFloat(e.target.value) || 1)}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </td>
+                          <td className="py-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.drawers`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      placeholder="0"
+                                      min={0}
+                                      className="h-9 text-center"
+                                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </td>
+                          <td className="py-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.doors`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      placeholder="0"
+                                      min={0}
+                                      className="h-9 text-center"
+                                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </td>
+                          <td className="py-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.shelves`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      placeholder="0"
+                                      min={0}
+                                      className="h-9 text-center"
+                                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </td>
+                          <td className="py-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.unitPrice`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      placeholder="$0.00"
+                                      min={0}
+                                      step={0.01}
+                                      className="h-9 text-right"
+                                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </td>
+                          <td className="py-3 text-right font-medium">
+                            {formatCurrencyDisplay(
+                              new Decimal(form.watch(`items.${index}.quantity`) || 0)
+                                .mul(new Decimal(form.watch(`items.${index}.unitPrice`) || 0))
+                            )}
+                          </td>
+                          <td className="py-3">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => remove(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+              
+              {/* Add product button */}
+              <div className="flex justify-start">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-1"
+                  onClick={() =>
+                    append({
+                      id: "",
                       description: "",
+                      area: "",
                       quantity: 1,
                       unitPrice: 0,
                       discount: 0,
-                      doors: 0,
                       drawers: 0,
+                      doors: 0,
                       shelves: 0,
-                    }
-                  ]);
-                }}
-                className="h-9 gap-1"
-              >
-                <Plus className="h-4 w-4" />
-                Agregar Producto
-              </Button>
-            </div>
-            
-            {/* Table Headers for Products */}
-            <div className="hidden md:grid md:grid-cols-12 gap-4 py-2 px-4 bg-muted rounded-lg text-sm font-medium text-gray-600">
-              <div className="md:col-span-2">Área</div>
-              <div className="md:col-span-2">Producto</div>
-              <div className="md:col-span-1 text-center">Cant.</div>
-              <div className="md:col-span-1 text-center">Cajones</div>
-              <div className="md:col-span-1 text-center">Puertas</div>
-              <div className="md:col-span-1 text-center">Entrepaños</div>
-              <div className="md:col-span-2 text-right">Precio Unitario</div>
-              <div className="md:col-span-1 text-right">Total</div>
-              <div className="md:col-span-1 text-right">Acciones</div>
-            </div>
-            
-            <div className="space-y-4">
-              {items.map((item, index) => {
-                // Calculate the item total
-                const quantity = new Decimal(item.quantity || 0);
-                const unitPrice = new Decimal(item.unitPrice || 0);
-                const discount = new Decimal(item.discount || 0).div(100);
-                const itemTotal = quantity.mul(unitPrice).mul(new Decimal(1).minus(discount));
-                
-                return (
-                  <Card key={item.id} className="shadow-sm overflow-hidden border border-muted">
-                    <div className="p-4 border-b bg-muted/30 flex justify-between items-center md:hidden">
-                      <h5 className="font-medium">
-                        {form.watch(`items.${index}.name`) || `Producto ${index + 1}`}
-                      </h5>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const currentItems = form.getValues("items");
-                          form.setValue(
-                            "items",
-                            currentItems.filter((_, i) => i !== index)
-                          );
-                        }}
-                        className="h-8 w-8 p-0 text-gray-500 hover:text-red-500"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="p-4 grid md:grid-cols-12 gap-4 items-center">
-                      {/* Area */}
-                      <div className="md:col-span-2">
-                        <div className="block md:hidden text-sm font-medium text-gray-500 mb-1">Área</div>
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.area`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input {...field} className="h-10" placeholder="Ej: Cocina" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Product Name */}
-                      <div className="md:col-span-2">
-                        <div className="block md:hidden text-sm font-medium text-gray-500 mb-1">Producto</div>
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.name`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <Select 
-                                onValueChange={(value) => {
-                                  field.onChange(value);
-                                  
-                                  // Auto-populate product details when selected
-                                  const selectedProduct = MOCK_PRODUCTS.find(product => product.name === value);
-                                  if (selectedProduct) {
-                                    form.setValue(`items.${index}.description`, selectedProduct.description);
-                                    form.setValue(`items.${index}.unitPrice`, selectedProduct.price);
-                                  }
-                                }} 
-                                value={field.value || undefined}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-10">
-                                    <SelectValue placeholder="Seleccionar" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {MOCK_PRODUCTS.map((product, i) => (
-                                    <SelectItem key={i} value={product.name}>
-                                      {product.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Quantity */}
-                      <div className="md:col-span-1">
-                        <div className="block md:hidden text-sm font-medium text-gray-500 mb-1">Cantidad</div>
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.quantity`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  min="0.01" 
-                                  step="0.01"
-                                  onChange={(e) => field.onChange(parseFloat(e.target.value))} 
-                                  className="h-10 text-center"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Drawers */}
-                      <div className="md:col-span-1">
-                        <div className="block md:hidden text-sm font-medium text-gray-500 mb-1">Cajones</div>
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.drawers`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  min="0" 
-                                  step="1"
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
-                                  className="h-10 text-center"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Doors */}
-                      <div className="md:col-span-1">
-                        <div className="block md:hidden text-sm font-medium text-gray-500 mb-1">Puertas</div>
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.doors`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  min="0" 
-                                  step="1"
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
-                                  className="h-10 text-center"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Shelves */}
-                      <div className="md:col-span-1">
-                        <div className="block md:hidden text-sm font-medium text-gray-500 mb-1">Entrepaños</div>
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.shelves`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  min="0" 
-                                  step="1"
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
-                                  className="h-10 text-center"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Unit Price */}
-                      <div className="md:col-span-2">
-                        <div className="block md:hidden text-sm font-medium text-gray-500 mb-1">Precio Unitario</div>
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.unitPrice`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  min="0" 
-                                  step="0.01"
-                                  onChange={(e) => field.onChange(parseFloat(e.target.value))} 
-                                  className="h-10 text-right"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Item Total */}
-                      <div className="md:col-span-1 flex items-center justify-end">
-                        <div className="block md:hidden text-sm font-medium text-gray-500 mr-2">Total:</div>
-                        <div className="text-right font-medium">
-                          {formatCurrencyDisplay(itemTotal)}
-                        </div>
-                      </div>
-                      
-                      {/* Actions */}
-                      <div className="md:col-span-1 text-right hidden md:block">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const currentItems = form.getValues("items");
-                            form.setValue(
-                              "items",
-                              currentItems.filter((_, i) => i !== index)
-                            );
-                          }}
-                          className="h-8 w-8 p-0 text-gray-500 hover:text-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    {/* Description - bottom row */}
-                    <div className="px-4 pb-4 border-t border-muted/50 pt-3">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.description`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Descripción</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                {...field}
-                                value={field.value || ''}
-                                rows={2}
-                                className="resize-none text-sm"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="mt-2 grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.discount`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Descuento (%)</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  min="0" 
-                                  max="100" 
-                                  step="0.01"
-                                  onChange={(e) => field.onChange(parseFloat(e.target.value))} 
-                                  className="h-8 text-sm"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
+                      position: fields.length,
+                    })
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                  Agregar Producto
+                </Button>
+              </div>
               
-              {items.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed border-gray-300 rounded-lg bg-muted/20 text-center">
-                  <p className="text-gray-500 mb-4">No hay productos agregados</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      form.setValue("items", [
-                        {
-                          id: crypto.randomUUID(),
-                          area: "",
-                          name: "",
-                          description: "",
-                          quantity: 1,
-                          unitPrice: 0,
-                          discount: 0,
-                          doors: 0,
-                          drawers: 0,
-                          shelves: 0,
-                        }
-                      ]);
-                    }}
-                    className="h-10 gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Agregar Producto
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            <div className="mt-6 bg-muted/20 rounded-lg p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <h4 className="font-medium text-gray-700 mb-4">Resumen de Productos</h4>
+              {/* Totals */}
+              <div className="pt-4 border-t">
+                <div className="ml-auto md:w-72">
                   <div className="space-y-2">
-                    <div className="flex items-center">
-                      <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium mr-2">
-                        {items.length}
-                      </div>
-                      <span className="text-gray-600">Productos agregados</span>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span>{formatCurrencyDisplay(totals.subtotal)}</span>
                     </div>
-                    <div className="flex items-center">
-                      <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-medium mr-2">
-                        {items.reduce((sum, item) => sum + (item.doors || 0), 0)}
-                      </div>
-                      <span className="text-gray-600">Puertas en total</span>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%):</span>
+                      <span>{formatCurrencyDisplay(totals.taxes)}</span>
                     </div>
-                    <div className="flex items-center">
-                      <div className="w-6 h-6 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-xs font-medium mr-2">
-                        {items.reduce((sum, item) => sum + (item.drawers || 0), 0)}
-                      </div>
-                      <span className="text-gray-600">Cajones en total</span>
+                    <div className="flex justify-between font-medium text-lg pt-2 border-t">
+                      <span>Total:</span>
+                      <span>{formatCurrencyDisplay(totals.total)}</span>
                     </div>
-                    <div className="flex items-center">
-                      <div className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-medium mr-2">
-                        {items.reduce((sum, item) => sum + (item.shelves || 0), 0)}
-                      </div>
-                      <span className="text-gray-600">Entrepaños en total</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white p-4 rounded-md shadow-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">{formatCurrencyDisplay(totals.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-600">IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%)</span>
-                    <span className="font-medium">{formatCurrencyDisplay(totals.taxes)}</span>
-                  </div>
-                  <Separator className="my-3" />
-                  <div className="flex justify-between items-center text-lg">
-                    <span className="font-bold">Total</span>
-                    <span className="font-bold">{formatCurrencyDisplay(totals.total)}</span>
                   </div>
                 </div>
               </div>
@@ -1756,69 +1315,18 @@ export default function CotizacionForm() {
           </CardContent>
         </Card>
         
-        {/* Section 4: Pricing and Payment Terms */}
+        {/* Extras and additional information */}
         <Card className="shadow-sm">
           <CardHeader className="pb-3 border-b bg-muted/30">
             <div className="flex justify-between items-center">
-              <CardTitle>Condiciones de Pago y Entrega</CardTitle>
-              <Badge variant="outline" className="text-sm font-normal">Sección 4 de 5</Badge>
+              <CardTitle>Información Adicional</CardTitle>
+              <Badge variant="outline" className="text-sm font-normal">Sección 5 de 5</Badge>
             </div>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium">Términos de Pago</h3>
-                
-                <FormField
-                  control={form.control}
-                  name="paymentTerms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Esquema de Pago</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Seleccionar esquema" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="70-30">70% anticipo - 30% entrega</SelectItem>
-                          <SelectItem value="50-50">50% anticipo - 50% entrega</SelectItem>
-                          <SelectItem value="100">100% anticipo</SelectItem>
-                          <SelectItem value="custom">Personalizado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name={"paymentInfo" as any}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Información de Pago</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Información bancaria, métodos de pago, etc."
-                          className="resize-none min-h-[120px]"
-                          {...field}
-                          value={typeof field.value === 'string' ? field.value : ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium">Términos de Entrega</h3>
-                
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Delivery and payment */}
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="deliveryTime"
@@ -1826,13 +1334,12 @@ export default function CotizacionForm() {
                     <FormItem>
                       <FormLabel>Tiempo de Entrega (días hábiles)</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          type="number" 
-                          min="1" 
-                          step="1"
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
-                          className="h-12"
+                        <Input
+                          {...field}
+                          type="number"
+                          className="h-11"
+                          min={1}
+                          onChange={e => field.onChange(parseInt(e.target.value) || 1)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1840,95 +1347,114 @@ export default function CotizacionForm() {
                   )}
                 />
                 
-                {/* Resumen de Presupuesto */}
-                <div className="rounded-lg overflow-hidden shadow-sm border bg-white mt-6 p-6">
-                  <h3 className="text-lg font-medium mb-4">Resumen de Presupuesto</h3>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-gray-700">
-                      <span>Subtotal</span>
-                      <span className="font-medium">{formatCurrencyDisplay(totals.subtotal)}</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center text-gray-700">
-                      <span>IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%)</span>
-                      <span className="font-medium">{formatCurrencyDisplay(totals.taxes)}</span>
-                    </div>
-                    
-                    <Separator className="my-3" />
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold">Total</span>
-                      <span className="text-lg font-bold">{formatCurrencyDisplay(totals.total)}</span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
-                      <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
-                        <span className="text-gray-600">Anticipo (70%)</span>
-                        <span className="font-medium">{formatCurrencyDisplay(totals.total.mul(0.7))}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
-                        <span className="text-gray-600">Liquidación (30%)</span>
-                        <span className="font-medium">{formatCurrencyDisplay(totals.total.mul(0.3))}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="paymentTerms"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Condiciones de Pago</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          className="min-h-[80px] resize-none"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              {/* Team information */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="vendedor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vendedor</FormLabel>
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Seleccionar vendedor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {VENDEDORES.map(vendedor => (
+                            <SelectItem key={vendedor.id} value={vendedor.id}>
+                              {vendedor.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="fabricante"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fabricante</FormLabel>
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Seleccionar fabricante" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {FABRICANTES.map(fabricante => (
+                            <SelectItem key={fabricante.id} value={fabricante.id}>
+                              {fabricante.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="instalador"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Instalador</FormLabel>
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Seleccionar instalador" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {INSTALADORES.map(instalador => (
+                            <SelectItem key={instalador.id} value={instalador.id}>
+                              {instalador.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
-          </CardContent>
-        </Card>
-        
-        {/* Section 5: Terms and Notes */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-              <CardTitle>Términos y Notas</CardTitle>
-              <Badge variant="outline" className="text-sm font-normal">Sección 5 de 5</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <div className="space-y-6">
-              <FormField
-                control={form.control}
-                name="terms"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Términos y Condiciones</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field}
-                        value={field.value || ''}
-                        rows={5}
-                        className="min-h-[120px]"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="generalNotes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observaciones Generales</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field}
-                        value={field.value || ''}
-                        rows={3}
-                        className="min-h-[100px]"
-                        placeholder="Notas adicionales sobre el proyecto, condiciones especiales, etc."
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
+            
+            {/* Notes */}
+            <div>
               <FormField
                 control={form.control}
                 name="notes"
@@ -1936,12 +1462,10 @@ export default function CotizacionForm() {
                   <FormItem>
                     <FormLabel>Notas Adicionales</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         {...field}
                         value={field.value || ''}
-                        rows={3}
-                        className="min-h-[100px]"
-                        placeholder="Información adicional que deba incluirse en la cotización"
+                        className="min-h-[120px] resize-none"
                       />
                     </FormControl>
                     <FormMessage />
@@ -1965,18 +1489,18 @@ export default function CotizacionForm() {
           </Button>
         )}
         
-        {/* Progress Indicator and Actions */}
+        {/* Fixed bottom panel */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md p-4 z-10">
           <div className="container mx-auto max-w-7xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-64 bg-gray-200 rounded-full h-2.5">
                 <div 
                   className="bg-black h-2.5 rounded-full" 
-                  style={{ width: `${progress.percentage}%` }}
+                  style={{ width: `${progress}%` }}
                 ></div>
               </div>
               <span className="text-sm text-gray-600">
-                {progress.completed} de {progress.total} secciones completadas
+                {Math.round(progress)}% completado
               </span>
             </div>
             
