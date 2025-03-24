@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/accordion";
 import { Label } from "@/components/ui/label";
 import { Combobox } from "@/components/ui/combobox";
+import { CustomCombobox } from "@/components/cotizador/customized-combobox";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 
 import { calculateQuotationTotals } from '@/lib/cotizador/calculator';
@@ -330,23 +331,6 @@ function NuevoClienteModal({
 
 // Main component
 export default function CotizacionForm() {
-  // Style for combobox options
-  useEffect(() => {
-    // Add CSS for combobox options
-    const style = document.createElement('style');
-    style.innerHTML = `
-      .combobox-small-options + div [cmdk-item] {
-        font-size: 0.75rem !important; /* text-xs equivalent */
-      }
-    `;
-    document.head.appendChild(style);
-    
-    // Cleanup on unmount
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-
   // State for form and UI
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -679,7 +663,7 @@ export default function CotizacionForm() {
               render={({ field }) => (
                 <FormItem className="w-full">
                   <FormControl>
-                    <Combobox
+                    <CustomCombobox
                       options={clients.map(client => ({
                         label: client.name,
                         value: client.id,
@@ -706,7 +690,7 @@ export default function CotizacionForm() {
                       placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
                       disabled={isLoadingClients}
                       popoverWidth={320}
-                      className="h-11 combobox-small-options"
+                      className="h-11"
                     />
                   </FormControl>
                   <FormMessage />
@@ -1055,7 +1039,7 @@ export default function CotizacionForm() {
                       <FormItem>
                         <FormLabel className="mb-2">Material Huacal</FormLabel>
                         <FormControl>
-                          <Combobox
+                          <CustomCombobox
                             options={tabletosMaterials.map(material => ({
                               label: material.nombre,
                               value: material.nombre,
@@ -1066,7 +1050,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm combobox-small-options"
+                            className="h-11 w-full text-sm"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1082,7 +1066,7 @@ export default function CotizacionForm() {
                       <FormItem>
                         <FormLabel className="mb-2">Chapacinta Huacal</FormLabel>
                         <FormControl>
-                          <Combobox
+                          <CustomCombobox
                             options={chapacintaMaterials.map(material => ({
                               label: material.nombre,
                               value: material.nombre,
@@ -1093,7 +1077,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-xs combobox-small-options"
+                            className="h-11 w-full text-xs"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1109,7 +1093,7 @@ export default function CotizacionForm() {
                       <FormItem>
                         <FormLabel className="mb-2">Jaladera</FormLabel>
                         <FormControl>
-                          <Combobox
+                          <CustomCombobox
                             options={jaladeraMaterials.map(material => ({
                               label: material.nombre,
                               value: material.nombre,
@@ -1120,7 +1104,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar jaladera"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm combobox-small-options"
+                            className="h-11 w-full text-sm"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1136,7 +1120,7 @@ export default function CotizacionForm() {
                       <FormItem>
                         <FormLabel className="mb-2">Material Vista</FormLabel>
                         <FormControl>
-                          <Combobox
+                          <CustomCombobox
                             options={tabletosMaterials.map(material => ({
                               label: material.nombre,
                               value: material.nombre,
@@ -1147,7 +1131,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm combobox-small-options"
+                            className="h-11 w-full text-sm"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1163,7 +1147,7 @@ export default function CotizacionForm() {
                       <FormItem>
                         <FormLabel className="mb-2">Chapacinta Vista</FormLabel>
                         <FormControl>
-                          <Combobox
+                          <CustomCombobox
                             options={chapacintaMaterials.map(material => ({
                               label: material.nombre,
                               value: material.nombre,
@@ -1174,7 +1158,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-xs combobox-small-options"
+                            className="h-11 w-full text-xs"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1190,7 +1174,7 @@ export default function CotizacionForm() {
                       <FormItem>
                         <FormLabel className="mb-2">Corredera</FormLabel>
                         <FormControl>
-                          <Combobox
+                          <CustomCombobox
                             options={correderasMaterials.map(material => ({
                               label: material.nombre,
                               value: material.nombre,
@@ -1201,7 +1185,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar corredera"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm combobox-small-options"
+                            className="h-11 w-full text-sm"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1217,7 +1201,7 @@ export default function CotizacionForm() {
                       <FormItem>
                         <FormLabel className="mb-2">Bisagra</FormLabel>
                         <FormControl>
-                          <Combobox
+                          <CustomCombobox
                             options={bisagrasMaterials.map(material => ({
                               label: material.nombre,
                               value: material.nombre,
@@ -1228,7 +1212,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar bisagra"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm combobox-small-options"
+                            className="h-11 w-full text-sm"
                           />
                         </FormControl>
                         <FormMessage />
