@@ -372,6 +372,8 @@ export default function CotizacionForm() {
   const { toast, error: toastError, success: toastSuccess } = useToast();
   const [clients, setClients] = useState<Array<{id: string; name: string; email: string | null; phone: string | null; address: string | null}>>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [openClientCombobox, setOpenClientCombobox] = useState(false);
   
   // Default values for the form
   const defaultValues = {
@@ -451,6 +453,28 @@ export default function CotizacionForm() {
         
         console.log("Formatted clients:", formattedClients);
         setClients(formattedClients);
+        
+        // Check if there's a selected client in the form and ensure it exists in the loaded clients
+        const currentClientId = form.getValues("clientId");
+        if (currentClientId) {
+          console.log("Current selected client ID:", currentClientId);
+          const selectedClient = formattedClients.find(c => c.id === currentClientId);
+          if (selectedClient) {
+            console.log("Selected client found in loaded clients:", selectedClient);
+            // Ensure the client details are set correctly
+            form.setValue("clientName", selectedClient.name);
+            form.setValue("clientEmail", selectedClient.email || "");
+            form.setValue("clientPhone", selectedClient.phone || "");
+            form.setValue("clientAddress", selectedClient.address || "");
+          } else {
+            console.log("Selected client not found in loaded clients, clearing selection");
+            form.setValue("clientId", "");
+            form.setValue("clientName", "");
+            form.setValue("clientEmail", "");
+            form.setValue("clientPhone", "");
+            form.setValue("clientAddress", "");
+          }
+        }
       } catch (error) {
         console.error("Error:", error);
         toastError(error instanceof Error ? error.message : 'Error desconocido al cargar clientes');
@@ -460,6 +484,17 @@ export default function CotizacionForm() {
     };
     
     fetchClients();
+  }, []);
+  
+  // Log initial form values for debugging
+  useEffect(() => {
+    console.log("Initial form values:", {
+      clientId: form.getValues("clientId"),
+      clientName: form.getValues("clientName"),
+      clientEmail: form.getValues("clientEmail"),
+      clientPhone: form.getValues("clientPhone"),
+      clientAddress: form.getValues("clientAddress")
+    });
   }, []);
   
   // Get items from form for easier access
@@ -543,6 +578,7 @@ export default function CotizacionForm() {
   // Form submission handler
   const onSubmit = (data: z.infer<typeof cotizacionFormSchema>) => {
     console.log("Form submitted:", data);
+    console.log("Selected client ID:", data.clientId);
     // Here you would typically send the data to your API
   };
 
@@ -585,6 +621,11 @@ export default function CotizacionForm() {
   };
 
   const progress = calculateProgress();
+
+  // Filter clients based on search term
+  const filteredClients = clients.filter(client => 
+    client.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <Form {...form}>
@@ -840,140 +881,191 @@ export default function CotizacionForm() {
             <div>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
                 <h3 className="text-base font-medium">Información del Cliente</h3>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  className="h-9 w-full md:w-auto"
+                  onClick={() => setShowClientModal(true)}
+                >
+                  + Nuevo Cliente
+                </Button>
               </div>
               
-              <div className="grid gap-2">
-                <Label htmlFor="cliente">Cliente</Label>
-                <div className="flex space-x-2">
-                  <FormField
-                    control={form.control}
-                    name="clientId"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <Select
-                          disabled={isLoadingClients}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            if (value) {
-                              const selectedClient = clients.find(client => client.id === value);
-                              if (selectedClient) {
-                                form.setValue("clientName", selectedClient.name);
-                                form.setValue("clientEmail", selectedClient.email || "");
-                                form.setValue("clientPhone", selectedClient.phone || "");
-                                form.setValue("clientAddress", selectedClient.address || "");
-                              }
-                            }
-                          }}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue 
-                                placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
-                              />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {isLoadingClients ? (
-                              <SelectItem key="loading" value="loading" disabled>Cargando clientes...</SelectItem>
-                            ) : clients.length > 0 ? (
-                              clients.map(client => (
-                                <SelectItem key={client.id} value={client.id}>
-                                  {client.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem key="empty" value="empty" disabled>No hay clientes disponibles</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    className="h-9 w-full md:w-auto"
-                    onClick={() => setShowClientModal(true)}
-                  >
-                    + Nuevo Cliente
-                  </Button>
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Cliente selection - first column */}
+                <div>
+                  <Label htmlFor="cliente">Cliente</Label>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <div className="relative w-full md:w-64">
+                      <FormField
+                        control={form.control}
+                        name="clientId"
+                        render={({ field }) => (
+                          <FormItem className="w-full">
+                            <Select
+                              disabled={isLoadingClients}
+                              onValueChange={(value) => {
+                                console.log("Client selected, setting clientId to:", value);
+                                field.onChange(value);
+                                if (value) {
+                                  const selectedClient = clients.find(client => client.id === value);
+                                  if (selectedClient) {
+                                    console.log("Setting client details:", selectedClient);
+                                    form.setValue("clientName", selectedClient.name);
+                                    form.setValue("clientEmail", selectedClient.email || "");
+                                    form.setValue("clientPhone", selectedClient.phone || "");
+                                    form.setValue("clientAddress", selectedClient.address || "");
+                                  }
+                                } else {
+                                  // Clear client details if no client is selected
+                                  form.setValue("clientName", "");
+                                  form.setValue("clientEmail", "");
+                                  form.setValue("clientPhone", "");
+                                  form.setValue("clientAddress", "");
+                                }
+                                // Reset search term after selection
+                                setSearchTerm("");
+                              }}
+                              value={field.value || undefined}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-11 w-full">
+                                  <SelectValue>
+                                    {field.value && clients.length > 0 
+                                      ? clients.find(client => client.id === field.value)?.name || "Seleccionar cliente"
+                                      : isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"
+                                    }
+                                  </SelectValue>
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="min-w-[250px]">
+                                <div className="px-2 py-2 sticky top-0 bg-white border-b">
+                                  <Input 
+                                    placeholder="Buscar cliente..." 
+                                    className="h-9"
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                      // Just update the search term without selecting anything
+                                      setSearchTerm(e.target.value);
+                                      // Prevent event from propagating to prevent the select from closing
+                                      e.stopPropagation();
+                                    }}
+                                    onKeyDown={(e) => {
+                                      // Prevent default behavior for arrow keys, Enter, Space
+                                      // This stops the select from selecting items as you type
+                                      if (['ArrowUp', 'ArrowDown', ' ', 'Enter'].includes(e.key)) {
+                                        e.stopPropagation();
+                                      }
+                                    }}
+                                    // Critical to prevent select from taking over input
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div className="max-h-[200px] overflow-auto mt-1">
+                                  {isLoadingClients ? (
+                                    <div className="flex items-center justify-center py-2 px-2">
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      <span>Cargando clientes...</span>
+                                    </div>
+                                  ) : filteredClients.length > 0 ? (
+                                    filteredClients.map(client => (
+                                      <SelectItem key={client.id} value={client.id}>
+                                        {client.name}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <div className="text-center py-2 text-muted-foreground">
+                                      No se encontraron clientes
+                                    </div>
+                                  )}
+                                </div>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Client details only show when a client is selected */}
+                  {form.watch("clientId") && (
+                    <>
+                      {/* Client details - first column bottom */}
+                      <div className="space-y-4 w-full mt-4">
+                        <FormField
+                          control={form.control}
+                          name="clientName"
+                          render={({ field }) => (
+                            <FormItem className="w-full">
+                              <FormLabel>Nombre</FormLabel>
+                              <FormControl>
+                                <Input {...field} className="h-11 w-full" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="clientEmail"
+                          render={({ field }) => (
+                            <FormItem className="w-full">
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="email" className="h-11 w-full" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {/* Second column for client details, only show when a client is selected */}
+                {form.watch("clientId") && (
+                  <div className="space-y-4 w-full mt-8 md:mt-0">
+                    <FormField
+                      control={form.control}
+                      name="clientPhone"
+                      render={({ field }) => (
+                        <FormItem className="w-full">
+                          <FormLabel>Teléfono</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="h-11 w-full" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="clientAddress"
+                      render={({ field }) => (
+                        <FormItem className="w-full">
+                          <FormLabel>Dirección</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field}
+                              value={field.value || ''}
+                              className="min-h-[80px] resize-none w-full"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
-        
-        {/* Client details */}
-        {(form.watch("clientName") || form.watch("clientEmail") || form.watch("clientPhone") || form.watch("clientAddress")) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/20 rounded-lg border border-muted mt-4">
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="clientName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="h-11" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="clientAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dirección</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field}
-                        value={field.value || ''}
-                        className="min-h-[80px] resize-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="clientEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="email" className="h-11" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="clientPhone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Teléfono</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="h-11" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-        )}
         
         {/* Section 2: Materials Selection */}
         <Card className="shadow-sm">
