@@ -60,7 +60,9 @@ export function CustomCombobox({
     // Otherwise, find the label for the current value
     if (value) {
       const option = options.find(option => option.value === value)
-      return option ? option.label : placeholder
+      return option ? (
+        typeof option.label === 'string' ? option.label : JSON.stringify(option.label)
+      ) : placeholder
     }
     
     // Default to placeholder
@@ -120,9 +122,9 @@ export function CustomCombobox({
           </div>
           {/* No CommandEmpty to hide "No results found" */}
           <CommandGroup className="max-h-[300px] overflow-auto">
-            {filteredOptions.map((option) => (
+            {filteredOptions.map((option, index) => (
               <CommandItem
-                key={option.value}
+                key={`${option.value}-${index}`}
                 value={option.value}
                 onSelect={(currentValue) => {
                   onChange(currentValue)
@@ -138,7 +140,7 @@ export function CustomCombobox({
                     value === option.value ? "opacity-100" : "opacity-0"
                   )}
                 />
-                {option.label}
+                {typeof option.label === 'string' ? option.label : JSON.stringify(option.label)}
               </CommandItem>
             ))}
           </CommandGroup>

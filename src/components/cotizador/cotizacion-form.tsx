@@ -595,40 +595,70 @@ export default function CotizacionForm() {
     }
   };
   
-  // Fetch all furniture types using direct SQL query
+  // Fetch furniture types using the database RPC function
   const fetchFurnitureTypes = async () => {
     setIsLoadingFurnitureTypes(true);
-    console.log('Fetching furniture types...');
+    console.log('Fetching furniture types using RPC function...');
     
     try {
       const supabase = createClientComponentClient();
       
-      // Use the exact query that works in SQL
+      // Call the RPC function created in the database
       const { data, error } = await supabase
-        .from('inventario')
-        .select('tipo')
-        .not('tipo', 'is', null);
+        .rpc('get_furniture_types');
       
       if (error) {
-        console.error('Error fetching furniture types:', error);
-        setFurnitureTypes([]);
-        return;
+        console.error('Error calling get_furniture_types RPC:', error);
+        throw error;
       }
       
-      // Extract unique types
-      const uniqueTypes = Array.from(new Set(
-        data
-          .filter(item => item.tipo && item.tipo.trim() !== '')
-          .map(item => item.tipo)
-      )).sort();
+      console.log(`Retrieved ${data?.length || 0} furniture types from RPC function`);
+      console.log('Types:', data);
       
-      console.log(`Found ${uniqueTypes.length} distinct furniture types`);
-      console.log('Types:', uniqueTypes);
-      
-      setFurnitureTypes(uniqueTypes);
+      if (data && data.length > 0) {
+        // Extract 'tipo' property from each item and convert to string array
+        const typeStrings = data.map((item: { tipo: string }) => item.tipo);
+        setFurnitureTypes(typeStrings);
+      } else {
+        // Fallback to hardcoded types if no data returned
+        console.warn('No furniture types returned from RPC, using fallback');
+        const fallbackTypes = [
+          'Alacena',
+          'Base',
+          'Despensero',
+          'Gabinete',
+          'Isla',
+          'Mueble Baño',
+          'Mueble TV',
+          'Pantry',
+          'Refrigerador',
+          'Closet',
+          'Cajonera',
+          'Librero'
+        ];
+        setFurnitureTypes(fallbackTypes);
+      }
     } catch (error) {
       console.error('Failed to fetch furniture types:', error);
-      setFurnitureTypes([]);
+      
+      // Hardcoded fallback types
+      const fallbackTypes = [
+        'Alacena',
+        'Base',
+        'Despensero',
+        'Gabinete',
+        'Isla',
+        'Mueble Baño',
+        'Mueble TV',
+        'Pantry',
+        'Refrigerador',
+        'Closet',
+        'Cajonera',
+        'Librero'
+      ];
+      
+      console.log('Error occurred, using fallback types:', fallbackTypes);
+      setFurnitureTypes(fallbackTypes);
     } finally {
       setIsLoadingFurnitureTypes(false);
     }
