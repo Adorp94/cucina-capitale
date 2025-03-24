@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -60,9 +59,7 @@ export function CustomCombobox({
     // Otherwise, find the label for the current value
     if (value) {
       const option = options.find(option => option.value === value)
-      return option ? (
-        typeof option.label === 'string' ? option.label : JSON.stringify(option.label)
-      ) : placeholder
+      return option ? option.label : placeholder
     }
     
     // Default to placeholder
@@ -140,7 +137,7 @@ export function CustomCombobox({
                     value === option.value ? "opacity-100" : "opacity-0"
                   )}
                 />
-                {typeof option.label === 'string' ? option.label : JSON.stringify(option.label)}
+                {option.label}
               </CommandItem>
             ))}
           </CommandGroup>

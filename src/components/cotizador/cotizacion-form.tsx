@@ -96,13 +96,6 @@ const MOCK_CLIENTS = [
   { id: "3", name: "Cliente Ejemplo 3", email: "cliente3@example.com", phone: "555-555-5555", address: "Dirección Ejemplo 3" },
 ];
 
-const MOCK_PRODUCTS = [
-  { name: "Alacena", description: "Alacena de cocina básica", price: 5000 },
-  { name: "Gabinete Base", description: "Gabinete base para cocina", price: 3500 },
-  { name: "Isla", description: "Isla de cocina con superficie de trabajo", price: 7500 },
-  { name: "Despensero", description: "Mueble despensero para almacenamiento", price: 6000 },
-];
-
 const VENDEDORES = [
   { id: "1", name: "Capital Cocinas" },
   { id: "2", name: "GRUPO UCMV GDL" },
@@ -510,8 +503,6 @@ export default function CotizacionForm() {
   const fetchInventory = async (searchQuery = '', selectedType = '', rowIndex: number | null = null) => {
     setIsLoadingInventory(true);
     try {
-      console.log(`Fetching inventory items with search: "${searchQuery}" and type: "${selectedType}" for row: ${rowIndex !== null ? rowIndex : 'global'}`);
-      
       const supabase = createClientComponentClient();
       let query = supabase
         .from('inventario')
@@ -519,7 +510,6 @@ export default function CotizacionForm() {
       
       // Filter by type if selected
       if (selectedType) {
-        console.log(`Filtering by tipo: "${selectedType}"`);
         query = query.ilike('tipo', selectedType);
       }
       
@@ -539,8 +529,6 @@ export default function CotizacionForm() {
         console.error('Error fetching inventory items:', error);
         throw error;
       }
-      
-      console.log(`Found ${data.length} inventory items`);
       
       // Store the results in row-specific state or global state
       if (rowIndex !== null) {
@@ -598,12 +586,18 @@ export default function CotizacionForm() {
   // Fetch furniture types using the database RPC function
   const fetchFurnitureTypes = async () => {
     setIsLoadingFurnitureTypes(true);
-    console.log('Fetching furniture types using RPC function...');
+    
+    // Default fallback types
+    const fallbackTypes = [
+      'Alacena', 'Base', 'Despensero', 'Gabinete', 'Isla',
+      'Mueble Baño', 'Mueble TV', 'Pantry', 'Refrigerador', 
+      'Closet', 'Cajonera', 'Librero'
+    ];
     
     try {
       const supabase = createClientComponentClient();
       
-      // Call the RPC function created in the database
+      // Call the RPC function 
       const { data, error } = await supabase
         .rpc('get_furniture_types');
       
@@ -612,52 +606,17 @@ export default function CotizacionForm() {
         throw error;
       }
       
-      console.log(`Retrieved ${data?.length || 0} furniture types from RPC function`);
-      console.log('Types:', data);
-      
       if (data && data.length > 0) {
-        // Extract 'tipo' property from each item and convert to string array
+        // Extract 'tipo' property from each item
         const typeStrings = data.map((item: { tipo: string }) => item.tipo);
         setFurnitureTypes(typeStrings);
       } else {
-        // Fallback to hardcoded types if no data returned
-        console.warn('No furniture types returned from RPC, using fallback');
-        const fallbackTypes = [
-          'Alacena',
-          'Base',
-          'Despensero',
-          'Gabinete',
-          'Isla',
-          'Mueble Baño',
-          'Mueble TV',
-          'Pantry',
-          'Refrigerador',
-          'Closet',
-          'Cajonera',
-          'Librero'
-        ];
+        // Use fallback types if no data returned
         setFurnitureTypes(fallbackTypes);
       }
     } catch (error) {
       console.error('Failed to fetch furniture types:', error);
-      
-      // Hardcoded fallback types
-      const fallbackTypes = [
-        'Alacena',
-        'Base',
-        'Despensero',
-        'Gabinete',
-        'Isla',
-        'Mueble Baño',
-        'Mueble TV',
-        'Pantry',
-        'Refrigerador',
-        'Closet',
-        'Cajonera',
-        'Librero'
-      ];
-      
-      console.log('Error occurred, using fallback types:', fallbackTypes);
+      // Use fallback types in case of error
       setFurnitureTypes(fallbackTypes);
     } finally {
       setIsLoadingFurnitureTypes(false);
