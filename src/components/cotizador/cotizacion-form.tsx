@@ -566,31 +566,29 @@ export default function CotizacionForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* Client information card - where we'll focus */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-              <CardTitle>Información de Cliente</CardTitle>
-              <Badge variant="outline" className="text-sm font-normal">Sección 1 de 5</Badge>
-            </div>
+        <Card className="shadow-sm rounded-lg">
+          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
+            <CardTitle>Información de Cliente</CardTitle>
+            <Badge variant="outline" className="text-sm font-normal">Sección 1 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
+            <div className="flex items-center justify-between mb-6">
+              <Label htmlFor="cliente" className="text-base font-medium">Cliente</Label>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                className="h-11"
+                onClick={() => setShowClientModal(true)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Nuevo Cliente
+              </Button>
+            </div>
             <div className="grid md:grid-cols-2 gap-6">
               {/* Cliente selection - first column */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <Label htmlFor="cliente">Cliente</Label>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    className="h-9"
-                    onClick={() => setShowClientModal(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Nuevo Cliente
-                  </Button>
-                </div>
-                <div className="mt-2">
+                <div className="mb-4">
                   <FormField
                     control={form.control}
                     name="clientId"
@@ -625,6 +623,7 @@ export default function CotizacionForm() {
                             emptyMessage="No se encontraron clientes"
                             disabled={isLoadingClients}
                             popoverWidth={320}
+                            className="h-11"
                           />
                         </FormControl>
                         <FormMessage />
@@ -643,9 +642,9 @@ export default function CotizacionForm() {
                         name="clientName"
                         render={({ field }) => (
                           <FormItem className="w-full">
-                            <FormLabel>Nombre</FormLabel>
+                            <FormLabel className="mb-3">Nombre</FormLabel>
                             <FormControl>
-                              <Input {...field} className="h-11 w-full" />
+                              <Input {...field} className="h-11 w-full px-3" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -657,9 +656,9 @@ export default function CotizacionForm() {
                         name="clientEmail"
                         render={({ field }) => (
                           <FormItem className="w-full">
-                            <FormLabel>Email</FormLabel>
+                            <FormLabel className="mb-3">Email</FormLabel>
                             <FormControl>
-                              <Input {...field} type="email" className="h-11 w-full" />
+                              <Input {...field} type="email" className="h-11 w-full px-3" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -678,9 +677,9 @@ export default function CotizacionForm() {
                     name="clientPhone"
                     render={({ field }) => (
                       <FormItem className="w-full">
-                        <FormLabel>Teléfono</FormLabel>
+                        <FormLabel className="mb-3">Teléfono</FormLabel>
                         <FormControl>
-                          <Input {...field} className="h-11 w-full" />
+                          <Input {...field} className="h-11 w-full px-3" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -692,12 +691,12 @@ export default function CotizacionForm() {
                     name="clientAddress"
                     render={({ field }) => (
                       <FormItem className="w-full">
-                        <FormLabel>Dirección</FormLabel>
+                        <FormLabel className="mb-3">Dirección</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field}
                             value={field.value || ''}
-                            className="min-h-[80px] resize-none w-full"
+                            className="min-h-[80px] resize-none w-full px-3 py-2"
                           />
                         </FormControl>
                         <FormMessage />
@@ -711,146 +710,142 @@ export default function CotizacionForm() {
         </Card>
         
         {/* Project information */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-              <CardTitle>Información del Proyecto</CardTitle>
-              <Badge variant="outline" className="text-sm font-normal">Sección 2 de 5</Badge>
-            </div>
+        <Card className="shadow-sm rounded-lg">
+          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
+            <CardTitle>Información del Proyecto</CardTitle>
+            <Badge variant="outline" className="text-sm font-normal">Sección 2 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Project information */}
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="projectName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nombre del Proyecto</FormLabel>
-                      <FormControl>
-                        <Input {...field} className="h-11" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="projectType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de Proyecto</FormLabel>
-                      <Select 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Seleccionar tipo de proyecto" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {TIPOS_PROYECTO.map(tipo => (
-                            <SelectItem key={tipo.id} value={tipo.id}>
-                              {tipo.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              {/* First row: Project name and date */}
+              <FormField
+                control={form.control}
+                name="projectName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-3">Nombre del Proyecto</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="h-11 px-3" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
-              {/* Date information */}
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="cotizacionDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Fecha de Cotización</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "h-11 w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccionar fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date("1900-01-01")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="validUntil"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Válida Hasta</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "h-11 w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccionar fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date()
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="cotizacionDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel className="mb-3">Fecha de Cotización</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "h-11 w-full px-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP", { locale: es })
+                            ) : (
+                              <span>Seleccionar fecha</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date("1900-01-01")
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              {/* Second row: Project type and validity date */}
+              <FormField
+                control={form.control}
+                name="projectType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-3">Tipo de Proyecto</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11 px-3">
+                          <SelectValue placeholder="Seleccionar tipo de proyecto" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {TIPOS_PROYECTO.map(tipo => (
+                          <SelectItem key={tipo.id} value={tipo.id}>
+                            {tipo.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="validUntil"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel className="mb-3">Válida Hasta</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "h-11 w-full px-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP", { locale: es })
+                            ) : (
+                              <span>Seleccionar fecha</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date()
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             
             {/* Team information */}
@@ -860,13 +855,13 @@ export default function CotizacionForm() {
                 name="vendedor"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Vendedor</FormLabel>
+                    <FormLabel className="mb-3">Vendedor</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar vendedor" />
                         </SelectTrigger>
                       </FormControl>
@@ -888,13 +883,13 @@ export default function CotizacionForm() {
                 name="fabricante"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fabricante</FormLabel>
+                    <FormLabel className="mb-3">Fabricante</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar fabricante" />
                         </SelectTrigger>
                       </FormControl>
@@ -916,13 +911,13 @@ export default function CotizacionForm() {
                 name="instalador"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Instalador</FormLabel>
+                    <FormLabel className="mb-3">Instalador</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar instalador" />
                         </SelectTrigger>
                       </FormControl>
@@ -943,14 +938,12 @@ export default function CotizacionForm() {
         </Card>
         
         {/* Materials selection */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-              <CardTitle>Especificación de Materiales</CardTitle>
-              <Badge variant="outline" className="text-sm font-normal">Sección 3 de 5</Badge>
-            </div>
+        <Card className="shadow-sm rounded-lg">
+          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
+            <CardTitle>Especificación de Materiales</CardTitle>
+            <Badge variant="outline" className="text-sm font-normal">Sección 3 de 5</Badge>
           </CardHeader>
-          <CardContent className="p-6 space-y-6">
+          <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Material Huacal */}
               <FormField
@@ -958,13 +951,13 @@ export default function CotizacionForm() {
                 name="materials.matHuacal"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Material Huacal</FormLabel>
+                    <FormLabel className="mb-3">Material Huacal</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar material" />
                         </SelectTrigger>
                       </FormControl>
@@ -987,13 +980,13 @@ export default function CotizacionForm() {
                 name="materials.chapHuacal"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Chapacinta Huacal</FormLabel>
+                    <FormLabel className="mb-3">Chapacinta Huacal</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar chapacinta" />
                         </SelectTrigger>
                       </FormControl>
@@ -1016,13 +1009,13 @@ export default function CotizacionForm() {
                 name="materials.matVista"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Material Vista</FormLabel>
+                    <FormLabel className="mb-3">Material Vista</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar material" />
                         </SelectTrigger>
                       </FormControl>
@@ -1045,13 +1038,13 @@ export default function CotizacionForm() {
                 name="materials.chapVista"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Chapacinta Vista</FormLabel>
+                    <FormLabel className="mb-3">Chapacinta Vista</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar chapacinta" />
                         </SelectTrigger>
                       </FormControl>
@@ -1074,13 +1067,13 @@ export default function CotizacionForm() {
                 name="materials.jaladera"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Jaladera</FormLabel>
+                    <FormLabel className="mb-3">Jaladera</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar jaladera" />
                         </SelectTrigger>
                       </FormControl>
@@ -1103,13 +1096,13 @@ export default function CotizacionForm() {
                 name="materials.corredera"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Corredera</FormLabel>
+                    <FormLabel className="mb-3">Corredera</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar corredera" />
                         </SelectTrigger>
                       </FormControl>
@@ -1132,13 +1125,13 @@ export default function CotizacionForm() {
                 name="materials.bisagra"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bisagra</FormLabel>
+                    <FormLabel className="mb-3">Bisagra</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 px-3">
                           <SelectValue placeholder="Seleccionar bisagra" />
                         </SelectTrigger>
                       </FormControl>
@@ -1159,29 +1152,27 @@ export default function CotizacionForm() {
         </Card>
         
         {/* Products and items section */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-              <CardTitle>Productos y Servicios</CardTitle>
-              <Badge variant="outline" className="text-sm font-normal">Sección 4 de 5</Badge>
-            </div>
+        <Card className="shadow-sm rounded-lg">
+          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
+            <CardTitle>Productos y Servicios</CardTitle>
+            <Badge variant="outline" className="text-sm font-normal">Sección 4 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-6">
               {/* List of items */}
-              <div className="border rounded-md">
+              <div className="border rounded-md overflow-hidden">
                 <Table>
                   <TableHeader>
                     <tr>
-                      <TableHead className="w-[100px]">Área</TableHead>
-                      <TableHead>Producto / Descripción</TableHead>
-                      <TableHead className="text-center">Cant.</TableHead>
-                      <TableHead className="text-center">Cajones</TableHead>
-                      <TableHead className="text-center">Puertas</TableHead>
-                      <TableHead className="text-center">Entrepaños</TableHead>
-                      <TableHead className="text-right">Precio</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
+                      <TableHead className="w-[100px] bg-muted/20">Área</TableHead>
+                      <TableHead className="bg-muted/20">Producto / Descripción</TableHead>
+                      <TableHead className="text-center bg-muted/20">Cant.</TableHead>
+                      <TableHead className="text-center bg-muted/20">Cajones</TableHead>
+                      <TableHead className="text-center bg-muted/20">Puertas</TableHead>
+                      <TableHead className="text-center bg-muted/20">Entrepaños</TableHead>
+                      <TableHead className="text-right bg-muted/20">Precio</TableHead>
+                      <TableHead className="text-right bg-muted/20">Total</TableHead>
+                      <TableHead className="w-[50px] bg-muted/20"></TableHead>
                     </tr>
                   </TableHeader>
                   <tbody>
@@ -1193,7 +1184,7 @@ export default function CotizacionForm() {
                       </tr>
                     ) : (
                       fields.map((field, index) => (
-                        <tr key={field.id} className="border-b">
+                        <tr key={field.id} className={index % 2 === 0 ? "bg-white" : "bg-muted/10"}>
                           <td className="py-3">
                             <FormField
                               control={form.control}
@@ -1204,7 +1195,7 @@ export default function CotizacionForm() {
                                     <Input
                                       {...field}
                                       placeholder="Área"
-                                      className="h-9"
+                                      className="h-9 px-3"
                                     />
                                   </FormControl>
                                 </FormItem>
@@ -1221,7 +1212,7 @@ export default function CotizacionForm() {
                                     <Input
                                       {...field}
                                       placeholder="Descripción"
-                                      className="h-9"
+                                      className="h-9 px-3"
                                     />
                                   </FormControl>
                                 </FormItem>
@@ -1240,7 +1231,7 @@ export default function CotizacionForm() {
                                       type="number"
                                       placeholder="Cant."
                                       min={1}
-                                      className="h-9 text-center"
+                                      className="h-9 text-center px-3"
                                       onChange={e => field.onChange(parseFloat(e.target.value) || 1)}
                                     />
                                   </FormControl>
@@ -1260,7 +1251,7 @@ export default function CotizacionForm() {
                                       type="number"
                                       placeholder="0"
                                       min={0}
-                                      className="h-9 text-center"
+                                      className="h-9 text-center px-3"
                                       onChange={e => field.onChange(parseInt(e.target.value) || 0)}
                                     />
                                   </FormControl>
@@ -1280,7 +1271,7 @@ export default function CotizacionForm() {
                                       type="number"
                                       placeholder="0"
                                       min={0}
-                                      className="h-9 text-center"
+                                      className="h-9 text-center px-3"
                                       onChange={e => field.onChange(parseInt(e.target.value) || 0)}
                                     />
                                   </FormControl>
@@ -1300,7 +1291,7 @@ export default function CotizacionForm() {
                                       type="number"
                                       placeholder="0"
                                       min={0}
-                                      className="h-9 text-center"
+                                      className="h-9 text-center px-3"
                                       onChange={e => field.onChange(parseInt(e.target.value) || 0)}
                                     />
                                   </FormControl>
@@ -1321,7 +1312,7 @@ export default function CotizacionForm() {
                                       placeholder="$0.00"
                                       min={0}
                                       step={0.01}
-                                      className="h-9 text-right"
+                                      className="h-9 text-right px-3"
                                       onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
                                     />
                                   </FormControl>
@@ -1358,7 +1349,7 @@ export default function CotizacionForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="gap-1"
+                  className="gap-1 h-10"
                   onClick={() =>
                     append({
                       id: "",
@@ -1403,12 +1394,10 @@ export default function CotizacionForm() {
         </Card>
         
         {/* Extras and additional information */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-              <CardTitle>Información Adicional</CardTitle>
-              <Badge variant="outline" className="text-sm font-normal">Sección 5 de 5</Badge>
-            </div>
+        <Card className="shadow-sm rounded-lg">
+          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
+            <CardTitle>Información Adicional</CardTitle>
+            <Badge variant="outline" className="text-sm font-normal">Sección 5 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
@@ -1419,12 +1408,12 @@ export default function CotizacionForm() {
                   name="deliveryTime"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tiempo de Entrega (días hábiles)</FormLabel>
+                      <FormLabel className="mb-3">Tiempo de Entrega (días hábiles)</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           type="number"
-                          className="h-11"
+                          className="h-11 px-3"
                           min={1}
                           onChange={e => field.onChange(parseInt(e.target.value) || 1)}
                         />
@@ -1439,11 +1428,11 @@ export default function CotizacionForm() {
                   name="paymentTerms"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Condiciones de Pago</FormLabel>
+                      <FormLabel className="mb-3">Condiciones de Pago</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
-                          className="min-h-[80px] resize-none"
+                          className="min-h-[80px] resize-none px-3 py-2"
                         />
                       </FormControl>
                       <FormMessage />
@@ -1460,12 +1449,12 @@ export default function CotizacionForm() {
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notas Adicionales</FormLabel>
+                    <FormLabel className="mb-3">Notas Adicionales</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
                         value={field.value || ''}
-                        className="min-h-[120px] resize-none"
+                        className="min-h-[120px] resize-none px-3 py-2"
                       />
                     </FormControl>
                     <FormMessage />
