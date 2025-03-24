@@ -931,35 +931,22 @@ export default function CotizacionForm() {
                             >
                               <FormControl>
                                 <SelectTrigger className="h-11 w-full">
-                                  <SelectValue>
-                                    {field.value && clients.length > 0 
-                                      ? clients.find(client => client.id === field.value)?.name || "Seleccionar cliente"
-                                      : isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"
-                                    }
-                                  </SelectValue>
+                                  <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent className="min-w-[250px]">
-                                <div className="px-2 py-2 sticky top-0 bg-white border-b">
+                                <div className="px-2 py-2 sticky top-0 bg-white border-b z-10">
                                   <Input 
                                     placeholder="Buscar cliente..." 
                                     className="h-9"
                                     value={searchTerm}
                                     onChange={(e) => {
-                                      // Just update the search term without selecting anything
                                       setSearchTerm(e.target.value);
-                                      // Prevent event from propagating to prevent the select from closing
+                                    }}
+                                    onClick={(e) => {
+                                      // Stop click from closing the dropdown
                                       e.stopPropagation();
                                     }}
-                                    onKeyDown={(e) => {
-                                      // Prevent default behavior for arrow keys, Enter, Space
-                                      // This stops the select from selecting items as you type
-                                      if (['ArrowUp', 'ArrowDown', ' ', 'Enter'].includes(e.key)) {
-                                        e.stopPropagation();
-                                      }
-                                    }}
-                                    // Critical to prevent select from taking over input
-                                    onClick={(e) => e.stopPropagation()}
                                   />
                                 </div>
                                 <div className="max-h-[200px] overflow-auto mt-1">
