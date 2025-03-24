@@ -567,18 +567,18 @@ export default function CotizacionForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Client information section card */}
         <Card className="shadow-sm rounded-lg">
-          <CardHeader className="py-2 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
+          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
             <CardTitle className="text-lg">Información de Cliente</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 1 de 5</Badge>
           </CardHeader>
-          <CardContent className="px-6 pt-4 pb-5 space-y-4">
-            <div className="flex items-center justify-between mb-3">
+          <CardContent className="p-6 space-y-5">
+            <div className="flex items-center justify-between">
               <Label htmlFor="cliente" className="text-base font-medium">Cliente</Label>
               <Button 
                 type="button" 
                 variant="outline" 
                 size="sm"
-                className="h-9 ml-4"
+                className="h-9"
                 onClick={() => setShowClientModal(true)}
               >
                 <Plus className="h-4 w-4 mr-1" />
@@ -587,61 +587,59 @@ export default function CotizacionForm() {
             </div>
             
             {/* Client selection field */}
-            <div className="mb-4">
-              <FormField
-                control={form.control}
-                name="clientId"
-                render={({ field }) => (
-                  <FormItem className="w-full">
-                    <FormControl>
-                      <Combobox
-                        options={clients.map(client => ({
-                          label: client.name,
-                          value: client.id,
-                          data: client
-                        }))}
-                        value={field.value || ''}
-                        onChange={(value) => {
-                          field.onChange(value);
-                          // Find the selected client and update form fields
-                          const selectedClient = clients.find(client => client.id === value);
-                          if (selectedClient) {
-                            form.setValue("clientName", selectedClient.name);
-                            form.setValue("clientEmail", selectedClient.email || "");
-                            form.setValue("clientPhone", selectedClient.phone || "");
-                            form.setValue("clientAddress", selectedClient.address || "");
-                          } else {
-                            // Clear client details if no client is selected
-                            form.setValue("clientName", "");
-                            form.setValue("clientEmail", "");
-                            form.setValue("clientPhone", "");
-                            form.setValue("clientAddress", "");
-                          }
-                        }}
-                        placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
-                        emptyMessage="No se encontraron clientes"
-                        disabled={isLoadingClients}
-                        popoverWidth={320}
-                        className="h-10"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="clientId"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormControl>
+                    <Combobox
+                      options={clients.map(client => ({
+                        label: client.name,
+                        value: client.id,
+                        data: client
+                      }))}
+                      value={field.value || ''}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        // Find the selected client and update form fields
+                        const selectedClient = clients.find(client => client.id === value);
+                        if (selectedClient) {
+                          form.setValue("clientName", selectedClient.name);
+                          form.setValue("clientEmail", selectedClient.email || "");
+                          form.setValue("clientPhone", selectedClient.phone || "");
+                          form.setValue("clientAddress", selectedClient.address || "");
+                        } else {
+                          // Clear client details if no client is selected
+                          form.setValue("clientName", "");
+                          form.setValue("clientEmail", "");
+                          form.setValue("clientPhone", "");
+                          form.setValue("clientAddress", "");
+                        }
+                      }}
+                      placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
+                      emptyMessage="No se encontraron clientes"
+                      disabled={isLoadingClients}
+                      popoverWidth={320}
+                      className="h-11"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Client details grid */}
             {form.watch("clientId") && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-1">
                 <FormField
                   control={form.control}
                   name="clientName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="mb-1">Nombre</FormLabel>
+                      <FormLabel className="mb-2">Nombre</FormLabel>
                       <FormControl>
-                        <Input {...field} className="h-10 w-full px-3" />
+                        <Input {...field} className="h-11 w-full px-3" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -653,9 +651,9 @@ export default function CotizacionForm() {
                   name="clientPhone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="mb-1">Teléfono</FormLabel>
+                      <FormLabel className="mb-2">Teléfono</FormLabel>
                       <FormControl>
-                        <Input {...field} className="h-10 w-full px-3" />
+                        <Input {...field} className="h-11 w-full px-3" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -667,9 +665,9 @@ export default function CotizacionForm() {
                   name="clientEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="mb-1">Email</FormLabel>
+                      <FormLabel className="mb-2">Email</FormLabel>
                       <FormControl>
-                        <Input {...field} type="email" className="h-10 w-full px-3" />
+                        <Input {...field} type="email" className="h-11 w-full px-3" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -681,12 +679,12 @@ export default function CotizacionForm() {
                   name="clientAddress"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="mb-1">Dirección</FormLabel>
+                      <FormLabel className="mb-2">Dirección</FormLabel>
                       <FormControl>
                         <Textarea 
                           {...field}
                           value={field.value || ''}
-                          className="min-h-[70px] resize-none w-full px-3 py-2"
+                          className="min-h-[80px] resize-none w-full px-3 py-2"
                         />
                       </FormControl>
                       <FormMessage />
@@ -701,7 +699,7 @@ export default function CotizacionForm() {
         {/* Project information card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle>Información del Proyecto</CardTitle>
+            <CardTitle className="text-lg">Información del Proyecto</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 2 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6">
@@ -714,7 +712,7 @@ export default function CotizacionForm() {
                   <FormItem>
                     <FormLabel className="mb-2">Nombre del Proyecto</FormLabel>
                     <FormControl>
-                      <Input {...field} className="h-11 px-3" />
+                      <Input {...field} className="h-11 w-full px-3" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -762,8 +760,10 @@ export default function CotizacionForm() {
                   </FormItem>
                 )}
               />
+            </div>
             
-              {/* Second row: Project type and validity date */}
+            {/* Second row: Project type and validity date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 mb-6">  
               <FormField
                 control={form.control}
                 name="projectType"
@@ -775,7 +775,7 @@ export default function CotizacionForm() {
                       onValueChange={field.onChange}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-11 px-3">
+                        <SelectTrigger className="h-11 w-full px-3">
                           <SelectValue placeholder="Seleccionar tipo de proyecto" />
                         </SelectTrigger>
                       </FormControl>
@@ -836,7 +836,7 @@ export default function CotizacionForm() {
             </div>
             
             {/* Team information - 3-column grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
               <FormField
                 control={form.control}
                 name="vendedor"
@@ -927,11 +927,11 @@ export default function CotizacionForm() {
         {/* Materials section card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle>Especificación de Materiales</CardTitle>
+            <CardTitle className="text-lg">Especificación de Materiales</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 3 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
               {/* Material Huacal */}
               <FormField
                 control={form.control}
@@ -1141,7 +1141,7 @@ export default function CotizacionForm() {
         {/* Products and services section card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle>Productos y Servicios</CardTitle>
+            <CardTitle className="text-lg">Productos y Servicios</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 4 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6">
@@ -1151,15 +1151,15 @@ export default function CotizacionForm() {
                 <Table>
                   <TableHeader>
                     <tr>
-                      <TableHead className="w-[100px] bg-muted/20 py-3">Área</TableHead>
-                      <TableHead className="bg-muted/20 py-3">Producto / Descripción</TableHead>
-                      <TableHead className="text-center bg-muted/20 py-3">Cant.</TableHead>
-                      <TableHead className="text-center bg-muted/20 py-3">Cajones</TableHead>
-                      <TableHead className="text-center bg-muted/20 py-3">Puertas</TableHead>
-                      <TableHead className="text-center bg-muted/20 py-3">Entrepaños</TableHead>
-                      <TableHead className="text-right bg-muted/20 py-3">Precio</TableHead>
-                      <TableHead className="text-right bg-muted/20 py-3">Total</TableHead>
-                      <TableHead className="w-[50px] bg-muted/20 py-3"></TableHead>
+                      <TableHead className="w-[100px] bg-muted/30 py-3">Área</TableHead>
+                      <TableHead className="bg-muted/30 py-3">Producto / Descripción</TableHead>
+                      <TableHead className="text-center bg-muted/30 py-3">Cant.</TableHead>
+                      <TableHead className="text-center bg-muted/30 py-3">Cajones</TableHead>
+                      <TableHead className="text-center bg-muted/30 py-3">Puertas</TableHead>
+                      <TableHead className="text-center bg-muted/30 py-3">Entrepaños</TableHead>
+                      <TableHead className="text-right bg-muted/30 py-3">Precio</TableHead>
+                      <TableHead className="text-right bg-muted/30 py-3">Total</TableHead>
+                      <TableHead className="w-[50px] bg-muted/30 py-3"></TableHead>
                     </tr>
                   </TableHeader>
                   <tbody>
@@ -1336,7 +1336,7 @@ export default function CotizacionForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="gap-1 h-10"
+                  className="gap-1 h-10 mt-2"
                   onClick={() =>
                     append({
                       id: "",
@@ -1358,9 +1358,9 @@ export default function CotizacionForm() {
               </div>
               
               {/* Totals area */}
-              <div className="pt-4 border-t">
+              <div className="pt-5 border-t">
                 <div className="ml-auto md:w-72">
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal:</span>
                       <span>{formatCurrencyDisplay(totals.subtotal)}</span>
@@ -1369,7 +1369,7 @@ export default function CotizacionForm() {
                       <span className="text-muted-foreground">IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%):</span>
                       <span>{formatCurrencyDisplay(totals.taxes)}</span>
                     </div>
-                    <div className="flex justify-between font-medium text-lg pt-2 border-t">
+                    <div className="flex justify-between font-medium text-lg pt-3 border-t">
                       <span>Total:</span>
                       <span>{formatCurrencyDisplay(totals.total)}</span>
                     </div>
@@ -1383,11 +1383,11 @@ export default function CotizacionForm() {
         {/* Additional information section card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle>Información Adicional</CardTitle>
+            <CardTitle className="text-lg">Información Adicional</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 5 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-6">
               {/* Delivery time */}
               <FormField
                 control={form.control}
@@ -1465,29 +1465,29 @@ export default function CotizacionForm() {
         )}
         
         {/* Fixed bottom panel */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md p-4 z-10">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md py-5 px-6 z-10">
           <div className="container mx-auto max-w-7xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-64 bg-gray-200 rounded-full h-2.5">
+            <div className="flex items-center gap-4">
+              <div className="w-72 bg-gray-200 rounded-full h-3">
                 <div 
-                  className="bg-black h-2.5 rounded-full" 
+                  className="bg-black h-3 rounded-full" 
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm font-medium text-gray-600">
                 {Math.round(progress)}% completado
               </span>
             </div>
             
             <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" className="h-10 px-4">
+              <Button type="button" variant="outline" className="h-11 px-5 font-medium">
                 Cancelar
               </Button>
-              <Button type="button" variant="secondary" className="h-10 px-4">
+              <Button type="button" variant="secondary" className="h-11 px-5 font-medium">
                 Guardar Borrador
               </Button>
-              <Button type="submit" className="h-10 px-4 bg-black hover:bg-gray-800 gap-1">
-                <Check className="mr-2 h-4 w-4" />
+              <Button type="submit" className="h-11 px-5 bg-black hover:bg-gray-800 gap-2 font-medium">
+                <Check className="h-4 w-4" />
                 Guardar Cotización
               </Button>
             </div>
