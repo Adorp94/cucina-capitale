@@ -377,6 +377,15 @@ export default function CotizacionForm() {
   const [currentSection, setCurrentSection] = useState<string>("cliente-proyecto");
   const [clients, setClients] = useState<Array<{id: string; name: string; email: string | null; phone: string | null; address: string | null}>>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
+  const [materials, setMaterials] = useState<Array<{
+    id_material: number;
+    tipo: string;
+    nombre: string;
+    costo: number;
+    categoria: string;
+    comentario: string;
+  }>>([]);
+  const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
   const [totals, setTotals] = useState({
     subtotal: new Decimal(0),
     taxes: new Decimal(0),
@@ -480,6 +489,43 @@ export default function CotizacionForm() {
     form.setValue("clientEmail", newClient.email || "");
     form.setValue("clientPhone", newClient.phone || "");
     form.setValue("clientAddress", newClient.address || "");
+  };
+
+  // Fetch materials from Supabase on mount
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  // Fetch materials from database
+  const fetchMaterials = async () => {
+    setIsLoadingMaterials(true);
+    try {
+      const supabase = createClientComponentClient();
+      const { data, error } = await supabase
+        .from('materiales')
+        .select('*')
+        .order('tipo', { ascending: true });
+        
+      if (error) {
+        throw error;
+      }
+      
+      setMaterials(data || []);
+    } catch (error) {
+      console.error('Error fetching materials:', error);
+    } finally {
+      setIsLoadingMaterials(false);
+    }
+  };
+
+  // Filter materials by type
+  const getMaterialsByType = (tipo: string) => {
+    return materials.filter(material => material.tipo === tipo);
+  };
+
+  // Get materials for each category
+  const getMaterialsForCategory = (categoria: string) => {
+    return materials.filter(material => material.categoria === categoria);
   };
 
   // Recalculate totals whenever form items change
@@ -954,454 +1000,445 @@ export default function CotizacionForm() {
           </CardContent>
         </Card>
         
-        {/* Materials section card */}
+        {/* Products and Materials section card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle className="text-lg">Especificación de Materiales</CardTitle>
+            <CardTitle className="text-lg">Productos, Servicios y Materiales</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 3 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
-              {/* Material Huacal */}
-              <FormField
-                control={form.control}
-                name="materials.matHuacal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Material Huacal</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar material" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {MOCK_MATERIALS.matHuacal.map(material => (
-                          <SelectItem key={material.id_material} value={material.nombre}>
-                            {material.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Chapacinta Huacal */}
-              <FormField
-                control={form.control}
-                name="materials.chapHuacal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Chapacinta Huacal</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar chapacinta" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {MOCK_MATERIALS.chapHuacal.map(material => (
-                          <SelectItem key={material.id_material} value={material.nombre}>
-                            {material.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Material Vista */}
-              <FormField
-                control={form.control}
-                name="materials.matVista"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Material Vista</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar material" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {MOCK_MATERIALS.matVista.map(material => (
-                          <SelectItem key={material.id_material} value={material.nombre}>
-                            {material.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Chapacinta Vista */}
-              <FormField
-                control={form.control}
-                name="materials.chapVista"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Chapacinta Vista</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar chapacinta" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {MOCK_MATERIALS.chapVista.map(material => (
-                          <SelectItem key={material.id_material} value={material.nombre}>
-                            {material.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Jaladera */}
-              <FormField
-                control={form.control}
-                name="materials.jaladera"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Jaladera</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar jaladera" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {MOCK_MATERIALS.jaladera.map(material => (
-                          <SelectItem key={material.id_material} value={material.nombre}>
-                            {material.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Corredera */}
-              <FormField
-                control={form.control}
-                name="materials.corredera"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Corredera</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar corredera" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {MOCK_MATERIALS.corredera.map(material => (
-                          <SelectItem key={material.id_material} value={material.nombre}>
-                            {material.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Bisagra */}
-              <FormField
-                control={form.control}
-                name="materials.bisagra"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Bisagra</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar bisagra" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {MOCK_MATERIALS.bisagra.map(material => (
-                          <SelectItem key={material.id_material} value={material.nombre}>
-                            {material.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Products and services section card */}
-        <Card className="shadow-sm rounded-lg">
-          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle className="text-lg">Productos y Servicios</CardTitle>
-            <Badge variant="outline" className="text-sm font-normal">Sección 4 de 5</Badge>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-6">
-              {/* Table of items */}
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <tr>
-                      <TableHead className="w-[100px] bg-muted/30 py-3">Área</TableHead>
-                      <TableHead className="bg-muted/30 py-3">Producto / Descripción</TableHead>
-                      <TableHead className="text-center bg-muted/30 py-3">Cant.</TableHead>
-                      <TableHead className="text-center bg-muted/30 py-3">Cajones</TableHead>
-                      <TableHead className="text-center bg-muted/30 py-3">Puertas</TableHead>
-                      <TableHead className="text-center bg-muted/30 py-3">Entrepaños</TableHead>
-                      <TableHead className="text-right bg-muted/30 py-3">Precio</TableHead>
-                      <TableHead className="text-right bg-muted/30 py-3">Total</TableHead>
-                      <TableHead className="w-[50px] bg-muted/30 py-3"></TableHead>
-                    </tr>
-                  </TableHeader>
-                  <tbody>
-                    {fields.length === 0 ? (
+            <div className="space-y-8">
+              {/* Materials Selection */}
+              <div>
+                <h3 className="text-base font-medium mb-4">Especificaciones de materiales</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
+                  {/* Material Huacal */}
+                  <FormField
+                    control={form.control}
+                    name="materials.matHuacal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-2">Material Huacal</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={getMaterialsByType("Tabletos").map(material => ({
+                              label: material.nombre,
+                              value: material.nombre,
+                              data: material
+                            }))}
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
+                            emptyMessage="No se encontraron materiales"
+                            disabled={isLoadingMaterials}
+                            popoverWidth={320}
+                            className="h-11 w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Chapacinta Huacal */}
+                  <FormField
+                    control={form.control}
+                    name="materials.chapHuacal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-2">Chapacinta Huacal</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={getMaterialsByType("Chapacinta").map(material => ({
+                              label: material.nombre,
+                              value: material.nombre,
+                              data: material
+                            }))}
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
+                            emptyMessage="No se encontraron chapacintas"
+                            disabled={isLoadingMaterials}
+                            popoverWidth={320}
+                            className="h-11 w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Jaladera */}
+                  <FormField
+                    control={form.control}
+                    name="materials.jaladera"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-2">Jaladera</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={getMaterialsByType("Jaladera").map(material => ({
+                              label: material.nombre,
+                              value: material.nombre,
+                              data: material
+                            }))}
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar jaladera"}
+                            emptyMessage="No se encontraron jaladeras"
+                            disabled={isLoadingMaterials}
+                            popoverWidth={320}
+                            className="h-11 w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Material Vista */}
+                  <FormField
+                    control={form.control}
+                    name="materials.matVista"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-2">Material Vista</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={getMaterialsByType("Tabletos").map(material => ({
+                              label: material.nombre,
+                              value: material.nombre,
+                              data: material
+                            }))}
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
+                            emptyMessage="No se encontraron materiales"
+                            disabled={isLoadingMaterials}
+                            popoverWidth={320}
+                            className="h-11 w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Chapacinta Vista */}
+                  <FormField
+                    control={form.control}
+                    name="materials.chapVista"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-2">Chapacinta Vista</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={getMaterialsByType("Chapacinta").map(material => ({
+                              label: material.nombre,
+                              value: material.nombre,
+                              data: material
+                            }))}
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
+                            emptyMessage="No se encontraron chapacintas"
+                            disabled={isLoadingMaterials}
+                            popoverWidth={320}
+                            className="h-11 w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Corredera */}
+                  <FormField
+                    control={form.control}
+                    name="materials.corredera"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-2">Corredera</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={getMaterialsByType("Correderas").map(material => ({
+                              label: material.nombre,
+                              value: material.nombre,
+                              data: material
+                            }))}
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar corredera"}
+                            emptyMessage="No se encontraron correderas"
+                            disabled={isLoadingMaterials}
+                            popoverWidth={320}
+                            className="h-11 w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Bisagra */}
+                  <FormField
+                    control={form.control}
+                    name="materials.bisagra"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-2">Bisagra</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={getMaterialsByType("Bisagras").map(material => ({
+                              label: material.nombre,
+                              value: material.nombre,
+                              data: material
+                            }))}
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar bisagra"}
+                            emptyMessage="No se encontraron bisagras"
+                            disabled={isLoadingMaterials}
+                            popoverWidth={320}
+                            className="h-11 w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Products Table */}
+              <div>
+                <h3 className="text-base font-medium mb-4">Productos y servicios</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
                       <tr>
-                        <td colSpan={9} className="h-24 text-center text-muted-foreground">
-                          No hay productos agregados aún
-                        </td>
+                        <TableHead className="w-[100px] bg-muted/30 py-3">Área</TableHead>
+                        <TableHead className="bg-muted/30 py-3">Producto / Descripción</TableHead>
+                        <TableHead className="text-center bg-muted/30 py-3">Cant.</TableHead>
+                        <TableHead className="text-center bg-muted/30 py-3">Cajones</TableHead>
+                        <TableHead className="text-center bg-muted/30 py-3">Puertas</TableHead>
+                        <TableHead className="text-center bg-muted/30 py-3">Entrepaños</TableHead>
+                        <TableHead className="text-right bg-muted/30 py-3">Precio</TableHead>
+                        <TableHead className="text-right bg-muted/30 py-3">Total</TableHead>
+                        <TableHead className="w-[50px] bg-muted/30 py-3"></TableHead>
                       </tr>
-                    ) : (
-                      fields.map((field, index) => (
-                        <tr key={field.id} className={index % 2 === 0 ? "bg-white" : "bg-muted/10"}>
-                          <td className="py-3 px-3">
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.area`}
-                              render={({ field }) => (
-                                <FormItem className="mb-0">
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      placeholder="Área"
-                                      className="h-9 px-3"
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.description`}
-                              render={({ field }) => (
-                                <FormItem className="mb-0">
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      placeholder="Descripción"
-                                      className="h-9 px-3"
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.quantity`}
-                              render={({ field }) => (
-                                <FormItem className="mb-0">
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      type="number"
-                                      placeholder="Cant."
-                                      min={1}
-                                      className="h-9 text-center px-3"
-                                      onChange={e => field.onChange(parseFloat(e.target.value) || 1)}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.drawers`}
-                              render={({ field }) => (
-                                <FormItem className="mb-0">
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      type="number"
-                                      placeholder="0"
-                                      min={0}
-                                      className="h-9 text-center px-3"
-                                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.doors`}
-                              render={({ field }) => (
-                                <FormItem className="mb-0">
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      type="number"
-                                      placeholder="0"
-                                      min={0}
-                                      className="h-9 text-center px-3"
-                                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.shelves`}
-                              render={({ field }) => (
-                                <FormItem className="mb-0">
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      type="number"
-                                      placeholder="0"
-                                      min={0}
-                                      className="h-9 text-center px-3"
-                                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.unitPrice`}
-                              render={({ field }) => (
-                                <FormItem className="mb-0">
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      type="number"
-                                      placeholder="$0.00"
-                                      min={0}
-                                      step={0.01}
-                                      className="h-9 text-right px-3"
-                                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </td>
-                          <td className="py-3 px-3 text-right font-medium">
-                            {formatCurrencyDisplay(
-                              new Decimal(form.watch(`items.${index}.quantity`) || 0)
-                                .mul(new Decimal(form.watch(`items.${index}.unitPrice`) || 0))
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => remove(index)}
-                            >
-                              <Trash2 className="h-4 w-4 text-muted-foreground" />
-                            </Button>
+                    </TableHeader>
+                    <tbody>
+                      {fields.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="h-24 text-center text-muted-foreground">
+                            No hay productos agregados aún
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </Table>
-              </div>
-              
-              {/* Add product button */}
-              <div className="flex justify-start">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="gap-1 h-10 mt-2"
-                  onClick={() =>
-                    append({
-                      id: "",
-                      description: "",
-                      area: "",
-                      quantity: 1,
-                      unitPrice: 0,
-                      discount: 0,
-                      drawers: 0,
-                      doors: 0,
-                      shelves: 0,
-                      position: fields.length,
-                    })
-                  }
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Agregar Producto
-                </Button>
-              </div>
-              
-              {/* Totals area */}
-              <div className="pt-5 border-t">
-                <div className="ml-auto md:w-72">
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal:</span>
-                      <span>{formatCurrencyDisplay(totals.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%):</span>
-                      <span>{formatCurrencyDisplay(totals.taxes)}</span>
-                    </div>
-                    <div className="flex justify-between font-medium text-lg pt-3 border-t">
-                      <span>Total:</span>
-                      <span>{formatCurrencyDisplay(totals.total)}</span>
+                      ) : (
+                        fields.map((field, index) => (
+                          <tr key={field.id} className={index % 2 === 0 ? "bg-white" : "bg-muted/10"}>
+                            <td className="py-3 px-3">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.area`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        placeholder="Área"
+                                        className="h-9 px-3"
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </td>
+                            <td className="py-3 px-3">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.description`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        placeholder="Descripción"
+                                        className="h-9 px-3"
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </td>
+                            <td className="py-3 px-3">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.quantity`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="number"
+                                        placeholder="Cant."
+                                        min={1}
+                                        className="h-9 text-center px-3"
+                                        onChange={e => field.onChange(parseFloat(e.target.value) || 1)}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </td>
+                            <td className="py-3 px-3">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.drawers`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="number"
+                                        placeholder="0"
+                                        min={0}
+                                        className="h-9 text-center px-3"
+                                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </td>
+                            <td className="py-3 px-3">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.doors`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="number"
+                                        placeholder="0"
+                                        min={0}
+                                        className="h-9 text-center px-3"
+                                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </td>
+                            <td className="py-3 px-3">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.shelves`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="number"
+                                        placeholder="0"
+                                        min={0}
+                                        className="h-9 text-center px-3"
+                                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </td>
+                            <td className="py-3 px-3">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.unitPrice`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="number"
+                                        placeholder="$0.00"
+                                        min={0}
+                                        step={0.01}
+                                        className="h-9 text-right px-3"
+                                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </td>
+                            <td className="py-3 px-3 text-right font-medium">
+                              {formatCurrencyDisplay(
+                                new Decimal(form.watch(`items.${index}.quantity`) || 0)
+                                  .mul(new Decimal(form.watch(`items.${index}.unitPrice`) || 0))
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => remove(index)}
+                              >
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+                
+                {/* Add product button */}
+                <div className="flex justify-start mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-1 h-10"
+                    onClick={() =>
+                      append({
+                        id: "",
+                        description: "",
+                        area: "",
+                        quantity: 1,
+                        unitPrice: 0,
+                        discount: 0,
+                        drawers: 0,
+                        doors: 0,
+                        shelves: 0,
+                        position: fields.length,
+                      })
+                    }
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar Producto
+                  </Button>
+                </div>
+                
+                {/* Totals area */}
+                <div className="pt-5 border-t mt-6">
+                  <div className="ml-auto md:w-72">
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span>{formatCurrencyDisplay(totals.subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%):</span>
+                        <span>{formatCurrencyDisplay(totals.taxes)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium text-lg pt-3 border-t">
+                        <span>Total:</span>
+                        <span>{formatCurrencyDisplay(totals.total)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
