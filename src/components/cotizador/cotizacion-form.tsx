@@ -56,6 +56,7 @@ const cotizacionFormSchema = z.object({
   clientAddress: z.string().optional(),
   
   // Project Information
+  number: z.string().min(1, { message: "Número de cotización requerido" }),
   projectName: z.string().min(1, { message: "Nombre del proyecto requerido" }),
   projectType: z.string().min(1, { message: "Tipo de proyecto requerido" }),
   cotizacionDate: z.date(),
@@ -397,6 +398,7 @@ export default function CotizacionForm() {
       clientEmail: "",
       clientPhone: "",
       clientAddress: "",
+      number: "",
       projectName: "",
       projectType: "",
       cotizacionDate: new Date(),
@@ -705,8 +707,24 @@ export default function CotizacionForm() {
             <Badge variant="outline" className="text-sm font-normal">Sección 2 de 5</Badge>
           </CardHeader>
           <CardContent className="p-6">
-            {/* First row: Project name and date - using CSS Grid */}
+            {/* Project information fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 mb-6">
+              {/* Número de Cotización */}
+              <FormField
+                control={form.control}
+                name="number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-2">Número de Cotización</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="h-11 w-full px-3" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Nombre del Proyecto */}
               <FormField
                 control={form.control}
                 name="projectName"
@@ -720,7 +738,124 @@ export default function CotizacionForm() {
                   </FormItem>
                 )}
               />
-              
+
+              {/* Tipo de Proyecto */}
+              <FormField
+                control={form.control}
+                name="projectType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-2">Tipo de Proyecto</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11 w-full px-3">
+                          <SelectValue placeholder="Seleccionar tipo de proyecto" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {TIPOS_PROYECTO.map(tipo => (
+                          <SelectItem key={tipo.id} value={tipo.id}>
+                            {tipo.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Vendedor */}
+              <FormField
+                control={form.control}
+                name="vendedor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-2">Vendedor</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11 w-full px-3">
+                          <SelectValue placeholder="Seleccionar vendedor" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {VENDEDORES.map(vendedor => (
+                          <SelectItem key={vendedor.id} value={vendedor.id}>
+                            {vendedor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Fabricante */}
+              <FormField
+                control={form.control}
+                name="fabricante"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-2">Fabricante</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11 w-full px-3">
+                          <SelectValue placeholder="Seleccionar fabricante" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {FABRICANTES.map(fabricante => (
+                          <SelectItem key={fabricante.id} value={fabricante.id}>
+                            {fabricante.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Instalador */}
+              <FormField
+                control={form.control}
+                name="instalador"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-2">Instalador</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11 w-full px-3">
+                          <SelectValue placeholder="Seleccionar instalador" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {INSTALADORES.map(instalador => (
+                          <SelectItem key={instalador.id} value={instalador.id}>
+                            {instalador.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Fecha de Cotización */}
               <FormField
                 control={form.control}
                 name="cotizacionDate"
@@ -769,38 +904,8 @@ export default function CotizacionForm() {
                   </FormItem>
                 )}
               />
-            </div>
-            
-            {/* Second row: Project type and validity date */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 mb-6">  
-              <FormField
-                control={form.control}
-                name="projectType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Tipo de Proyecto</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 w-full px-3">
-                          <SelectValue placeholder="Seleccionar tipo de proyecto" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TIPOS_PROYECTO.map(tipo => (
-                          <SelectItem key={tipo.id} value={tipo.id}>
-                            {tipo.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
+
+              {/* Válida Hasta */}
               <FormField
                 control={form.control}
                 name="validUntil"
@@ -841,93 +946,6 @@ export default function CotizacionForm() {
                         />
                       </PopoverContent>
                     </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            {/* Team information - 3-column grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
-              <FormField
-                control={form.control}
-                name="vendedor"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Vendedor</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar vendedor" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {VENDEDORES.map(vendedor => (
-                          <SelectItem key={vendedor.id} value={vendedor.id}>
-                            {vendedor.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="fabricante"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Fabricante</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar fabricante" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {FABRICANTES.map(fabricante => (
-                          <SelectItem key={fabricante.id} value={fabricante.id}>
-                            {fabricante.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="instalador"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Instalador</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 px-3">
-                          <SelectValue placeholder="Seleccionar instalador" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {INSTALADORES.map(instalador => (
-                          <SelectItem key={instalador.id} value={instalador.id}>
-                            {instalador.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
