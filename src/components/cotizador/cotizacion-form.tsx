@@ -352,7 +352,13 @@ export default function CotizacionForm() {
   
   // Add state for inventory items
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
-  const [rowInventory, setRowInventory] = useState<Record<number, any[]>>({});
+  const [rowInventory, setRowInventory] = useState<Record<number, { 
+    items: any[],
+    hasMore: boolean,
+    page: number,
+    searchQuery: string,
+    selectedType: string
+  }>>({});
   const [isLoadingInventory, setIsLoadingInventory] = useState(false);
   const [currentTypeFilter, setCurrentTypeFilter] = useState('');
   const [furnitureTypes, setFurnitureTypes] = useState<string[]>([]);
@@ -407,7 +413,7 @@ export default function CotizacionForm() {
     fetchMaterials();
     fetchClients();
     fetchFurnitureTypes();
-    fetchInventory(); // Load initial set of inventory items
+    fetchInventory('', '', null, 1, false); // Load initial set of inventory items
   }, []);
   
   // Fetch clients from Supabase on mount
@@ -500,54 +506,100 @@ export default function CotizacionForm() {
   };
 
   // Fetch inventory items with optional filtering by search term and selected type
-  const fetchInventory = async (searchQuery = '', selectedType = '', rowIndex: number | null = null) => {
+  const fetchInventory = async (
+    searchQuery = '', 
+    selectedType = '', 
+    rowIndex: number | null = null,
+    page = 1,
+    append = false
+  ) => {
     setIsLoadingInventory(true);
     try {
+      const PAGE_SIZE = 20; // Number of items per page
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      
       const supabase = createClientComponentClient();
       let query = supabase
         .from('inventario')
-        .select('*');
+        .select('*', { count: 'exact' });
       
       // Filter by type if selected
       if (selectedType) {
         query = query.ilike('tipo', selectedType);
       }
       
-      // Add search filter or limit results if no search
+      // Add search filter
       if (searchQuery) {
         query = query.ilike('nombre_mueble', `%${searchQuery}%`);
-      } else {
-        query = query.limit(50); // Limit to prevent loading too many items
       }
+      
+      // Add pagination
+      query = query.range(from, to);
       
       // Order results
       query = query.order('nombre_mueble');
       
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       
       if (error) {
         console.error('Error fetching inventory items:', error);
         throw error;
       }
       
+      // Determine if there are more items to load
+      const hasMore = count ? from + data.length < count : false;
+      
       // Store the results in row-specific state or global state
       if (rowIndex !== null) {
         // Create a copy of the current state to modify
         const newRowInventory = { ...rowInventory };
-        newRowInventory[rowIndex] = data || [];
+        
+        // Initialize if not exist or append items
+        if (!newRowInventory[rowIndex] || !append) {
+          newRowInventory[rowIndex] = {
+            items: data || [],
+            hasMore,
+            page,
+            searchQuery,
+            selectedType
+          };
+        } else {
+          // Append items to existing list
+          newRowInventory[rowIndex] = {
+            items: [...newRowInventory[rowIndex].items, ...(data || [])],
+            hasMore,
+            page,
+            searchQuery,
+            selectedType
+          };
+        }
+        
         setRowInventory(newRowInventory);
       } else {
         // Update global inventory items
-        setInventoryItems(data || []);
+        if (append) {
+          setInventoryItems(prev => [...prev, ...(data || [])]);
+        } else {
+          setInventoryItems(data || []);
+        }
       }
     } catch (error) {
       console.error('Error in fetchInventory:', error);
       if (rowIndex !== null) {
-        // Update row-specific inventory with empty array
-        const newRowInventory = { ...rowInventory };
-        newRowInventory[rowIndex] = [];
-        setRowInventory(newRowInventory);
-      } else {
+        // Update row-specific inventory with empty array or keep existing
+        if (!append) {
+          const newRowInventory = { ...rowInventory };
+          newRowInventory[rowIndex] = {
+            items: [],
+            hasMore: false,
+            page: 1,
+            searchQuery,
+            selectedType
+          };
+          setRowInventory(newRowInventory);
+        }
+      } else if (!append) {
         setInventoryItems([]);
       }
     } finally {
@@ -562,10 +614,8 @@ export default function CotizacionForm() {
       // Maintain the current type filter if not specified in this search
       const typeFilter = selectedType || (form.watch(`items.${rowIndex}.type`) || '');
       
-      // Always execute the search when we have a type filter, even with short search terms
-      if (typeFilter || searchQuery.length >= 2 || searchQuery === '') {
-        fetchInventory(searchQuery, typeFilter, rowIndex);
-      }
+      // Reset pagination and search when query changes
+      fetchInventory(searchQuery, typeFilter, rowIndex, 1, false);
     } else {
       // Global search (legacy behavior)
       // Maintain the current type filter if not specified in this search
@@ -576,10 +626,21 @@ export default function CotizacionForm() {
       // Update current type filter
       setCurrentTypeFilter(selectedType);
       
-      // Always execute the search when we have a type filter, even with short search terms
-      if (selectedType || searchQuery.length >= 2 || searchQuery === '') {
-        fetchInventory(searchQuery, selectedType);
-      }
+      // Reset pagination and search
+      fetchInventory(searchQuery, selectedType, null, 1, false);
+    }
+  };
+  
+  // Function to load more items
+  const loadMoreInventoryItems = (rowIndex: number | null = null) => {
+    if (rowIndex !== null && rowInventory[rowIndex]) {
+      const { page, searchQuery, selectedType } = rowInventory[rowIndex];
+      fetchInventory(searchQuery, selectedType, rowIndex, page + 1, true);
+    } else {
+      // Global load more (legacy behavior)
+      // Implementation would depend on how we track global pagination
+      // For simplicity, we'll just fetch the next page of current results
+      fetchInventory('', currentTypeFilter, null, 2, true);
     }
   };
   
@@ -675,7 +736,7 @@ export default function CotizacionForm() {
         const bisagras = await fetchMaterialsByType('Bisagras');
         setBisagrasMaterials(bisagras);
         
-        // Fetch initial set of inventory items (limited to 50)
+        // Fetch initial set of inventory items
         fetchInventory();
         
         // Fetch furniture types
@@ -1389,7 +1450,13 @@ export default function CotizacionForm() {
                       });
                       // Clear the row inventory for this new index
                       const newRowInventory = { ...rowInventory };
-                      newRowInventory[newIndex] = [];
+                      newRowInventory[newIndex] = {
+                        items: [],
+                        hasMore: false,
+                        page: 1,
+                        searchQuery: '',
+                        selectedType: ''
+                      };
                       setRowInventory(newRowInventory);
                     }}
                   >
@@ -1479,7 +1546,7 @@ export default function CotizacionForm() {
                                   <FormItem className="mb-0">
                                     <FormControl>
                                       <CustomCombobox
-                                        options={(rowInventory[index] || inventoryItems).map(item => ({
+                                        options={(rowInventory[index]?.items ?? inventoryItems).map((item: any) => ({
                                           label: item.nombre_mueble,
                                           value: item.nombre_mueble,
                                           data: item
@@ -1488,7 +1555,7 @@ export default function CotizacionForm() {
                                         onChange={(value) => {
                                           field.onChange(value);
                                           // Find the selected inventory item to get its price
-                                          const selectedItem = (rowInventory[index] || inventoryItems).find(item => 
+                                          const selectedItem = (rowInventory[index]?.items ?? inventoryItems).find((item: any) => 
                                             item.nombre_mueble === value
                                           );
                                           if (selectedItem && selectedItem.precio) {
@@ -1501,6 +1568,8 @@ export default function CotizacionForm() {
                                           const typeFilter = form.watch(`items.${index}.type`);
                                           searchInventoryItems(searchText, typeFilter, index);
                                         }}
+                                        onLoadMore={() => loadMoreInventoryItems(index)}
+                                        hasMore={rowInventory[index]?.hasMore || false}
                                         placeholder={isLoadingInventory ? "Cargando..." : "Seleccionar mueble"}
                                         disabled={isLoadingInventory || !form.watch(`items.${index}.type`)}
                                         popoverWidth={320}

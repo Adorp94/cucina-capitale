@@ -33,6 +33,8 @@ interface CustomComboboxProps {
   popoverWidth?: number
   displayValue?: (value: string) => string
   onSearch?: (searchText: string) => void
+  onLoadMore?: () => void
+  hasMore?: boolean
 }
 
 export function CustomCombobox({
@@ -45,10 +47,15 @@ export function CustomCombobox({
   popoverWidth,
   displayValue,
   onSearch,
+  onLoadMore,
+  hasMore = false,
 }: CustomComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
-
+  const [isLoading, setIsLoading] = React.useState(false)
+  const observerTarget = React.useRef<HTMLDivElement>(null)
+  const commandGroupRef = React.useRef<HTMLDivElement>(null)
+  
   // Function to determine what to display in the button
   const getDisplayValue = () => {
     // If custom display function is provided, use it
@@ -82,6 +89,53 @@ export function CustomCombobox({
       onSearch(search)
     }
   }
+  
+  // Set up the intersection observer for infinite scrolling
+  React.useEffect(() => {
+    if (!onLoadMore || !hasMore) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoading && hasMore) {
+          setIsLoading(true);
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [onLoadMore, hasMore, isLoading]);
+  
+  // Reset loading state when options change
+  React.useEffect(() => {
+    setIsLoading(false);
+  }, [options]);
+  
+  // Handle manual scroll detection as backup for browsers without IntersectionObserver
+  const handleScroll = () => {
+    if (!onLoadMore || !hasMore || isLoading) return;
+    
+    const commandGroup = commandGroupRef.current;
+    if (!commandGroup) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = commandGroup;
+    
+    // If scrolled to bottom (with a small threshold)
+    if (scrollTop + clientHeight >= scrollHeight - 10) {
+      setIsLoading(true);
+      onLoadMore();
+    }
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -118,7 +172,11 @@ export function CustomCombobox({
             />
           </div>
           {/* No CommandEmpty to hide "No results found" */}
-          <CommandGroup className="max-h-[300px] overflow-auto">
+          <CommandGroup 
+            ref={commandGroupRef} 
+            className="max-h-[300px] overflow-auto"
+            onScroll={handleScroll}
+          >
             {filteredOptions.map((option, index) => (
               <CommandItem
                 key={`${option.value}-${index}`}
@@ -140,6 +198,15 @@ export function CustomCombobox({
                 {option.label}
               </CommandItem>
             ))}
+            {/* Loading indicator and observer target */}
+            {hasMore && (
+              <div
+                ref={observerTarget}
+                className="py-2 text-center text-xs text-muted-foreground"
+              >
+                {isLoading ? "Cargando más opciones..." : ""}
+              </div>
+            )}
           </CommandGroup>
         </Command>
       </PopoverContent>
