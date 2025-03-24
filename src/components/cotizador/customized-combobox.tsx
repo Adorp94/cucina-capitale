@@ -82,7 +82,7 @@ export function CustomCombobox({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between h-11",
+            "w-full justify-between h-11 text-sm",
             disabled && "opacity-50 cursor-not-allowed",
             className
           )}
@@ -95,6 +95,8 @@ export function CustomCombobox({
       <PopoverContent 
         className="p-0" 
         align="start"
+        side="bottom"
+        sideOffset={4}
         style={{ width: popoverWidth ? `${popoverWidth}px` : '100%' }}
       >
         <Command className="w-full">
@@ -103,10 +105,10 @@ export function CustomCombobox({
             <CommandInput 
               placeholder="Buscar..." 
               onValueChange={setSearchQuery}
-              className="h-9 flex-1"
+              className="h-9 flex-1 text-sm"
             />
           </div>
-          {/* Removed CommandEmpty to not show "No results found" */}
+          {/* No CommandEmpty to hide "No results found" */}
           <CommandGroup className="max-h-[300px] overflow-auto">
             {filteredOptions.map((option) => (
               <CommandItem

@@ -1050,7 +1050,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm"
+                            className="h-11 w-full"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1077,7 +1077,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-xs"
+                            className="h-11 w-full"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1104,7 +1104,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar jaladera"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm"
+                            className="h-11 w-full"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1131,7 +1131,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm"
+                            className="h-11 w-full"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1158,7 +1158,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-xs"
+                            className="h-11 w-full"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1185,7 +1185,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar corredera"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm"
+                            className="h-11 w-full"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1212,7 +1212,7 @@ export default function CotizacionForm() {
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar bisagra"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full text-sm"
+                            className="h-11 w-full"
                           />
                         </FormControl>
                         <FormMessage />
