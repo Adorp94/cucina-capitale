@@ -382,6 +382,8 @@ export default function CotizacionForm() {
     total: new Decimal(0),
   });
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [isCotizacionDateOpen, setIsCotizacionDateOpen] = useState(false);
+  const [isValidUntilOpen, setIsValidUntilOpen] = useState(false);
   
   // Toast notifications
   const { toast } = useToast();
@@ -725,7 +727,7 @@ export default function CotizacionForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel className="mb-2">Fecha de Cotización</FormLabel>
-                    <Popover>
+                    <Popover open={isCotizacionDateOpen} onOpenChange={setIsCotizacionDateOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
@@ -748,7 +750,14 @@ export default function CotizacionForm() {
                         <Calendar
                           mode="single"
                           selected={field.value}
-                          onSelect={field.onChange}
+                          onSelect={(date) => {
+                            field.onChange(date);
+                            // Set validUntil to 15 days after the selected date
+                            if (date) {
+                              form.setValue("validUntil", addDays(date, 15));
+                            }
+                            setIsCotizacionDateOpen(false);
+                          }}
                           disabled={(date) =>
                             date < new Date("1900-01-01")
                           }
@@ -798,7 +807,7 @@ export default function CotizacionForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel className="mb-2">Válida Hasta</FormLabel>
-                    <Popover>
+                    <Popover open={isValidUntilOpen} onOpenChange={setIsValidUntilOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
@@ -821,7 +830,10 @@ export default function CotizacionForm() {
                         <Calendar
                           mode="single"
                           selected={field.value}
-                          onSelect={field.onChange}
+                          onSelect={(date) => {
+                            field.onChange(date);
+                            setIsValidUntilOpen(false);
+                          }}
                           disabled={(date) =>
                             date < new Date()
                           }
