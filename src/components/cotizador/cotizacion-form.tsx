@@ -44,7 +44,27 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { calculateQuotationTotals } from '@/lib/cotizador/calculator';
 import { formatCurrency as formatCurrencyUtil } from '@/lib/cotizador/calculator';
 import { DEFAULT_COTIZADOR_CONFIG, generateQuotationNumber } from '@/lib/cotizador/constants';
-import { CreateQuotationFormData, createQuotationSchema, quotationItemSchema } from '@/types/cotizacion';
+import { CreateQuotationFormData, createQuotationSchema } from '@/types/cotizacion';
+
+// Define furniture data schema for storing complete inventory records
+const furnitureDataSchema = z.object({
+  mueble_id: z.number(),
+  cajones: z.number().nullable(),
+  puertas: z.number().nullable(),
+  entrepaños: z.number().nullable(),
+  mat_huacal: z.number().nullable(),
+  mat_vista: z.number().nullable(),
+  chap_huacal: z.number().nullable(),
+  chap_vista: z.number().nullable(),
+  jaladera: z.number().nullable(),
+  corredera: z.number().nullable(),
+  bisagras: z.number().nullable(),
+  patas: z.number().nullable(),
+  clip_patas: z.number().nullable(),
+  mensulas: z.number().nullable(),
+  kit_tornillo: z.number().nullable(),
+  cif: z.number().nullable(),
+}).optional();
 
 // Use a modified schema for the form with fixed QuotationItem issue
 // We'll use this for the form and handle the conversion in onSubmit
@@ -77,12 +97,20 @@ const cotizacionFormSchema = z.object({
   
   // Products and Items
   items: z.array(
-    quotationItemSchema
-      .omit({ quotationId: true, subtotal: true })
-      .extend({ 
-        position: z.number().optional(),
-        type: z.string().optional() 
-      })
+    z.object({
+      id: z.string().optional(),
+      description: z.string().min(1, { message: "Descripción requerida" }),
+      area: z.string().optional(),
+      quantity: z.number().int().min(1, { message: "Cantidad debe ser al menos 1" }),
+      unitPrice: z.number().min(0, { message: "Precio unitario debe ser positivo" }),
+      discount: z.number().min(0).max(100, { message: "Descuento debe estar entre 0 y 100" }).default(0),
+      drawers: z.number().int().min(0).default(0),
+      doors: z.number().int().min(0).default(0),
+      shelves: z.number().int().min(0).default(0),
+      position: z.number().optional(),
+      type: z.string().optional(),
+      furnitureData: furnitureDataSchema,
+    })
   ),
   
   // Terms and Notes
@@ -754,10 +782,11 @@ export default function CotizacionForm() {
   // Recalculate totals whenever form items change
   useEffect(() => {
     const items = form.getValues("items") || [];
-    // Add positions if not present to avoid type errors
+    // Add positions if not present to avoid type errors and ensure description is there
     const itemsWithPosition = items.map((item, index) => ({
       ...item,
-      position: index
+      position: index,
+      description: item.description || `Item ${index + 1}` // Ensure description exists
     }));
     
     try {
@@ -825,6 +854,15 @@ export default function CotizacionForm() {
     
     // Process form data here, e.g., save to database
     console.log("Form submitted:", data);
+    
+    // Log furniture data specifically to confirm it's correctly collected
+    const furnitureData = data.items.map((item, index) => ({
+      index,
+      description: item.description,
+      furnitureData: item.furnitureData
+    }));
+    
+    console.log("Collected furniture data:", furnitureData);
     
     toast({
       id: "cotizacion-guardada",
@@ -1447,6 +1485,7 @@ export default function CotizacionForm() {
                         shelves: 0,
                         position: newIndex,
                         type: "",
+                        furnitureData: undefined,
                       });
                       // Clear the row inventory for this new index
                       const newRowInventory = { ...rowInventory };
@@ -1464,20 +1503,20 @@ export default function CotizacionForm() {
                     Agregar Producto
                   </Button>
                 </div>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
+                <div className="border rounded-lg overflow-hidden overflow-x-auto">
+                  <Table className="min-w-full">
                     <TableHeader>
                       <tr>
-                        <TableHead className="w-[100px] bg-muted/30 py-3">Área</TableHead>
-                        <TableHead className="w-[150px] bg-muted/30 py-3">Tipo mueble</TableHead>
-                        <TableHead className="bg-muted/30 py-3">Mueble</TableHead>
-                        <TableHead className="text-center bg-muted/30 py-3">Cant.</TableHead>
-                        <TableHead className="text-center bg-muted/30 py-3">Cajones</TableHead>
-                        <TableHead className="text-center bg-muted/30 py-3">Puertas</TableHead>
-                        <TableHead className="text-center bg-muted/30 py-3">Entrepaños</TableHead>
-                        <TableHead className="text-right bg-muted/30 py-3">Precio</TableHead>
-                        <TableHead className="text-right bg-muted/30 py-3">Total</TableHead>
-                        <TableHead className="w-[50px] bg-muted/30 py-3"></TableHead>
+                        <TableHead className="w-[90px] bg-muted/30 py-2 px-2 text-xs">Área</TableHead>
+                        <TableHead className="w-[130px] bg-muted/30 py-2 px-2 text-xs">Tipo mueble</TableHead>
+                        <TableHead className="w-[220px] bg-muted/30 py-2 px-2 text-xs">Mueble</TableHead>
+                        <TableHead className="w-[60px] text-center bg-muted/30 py-2 px-2 text-xs">Cant.</TableHead>
+                        <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Cajones</TableHead>
+                        <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Puertas</TableHead>
+                        <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Entre.</TableHead>
+                        <TableHead className="w-[90px] text-right bg-muted/30 py-2 px-2 text-xs">Precio</TableHead>
+                        <TableHead className="w-[90px] text-right bg-muted/30 py-2 px-2 text-xs">Total</TableHead>
+                        <TableHead className="w-[40px] bg-muted/30 py-2 px-2 text-xs"></TableHead>
                       </tr>
                     </TableHeader>
                     <tbody>
@@ -1490,7 +1529,7 @@ export default function CotizacionForm() {
                       ) : (
                         fields.map((field, index) => (
                           <tr key={field.id} className={index % 2 === 0 ? "bg-white" : "bg-muted/10"}>
-                            <td className="py-3 px-3">
+                            <td className="py-2 px-2">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.area`}
@@ -1500,14 +1539,14 @@ export default function CotizacionForm() {
                                       <Input
                                         {...field}
                                         placeholder="Área"
-                                        className="h-9 px-3"
+                                        className="h-8 px-2 text-sm"
                                       />
                                     </FormControl>
                                   </FormItem>
                                 )}
                               />
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-2 px-2">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.type`}
@@ -1527,18 +1566,24 @@ export default function CotizacionForm() {
                                           searchInventoryItems('', value, index);
                                           // Clear the current furniture selection
                                           form.setValue(`items.${index}.description`, '');
+                                          // Reset the furniture-related fields
+                                          form.setValue(`items.${index}.drawers`, 0);
+                                          form.setValue(`items.${index}.doors`, 0);
+                                          form.setValue(`items.${index}.shelves`, 0);
+                                          form.setValue(`items.${index}.unitPrice`, 0);
+                                          form.setValue(`items.${index}.furnitureData`, undefined);
                                         }}
                                         placeholder={isLoadingFurnitureTypes ? "Cargando..." : "Seleccionar tipo"}
                                         disabled={isLoadingFurnitureTypes}
                                         popoverWidth={200}
-                                        className="h-9 w-full"
+                                        className="h-8 w-full text-sm"
                                       />
                                     </FormControl>
                                   </FormItem>
                                 )}
                               />
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-2 px-2">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.description`}
@@ -1554,13 +1599,43 @@ export default function CotizacionForm() {
                                         value={field.value || ''}
                                         onChange={(value) => {
                                           field.onChange(value);
-                                          // Find the selected inventory item to get its price
+                                          // Find the selected inventory item
                                           const selectedItem = (rowInventory[index]?.items ?? inventoryItems).find((item: any) => 
                                             item.nombre_mueble === value
                                           );
-                                          if (selectedItem && selectedItem.precio) {
+                                          if (selectedItem) {
                                             // Update the price field
-                                            form.setValue(`items.${index}.unitPrice`, selectedItem.precio);
+                                            if (selectedItem.precio) {
+                                              form.setValue(`items.${index}.unitPrice`, selectedItem.precio);
+                                            }
+                                            
+                                            // Store all the furniture data
+                                            const furnitureData = {
+                                              mueble_id: selectedItem.mueble_id,
+                                              cajones: selectedItem.cajones,
+                                              puertas: selectedItem.puertas,
+                                              entrepaños: selectedItem.entrepaños,
+                                              mat_huacal: selectedItem.mat_huacal,
+                                              mat_vista: selectedItem.mat_vista,
+                                              chap_huacal: selectedItem.chap_huacal,
+                                              chap_vista: selectedItem.chap_vista,
+                                              jaladera: selectedItem.jaladera,
+                                              corredera: selectedItem.corredera,
+                                              bisagras: selectedItem.bisagras,
+                                              patas: selectedItem.patas,
+                                              clip_patas: selectedItem.clip_patas,
+                                              mensulas: selectedItem.mensulas,
+                                              kit_tornillo: selectedItem.kit_tornillo,
+                                              cif: selectedItem.cif
+                                            };
+                                            
+                                            console.log(`Storing furniture data for row ${index}:`, furnitureData);
+                                            form.setValue(`items.${index}.furnitureData`, furnitureData);
+                                            
+                                            // Update the furniture details
+                                            form.setValue(`items.${index}.drawers`, selectedItem.cajones || 0);
+                                            form.setValue(`items.${index}.doors`, selectedItem.puertas || 0);
+                                            form.setValue(`items.${index}.shelves`, selectedItem.entrepaños || 0);
                                           }
                                         }}
                                         onSearch={(searchText) => {
@@ -1573,14 +1648,14 @@ export default function CotizacionForm() {
                                         placeholder={isLoadingInventory ? "Cargando..." : "Seleccionar mueble"}
                                         disabled={isLoadingInventory || !form.watch(`items.${index}.type`)}
                                         popoverWidth={320}
-                                        className="h-9 w-full"
+                                        className="h-8 w-full text-sm"
                                       />
                                     </FormControl>
                                   </FormItem>
                                 )}
                               />
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-2 px-2">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.quantity`}
@@ -1592,7 +1667,7 @@ export default function CotizacionForm() {
                                         type="number"
                                         placeholder="Cant."
                                         min={1}
-                                        className="h-9 text-center px-3"
+                                        className="h-8 text-center px-2 text-sm"
                                         onChange={e => field.onChange(parseFloat(e.target.value) || 1)}
                                       />
                                     </FormControl>
@@ -1600,7 +1675,7 @@ export default function CotizacionForm() {
                                 )}
                               />
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-2 px-2">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.drawers`}
@@ -1612,15 +1687,16 @@ export default function CotizacionForm() {
                                         type="number"
                                         placeholder="0"
                                         min={0}
-                                        className="h-9 text-center px-3"
-                                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                        className="h-8 text-center px-2 text-sm bg-muted/10"
+                                        readOnly
+                                        disabled
                                       />
                                     </FormControl>
                                   </FormItem>
                                 )}
                               />
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-2 px-2">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.doors`}
@@ -1632,15 +1708,16 @@ export default function CotizacionForm() {
                                         type="number"
                                         placeholder="0"
                                         min={0}
-                                        className="h-9 text-center px-3"
-                                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                        className="h-8 text-center px-2 text-sm bg-muted/10"
+                                        readOnly
+                                        disabled
                                       />
                                     </FormControl>
                                   </FormItem>
                                 )}
                               />
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-2 px-2">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.shelves`}
@@ -1652,15 +1729,16 @@ export default function CotizacionForm() {
                                         type="number"
                                         placeholder="0"
                                         min={0}
-                                        className="h-9 text-center px-3"
-                                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                        className="h-8 text-center px-2 text-sm bg-muted/10"
+                                        readOnly
+                                        disabled
                                       />
                                     </FormControl>
                                   </FormItem>
                                 )}
                               />
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-2 px-2">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.unitPrice`}
@@ -1673,26 +1751,27 @@ export default function CotizacionForm() {
                                         placeholder="$0.00"
                                         min={0}
                                         step={0.01}
-                                        className="h-9 text-right px-3"
-                                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                        className="h-8 text-right px-2 text-sm bg-muted/10"
+                                        readOnly
+                                        disabled
                                       />
                                     </FormControl>
                                   </FormItem>
                                 )}
                               />
                             </td>
-                            <td className="py-3 px-3 text-right font-medium">
+                            <td className="py-2 px-2 text-right font-medium text-sm">
                               {formatCurrencyDisplay(
                                 new Decimal(form.watch(`items.${index}.quantity`) || 0)
                                   .mul(new Decimal(form.watch(`items.${index}.unitPrice`) || 0))
                               )}
                             </td>
-                            <td className="py-3 px-3 text-center">
+                            <td className="py-2 px-2 text-center">
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0"
+                                className="h-7 w-7 p-0"
                                 onClick={() => {
                                   // Remove the row from the form
                                   remove(index);
