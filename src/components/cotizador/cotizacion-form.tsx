@@ -564,166 +564,155 @@ export default function CotizacionForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Client information card - where we'll focus */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Client information section card */}
         <Card className="shadow-sm rounded-lg">
-          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle>Información de Cliente</CardTitle>
+          <CardHeader className="py-2 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
+            <CardTitle className="text-lg">Información de Cliente</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 1 de 5</Badge>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="flex items-center justify-between mb-6">
+          <CardContent className="px-6 pt-4 pb-5 space-y-4">
+            <div className="flex items-center justify-between mb-3">
               <Label htmlFor="cliente" className="text-base font-medium">Cliente</Label>
               <Button 
                 type="button" 
                 variant="outline" 
                 size="sm"
-                className="h-11"
+                className="h-9 ml-4"
                 onClick={() => setShowClientModal(true)}
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Nuevo Cliente
               </Button>
             </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Cliente selection - first column */}
-              <div>
-                <div className="mb-4">
-                  <FormField
-                    control={form.control}
-                    name="clientId"
-                    render={({ field }) => (
-                      <FormItem className="w-full">
-                        <FormControl>
-                          <Combobox
-                            options={clients.map(client => ({
-                              label: client.name,
-                              value: client.id,
-                              data: client
-                            }))}
-                            value={field.value || ''}
-                            onChange={(value) => {
-                              field.onChange(value);
-                              // Find the selected client and update form fields
-                              const selectedClient = clients.find(client => client.id === value);
-                              if (selectedClient) {
-                                form.setValue("clientName", selectedClient.name);
-                                form.setValue("clientEmail", selectedClient.email || "");
-                                form.setValue("clientPhone", selectedClient.phone || "");
-                                form.setValue("clientAddress", selectedClient.address || "");
-                              } else {
-                                // Clear client details if no client is selected
-                                form.setValue("clientName", "");
-                                form.setValue("clientEmail", "");
-                                form.setValue("clientPhone", "");
-                                form.setValue("clientAddress", "");
-                              }
-                            }}
-                            placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
-                            emptyMessage="No se encontraron clientes"
-                            disabled={isLoadingClients}
-                            popoverWidth={320}
-                            className="h-11"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Client details only show when a client is selected */}
-                {form.watch("clientId") && (
-                  <>
-                    {/* Client details - first column bottom */}
-                    <div className="space-y-4 w-full mt-4">
-                      <FormField
-                        control={form.control}
-                        name="clientName"
-                        render={({ field }) => (
-                          <FormItem className="w-full">
-                            <FormLabel className="mb-3">Nombre</FormLabel>
-                            <FormControl>
-                              <Input {...field} className="h-11 w-full px-3" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+            
+            {/* Client selection field */}
+            <div className="mb-4">
+              <FormField
+                control={form.control}
+                name="clientId"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormControl>
+                      <Combobox
+                        options={clients.map(client => ({
+                          label: client.name,
+                          value: client.id,
+                          data: client
+                        }))}
+                        value={field.value || ''}
+                        onChange={(value) => {
+                          field.onChange(value);
+                          // Find the selected client and update form fields
+                          const selectedClient = clients.find(client => client.id === value);
+                          if (selectedClient) {
+                            form.setValue("clientName", selectedClient.name);
+                            form.setValue("clientEmail", selectedClient.email || "");
+                            form.setValue("clientPhone", selectedClient.phone || "");
+                            form.setValue("clientAddress", selectedClient.address || "");
+                          } else {
+                            // Clear client details if no client is selected
+                            form.setValue("clientName", "");
+                            form.setValue("clientEmail", "");
+                            form.setValue("clientPhone", "");
+                            form.setValue("clientAddress", "");
+                          }
+                        }}
+                        placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
+                        emptyMessage="No se encontraron clientes"
+                        disabled={isLoadingClients}
+                        popoverWidth={320}
+                        className="h-10"
                       />
-
-                      <FormField
-                        control={form.control}
-                        name="clientEmail"
-                        render={({ field }) => (
-                          <FormItem className="w-full">
-                            <FormLabel className="mb-3">Email</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="email" className="h-11 w-full px-3" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-
-              {/* Second column for client details, only show when a client is selected */}
-              {form.watch("clientId") && (
-                <div className="space-y-4 w-full mt-8 md:mt-0">
-                  <FormField
-                    control={form.control}
-                    name="clientPhone"
-                    render={({ field }) => (
-                      <FormItem className="w-full">
-                        <FormLabel className="mb-3">Teléfono</FormLabel>
-                        <FormControl>
-                          <Input {...field} className="h-11 w-full px-3" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="clientAddress"
-                    render={({ field }) => (
-                      <FormItem className="w-full">
-                        <FormLabel className="mb-3">Dirección</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field}
-                            value={field.value || ''}
-                            className="min-h-[80px] resize-none w-full px-3 py-2"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
+              />
             </div>
+
+            {/* Client details grid */}
+            {form.watch("clientId") && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                <FormField
+                  control={form.control}
+                  name="clientName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-1">Nombre</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-10 w-full px-3" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="clientPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-1">Teléfono</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-10 w-full px-3" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="clientEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-1">Email</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="email" className="h-10 w-full px-3" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="clientAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-1">Dirección</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field}
+                          value={field.value || ''}
+                          className="min-h-[70px] resize-none w-full px-3 py-2"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
         
-        {/* Project information */}
+        {/* Project information card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
             <CardTitle>Información del Proyecto</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 2 de 5</Badge>
           </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              {/* First row: Project name and date */}
+          <CardContent className="p-6">
+            {/* First row: Project name and date - using CSS Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 mb-6">
               <FormField
                 control={form.control}
                 name="projectName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Nombre del Proyecto</FormLabel>
+                    <FormLabel className="mb-2">Nombre del Proyecto</FormLabel>
                     <FormControl>
                       <Input {...field} className="h-11 px-3" />
                     </FormControl>
@@ -737,14 +726,14 @@ export default function CotizacionForm() {
                 name="cotizacionDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel className="mb-3">Fecha de Cotización</FormLabel>
+                    <FormLabel className="mb-2">Fecha de Cotización</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
                             variant={"outline"}
                             className={cn(
-                              "h-11 w-full px-3 text-left font-normal",
+                              "h-11 w-full px-3 text-left font-normal justify-between",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -753,7 +742,7 @@ export default function CotizacionForm() {
                             ) : (
                               <span>Seleccionar fecha</span>
                             )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            <CalendarIcon className="h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -773,16 +762,14 @@ export default function CotizacionForm() {
                   </FormItem>
                 )}
               />
-            </div>
             
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
               {/* Second row: Project type and validity date */}
               <FormField
                 control={form.control}
                 name="projectType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Tipo de Proyecto</FormLabel>
+                    <FormLabel className="mb-2">Tipo de Proyecto</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -810,14 +797,14 @@ export default function CotizacionForm() {
                 name="validUntil"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel className="mb-3">Válida Hasta</FormLabel>
+                    <FormLabel className="mb-2">Válida Hasta</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
                             variant={"outline"}
                             className={cn(
-                              "h-11 w-full px-3 text-left font-normal",
+                              "h-11 w-full px-3 text-left font-normal justify-between",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -826,7 +813,7 @@ export default function CotizacionForm() {
                             ) : (
                               <span>Seleccionar fecha</span>
                             )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            <CalendarIcon className="h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -848,14 +835,14 @@ export default function CotizacionForm() {
               />
             </div>
             
-            {/* Team information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Team information - 3-column grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <FormField
                 control={form.control}
                 name="vendedor"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Vendedor</FormLabel>
+                    <FormLabel className="mb-2">Vendedor</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -883,7 +870,7 @@ export default function CotizacionForm() {
                 name="fabricante"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Fabricante</FormLabel>
+                    <FormLabel className="mb-2">Fabricante</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -911,7 +898,7 @@ export default function CotizacionForm() {
                 name="instalador"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Instalador</FormLabel>
+                    <FormLabel className="mb-2">Instalador</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -937,7 +924,7 @@ export default function CotizacionForm() {
           </CardContent>
         </Card>
         
-        {/* Materials selection */}
+        {/* Materials section card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
             <CardTitle>Especificación de Materiales</CardTitle>
@@ -951,7 +938,7 @@ export default function CotizacionForm() {
                 name="materials.matHuacal"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Material Huacal</FormLabel>
+                    <FormLabel className="mb-2">Material Huacal</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -980,7 +967,7 @@ export default function CotizacionForm() {
                 name="materials.chapHuacal"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Chapacinta Huacal</FormLabel>
+                    <FormLabel className="mb-2">Chapacinta Huacal</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -1009,7 +996,7 @@ export default function CotizacionForm() {
                 name="materials.matVista"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Material Vista</FormLabel>
+                    <FormLabel className="mb-2">Material Vista</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -1038,7 +1025,7 @@ export default function CotizacionForm() {
                 name="materials.chapVista"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Chapacinta Vista</FormLabel>
+                    <FormLabel className="mb-2">Chapacinta Vista</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -1067,7 +1054,7 @@ export default function CotizacionForm() {
                 name="materials.jaladera"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Jaladera</FormLabel>
+                    <FormLabel className="mb-2">Jaladera</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -1096,7 +1083,7 @@ export default function CotizacionForm() {
                 name="materials.corredera"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Corredera</FormLabel>
+                    <FormLabel className="mb-2">Corredera</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -1125,7 +1112,7 @@ export default function CotizacionForm() {
                 name="materials.bisagra"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Bisagra</FormLabel>
+                    <FormLabel className="mb-2">Bisagra</FormLabel>
                     <Select 
                       value={field.value} 
                       onValueChange={field.onChange}
@@ -1151,7 +1138,7 @@ export default function CotizacionForm() {
           </CardContent>
         </Card>
         
-        {/* Products and items section */}
+        {/* Products and services section card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
             <CardTitle>Productos y Servicios</CardTitle>
@@ -1159,20 +1146,20 @@ export default function CotizacionForm() {
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-6">
-              {/* List of items */}
-              <div className="border rounded-md overflow-hidden">
+              {/* Table of items */}
+              <div className="border rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader>
                     <tr>
-                      <TableHead className="w-[100px] bg-muted/20">Área</TableHead>
-                      <TableHead className="bg-muted/20">Producto / Descripción</TableHead>
-                      <TableHead className="text-center bg-muted/20">Cant.</TableHead>
-                      <TableHead className="text-center bg-muted/20">Cajones</TableHead>
-                      <TableHead className="text-center bg-muted/20">Puertas</TableHead>
-                      <TableHead className="text-center bg-muted/20">Entrepaños</TableHead>
-                      <TableHead className="text-right bg-muted/20">Precio</TableHead>
-                      <TableHead className="text-right bg-muted/20">Total</TableHead>
-                      <TableHead className="w-[50px] bg-muted/20"></TableHead>
+                      <TableHead className="w-[100px] bg-muted/20 py-3">Área</TableHead>
+                      <TableHead className="bg-muted/20 py-3">Producto / Descripción</TableHead>
+                      <TableHead className="text-center bg-muted/20 py-3">Cant.</TableHead>
+                      <TableHead className="text-center bg-muted/20 py-3">Cajones</TableHead>
+                      <TableHead className="text-center bg-muted/20 py-3">Puertas</TableHead>
+                      <TableHead className="text-center bg-muted/20 py-3">Entrepaños</TableHead>
+                      <TableHead className="text-right bg-muted/20 py-3">Precio</TableHead>
+                      <TableHead className="text-right bg-muted/20 py-3">Total</TableHead>
+                      <TableHead className="w-[50px] bg-muted/20 py-3"></TableHead>
                     </tr>
                   </TableHeader>
                   <tbody>
@@ -1185,12 +1172,12 @@ export default function CotizacionForm() {
                     ) : (
                       fields.map((field, index) => (
                         <tr key={field.id} className={index % 2 === 0 ? "bg-white" : "bg-muted/10"}>
-                          <td className="py-3">
+                          <td className="py-3 px-3">
                             <FormField
                               control={form.control}
                               name={`items.${index}.area`}
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="mb-0">
                                   <FormControl>
                                     <Input
                                       {...field}
@@ -1202,12 +1189,12 @@ export default function CotizacionForm() {
                               )}
                             />
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-3">
                             <FormField
                               control={form.control}
                               name={`items.${index}.description`}
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="mb-0">
                                   <FormControl>
                                     <Input
                                       {...field}
@@ -1219,12 +1206,12 @@ export default function CotizacionForm() {
                               )}
                             />
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-3">
                             <FormField
                               control={form.control}
                               name={`items.${index}.quantity`}
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="mb-0">
                                   <FormControl>
                                     <Input
                                       {...field}
@@ -1239,12 +1226,12 @@ export default function CotizacionForm() {
                               )}
                             />
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-3">
                             <FormField
                               control={form.control}
                               name={`items.${index}.drawers`}
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="mb-0">
                                   <FormControl>
                                     <Input
                                       {...field}
@@ -1259,12 +1246,12 @@ export default function CotizacionForm() {
                               )}
                             />
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-3">
                             <FormField
                               control={form.control}
                               name={`items.${index}.doors`}
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="mb-0">
                                   <FormControl>
                                     <Input
                                       {...field}
@@ -1279,12 +1266,12 @@ export default function CotizacionForm() {
                               )}
                             />
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-3">
                             <FormField
                               control={form.control}
                               name={`items.${index}.shelves`}
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="mb-0">
                                   <FormControl>
                                     <Input
                                       {...field}
@@ -1299,12 +1286,12 @@ export default function CotizacionForm() {
                               )}
                             />
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-3">
                             <FormField
                               control={form.control}
                               name={`items.${index}.unitPrice`}
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="mb-0">
                                   <FormControl>
                                     <Input
                                       {...field}
@@ -1320,13 +1307,13 @@ export default function CotizacionForm() {
                               )}
                             />
                           </td>
-                          <td className="py-3 text-right font-medium">
+                          <td className="py-3 px-3 text-right font-medium">
                             {formatCurrencyDisplay(
                               new Decimal(form.watch(`items.${index}.quantity`) || 0)
                                 .mul(new Decimal(form.watch(`items.${index}.unitPrice`) || 0))
                             )}
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-3 text-center">
                             <Button
                               type="button"
                               variant="ghost"
@@ -1365,12 +1352,12 @@ export default function CotizacionForm() {
                     })
                   }
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 mr-1" />
                   Agregar Producto
                 </Button>
               </div>
               
-              {/* Totals */}
+              {/* Totals area */}
               <div className="pt-4 border-t">
                 <div className="ml-auto md:w-72">
                   <div className="space-y-2">
@@ -1393,53 +1380,52 @@ export default function CotizacionForm() {
           </CardContent>
         </Card>
         
-        {/* Extras and additional information */}
+        {/* Additional information section card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
             <CardTitle>Información Adicional</CardTitle>
             <Badge variant="outline" className="text-sm font-normal">Sección 5 de 5</Badge>
           </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Delivery and payment */}
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="deliveryTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-3">Tiempo de Entrega (días hábiles)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          className="h-11 px-3"
-                          min={1}
-                          onChange={e => field.onChange(parseInt(e.target.value) || 1)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="paymentTerms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-3">Condiciones de Pago</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          className="min-h-[80px] resize-none px-3 py-2"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Delivery time */}
+              <FormField
+                control={form.control}
+                name="deliveryTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-2">Tiempo de Entrega (días hábiles)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        className="h-11 px-3"
+                        min={1}
+                        onChange={e => field.onChange(parseInt(e.target.value) || 1)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Payment terms */}
+              <FormField
+                control={form.control}
+                name="paymentTerms"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-2">Condiciones de Pago</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        className="min-h-[80px] resize-none px-3 py-2"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             
             {/* Notes */}
@@ -1449,7 +1435,7 @@ export default function CotizacionForm() {
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="mb-3">Notas Adicionales</FormLabel>
+                    <FormLabel className="mb-2">Notas Adicionales</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
