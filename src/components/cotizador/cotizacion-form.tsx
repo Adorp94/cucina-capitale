@@ -330,6 +330,23 @@ function NuevoClienteModal({
 
 // Main component
 export default function CotizacionForm() {
+  // Style for combobox options
+  useEffect(() => {
+    // Add CSS for combobox options
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .combobox-small-options + div [cmdk-item] {
+        font-size: 0.75rem !important; /* text-xs equivalent */
+      }
+    `;
+    document.head.appendChild(style);
+    
+    // Cleanup on unmount
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // State for form and UI
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -464,21 +481,6 @@ export default function CotizacionForm() {
     fetchMaterials();
   }, []);
 
-  // Debug helper - run this once after materials are loaded to check each material type
-  useEffect(() => {
-    if (materials.length > 0) {
-      // Get all unique material types from the database
-      const uniqueTypes = Array.from(new Set(materials.map(material => material.tipo)));
-      
-      console.log("====== DEBUGGING MATERIAL TYPES ======");
-      console.log("All available material types in database:", uniqueTypes);
-      uniqueTypes.forEach(tipo => {
-        console.log(`Materials for type "${tipo}":`, materials.filter(m => m.tipo === tipo));
-      });
-      console.log("===================================");
-    }
-  }, [materials]);
-
   // Fetch materials from database
   const fetchMaterials = async () => {
     setIsLoadingMaterials(true);
@@ -493,30 +495,6 @@ export default function CotizacionForm() {
         throw error;
       }
       
-      console.log('Fetched materials raw response:', data); // Log raw response
-      
-      // Log materials by each tipo to check the exact values
-      const uniqueTypes = Array.from(new Set(data.map((m: any) => m.tipo)));
-      console.log('Unique tipo values in response:', uniqueTypes);
-      
-      // Check for Correderas specifically with exact string representation
-      const correderasItems = data.filter((m: any) => m.tipo === 'Correderas');
-      console.log('Exact Correderas match count:', correderasItems.length);
-      console.log('First few Correderas items or all if less than 5:', correderasItems.slice(0, 5));
-      
-      // Check if there might be whitespace issues
-      const correderasWithWhitespace = data.filter((m: any) => {
-        const tipo = m.tipo.trim();
-        console.log(`Material ID ${m.id_material} tipo: "${m.tipo}" (length: ${m.tipo.length}), trimmed: "${tipo}" (length: ${tipo.length})`);
-        return tipo === 'Correderas';
-      });
-      
-      // Check for case-insensitive match
-      const correderasIgnoreCase = data.filter((m: any) => 
-        m.tipo.trim().toLowerCase() === 'correderas'.toLowerCase()
-      );
-      console.log('Case-insensitive Correderas match count:', correderasIgnoreCase.length);
-      
       setMaterials(data || []);
     } catch (error) {
       console.error('Error fetching materials:', error);
@@ -525,86 +503,66 @@ export default function CotizacionForm() {
     }
   };
 
-  // Filter materials by type with multiple matching strategies
+  // Filter materials by type - retained for legacy components if needed
   const getMaterialsByType = (tipo: string) => {
-    console.log(`Filtering materials for type "${tipo}" from ${materials.length} total materials`);
-    
-    // Try handling specifically for problematic types
-    if (tipo === 'Correderas' || tipo === 'Jaladera' || tipo === 'Bisagras' || tipo === 'Tabletos') {
-      console.log(`Using special handling for ${tipo} type`);
-      
-      // Map of problematic types to try multiple variations
-      const typeVariations: Record<string, string[]> = {
-        'Correderas': ['Correderas', 'Corredera', 'CORREDERAS', 'corredera', 'correderas'],
-        'Jaladera': ['Jaladera', 'Jaladeras', 'JALADERA', 'jaladera', 'jaladeras'],
-        'Bisagras': ['Bisagras', 'Bisagra', 'BISAGRAS', 'bisagra', 'bisagras'],
-        'Tabletos': ['Tabletos', 'Tablero', 'Tableros', 'TABLETOS', 'tabletos', 'tablero', 'tableros']
-      };
-      
-      // Try with all variations
-      const variations = typeVariations[tipo] || [tipo];
-      
-      for (const variation of variations) {
-        // Try exact match with this variation
-        const found = materials.filter(material => material.tipo === variation);
-        if (found.length > 0) {
-          console.log(`Found ${found.length} materials matching variation "${variation}" for type "${tipo}"`);
-          return found;
-        }
-        
-        // Try trimmed, case-insensitive match
-        const trimmedFound = materials.filter(
-          material => material.tipo.trim().toLowerCase() === variation.trim().toLowerCase()
-        );
-        if (trimmedFound.length > 0) {
-          console.log(`Found ${trimmedFound.length} materials with trimmed case-insensitive match for variation "${variation}"`);
-          return trimmedFound;
-        }
-        
-        // Try contains match as last resort
-        const containsFound = materials.filter(
-          material => material.tipo.toLowerCase().includes(variation.toLowerCase())
-        );
-        if (containsFound.length > 0) {
-          console.log(`Found ${containsFound.length} materials containing variation "${variation}"`);
-          return containsFound;
-        }
-      }
-      
-      // If we still didn't find anything, log it and return empty
-      console.log(`Exhausted all variations for ${tipo}, still not found`);
-      return [];
-    }
-    
-    // Debug each material's tipo property
-    if (tipo === 'Tabletos') {
-      console.log('All tipo properties in materials:');
-      materials.forEach(m => console.log(`ID: ${m.id_material}, Tipo: "${m.tipo}", Nombre: "${m.nombre}"`));
-    }
-    
-    // Try multiple matching strategies
-    // Strategy 1: Exact match
-    let filteredMaterials = materials.filter(material => material.tipo === tipo);
-    
-    // If exact match finds no results, try trimming and case-insensitive comparison
-    if (filteredMaterials.length === 0) {
-      console.log(`No exact matches found for "${tipo}", trying case-insensitive comparison...`);
-      filteredMaterials = materials.filter(
-        material => material.tipo.trim().toLowerCase() === tipo.trim().toLowerCase()
-      );
-    }
-    
-    console.log(`Found ${filteredMaterials.length} materials for type "${tipo}":`, filteredMaterials);
-    
-    return filteredMaterials;
+    return materials.filter(material => material.tipo === tipo);
   };
 
-  // Get materials for each category
-  const getMaterialsForCategory = (categoria: string) => {
-    const filteredMaterials = materials.filter(material => material.categoria === categoria);
-    console.log(`Materials for category ${categoria}:`, filteredMaterials); // Debug log
-    return filteredMaterials;
+  // Add function to fetch materials by type directly from the database
+  const fetchMaterialsByType = async (tipo: string) => {
+    try {
+      const supabase = createClientComponentClient();
+      
+      // Direct database query is more efficient than client-side filtering
+      const { data, error } = await supabase
+        .from('materiales')
+        .select('*')
+        .eq('tipo', tipo);
+
+      if (error) {
+        console.error(`Error fetching ${tipo} materials:`, error);
+        return [];
+      }
+
+      return data || [];
+    } catch (err) {
+      console.error(`Error in fetchMaterialsByType for ${tipo}:`, err);
+      return [];
+    }
   };
+
+  // Fetch all material types on mount
+  useEffect(() => {
+    const fetchAllMaterialTypes = async () => {
+      setIsLoadingMaterials(true);
+      try {
+        // Fetch all materials (still needed for other components)
+        fetchMaterials();
+        
+        // Fetch each material type directly with SQL query
+        const tabletos = await fetchMaterialsByType('Tabletos');
+        setTabletosMaterials(tabletos);
+        
+        const chapacinta = await fetchMaterialsByType('Chapacinta');
+        setChapacintaMaterials(chapacinta);
+        
+        const jaladera = await fetchMaterialsByType('Jaladera');
+        setJaladeraMaterials(jaladera);
+        
+        const correderas = await fetchMaterialsByType('Correderas');
+        setCorrederasMaterials(correderas);
+        
+        const bisagras = await fetchMaterialsByType('Bisagras');
+        setBisagrasMaterials(bisagras);
+      } catch (error) {
+        console.error('Error fetching material types:', error);
+      } finally {
+        setIsLoadingMaterials(false);
+      }
+    };
+    
+    fetchAllMaterialTypes();
+  }, []);
 
   // Recalculate totals whenever form items change
   useEffect(() => {
@@ -690,257 +648,6 @@ export default function CotizacionForm() {
     setIsSubmitting(false);
   };
 
-  // Directly test query for all material types to verify database content
-  useEffect(() => {
-    const testAllMaterialTypes = async () => {
-      try {
-        const supabase = createClientComponentClient();
-        console.log("===== EXECUTING DIRECT SQL QUERIES FOR MATERIAL TYPES =====");
-        
-        // Define all the types we want to check
-        const typesToCheck = ['Tabletos', 'Correderas', 'Bisagras', 'Chapacinta', 'Jaladera'];
-        
-        for (const tipo of typesToCheck) {
-          console.log(`\n[SQL Query] Testing for tipo = '${tipo}'`);
-          const { data, error } = await supabase
-            .from('materiales')
-            .select('id_material, tipo, nombre')
-            .eq('tipo', tipo);
-            
-          if (error) {
-            console.error(`SQL query error for ${tipo}:`, error);
-          } else {
-            console.log(`SQL query result for ${tipo}: ${data.length} items found`);
-            if (data.length > 0) {
-              console.log(`First few items for ${tipo}:`, data.slice(0, 3));
-            } else {
-              console.log(`No materials found with tipo exactly = '${tipo}'`);
-              
-              // If no results, try with database ILIKE operator (case insensitive)
-              const { data: ilikeData, error: ilikeError } = await supabase
-                .from('materiales')
-                .select('id_material, tipo, nombre')
-                .ilike('tipo', `%${tipo}%`);
-                
-              if (ilikeError) {
-                console.error(`ILIKE query error for ${tipo}:`, ilikeError);
-              } else {
-                console.log(`ILIKE query for ${tipo}: ${ilikeData.length} items found`);
-                if (ilikeData.length > 0) {
-                  console.log(`First few ILIKE matches for ${tipo}:`, ilikeData.slice(0, 3));
-                }
-              }
-            }
-          }
-        }
-        
-        console.log("===== END OF SQL QUERIES =====");
-      } catch (err) {
-        console.error("Error in direct SQL testing:", err);
-      }
-    };
-    
-    // Only run once when component loads
-    testAllMaterialTypes();
-  }, []); 
-
-  // Add function to fetch materials by type directly from the database
-  const fetchMaterialsByType = async (tipo: string) => {
-    try {
-      console.log(`Executing direct SQL query for type: ${tipo}`);
-      const supabase = createClientComponentClient();
-      
-      // First try exact match
-      const { data, error } = await supabase
-        .from('materiales')
-        .select('*')
-        .eq('tipo', tipo);
-
-      if (error) {
-        console.error(`Error fetching ${tipo} materials:`, error);
-        return [];
-      }
-
-      console.log(`SQL query result for exact match on '${tipo}':`, data);
-      
-      // If no results with exact match, try with ILIKE
-      if (data.length === 0) {
-        console.log(`No results with exact match for '${tipo}', trying with ILIKE...`);
-        
-        // Try partial match with ILIKE
-        const { data: ilikeData, error: ilikeError } = await supabase
-          .from('materiales')
-          .select('*')
-          .ilike('tipo', `%${tipo}%`);
-          
-        if (ilikeError) {
-          console.error(`ILIKE query error for ${tipo}:`, ilikeError);
-          return [];
-        }
-        
-        console.log(`SQL ILIKE query result for '%${tipo}%':`, ilikeData);
-        
-        if (ilikeData.length > 0) {
-          // If we found matches, also log their exact 'tipo' values to debug
-          console.log('Found ILIKE matches with these tipo values:');
-          ilikeData.forEach((item: any) => {
-            console.log(`- "${item.tipo}" (ID: ${item.id_material})`);
-          });
-          
-          return ilikeData;
-        }
-        
-        // If still no results, try by first characters
-        const firstChars = tipo.substring(0, 3);
-        const { data: prefixData, error: prefixError } = await supabase
-          .from('materiales')
-          .select('*')
-          .ilike('tipo', `${firstChars}%`);
-          
-        if (prefixError) {
-          console.error(`Prefix query error for ${firstChars}%:`, prefixError);
-          return [];
-        }
-        
-        console.log(`SQL prefix query result for '${firstChars}%':`, prefixData);
-        
-        if (prefixData.length > 0) {
-          console.log('Found prefix matches with these tipo values:');
-          prefixData.forEach((item: any) => {
-            console.log(`- "${item.tipo}" (ID: ${item.id_material})`);
-          });
-          
-          return prefixData;
-        }
-        
-        // Last resort, try with similar tipo values
-        if (tipo === 'Correderas') {
-          const { data: corredera, error: correderaError } = await supabase
-            .from('materiales')
-            .select('*')
-            .eq('tipo', 'Corredera');
-            
-          if (!correderaError && corredera.length > 0) {
-            console.log('Found matches with singular form "Corredera":', corredera);
-            return corredera;
-          }
-        }
-        
-        // Check for capitalization differences
-        const { data: lowerData, error: lowerError } = await supabase
-          .from('materiales')
-          .select('*')
-          .ilike('tipo', tipo.toLowerCase());
-          
-        if (!lowerError && lowerData.length > 0) {
-          console.log('Found matches with lowercase:', lowerData);
-          return lowerData;
-        }
-        
-        // As a last resort, let's look at all unique tipo values
-        const { data: tipoValues, error: tipoError } = await supabase
-          .from('materiales')
-          .select('tipo')
-          .order('tipo');
-          
-        if (!tipoError && tipoValues.length > 0) {
-          // Get unique values
-          const uniqueValues = Array.from(new Set(tipoValues.map((item: any) => item.tipo)));
-          console.log('All unique tipo values in database:', uniqueValues);
-        }
-        
-        return [];
-      }
-      
-      return data;
-    } catch (err) {
-      console.error(`Error in fetchMaterialsByType for ${tipo}:`, err);
-      return [];
-    }
-  };
-
-  // Fetch all material types on mount
-  useEffect(() => {
-    const fetchAllMaterialTypes = async () => {
-      setIsLoadingMaterials(true);
-      try {
-        // First, directly query all unique tipo values to see what's actually in the database
-        const supabase = createClientComponentClient();
-        const { data: allTipos, error: tiposError } = await supabase
-          .from('materiales')
-          .select('tipo');
-          
-        if (tiposError) {
-          console.error('Error fetching all tipo values:', tiposError);
-        } else {
-          // Get unique values
-          const uniqueTipos = Array.from(new Set(allTipos.map((item: any) => item.tipo)));
-          console.log('========== ALL UNIQUE TIPO VALUES IN DATABASE ==========');
-          console.log(uniqueTipos);
-          
-          // Count occurrences of each tipo
-          const tipoCounts: Record<string, number> = {};
-          allTipos.forEach((item: any) => {
-            const tipo = item.tipo;
-            tipoCounts[tipo] = (tipoCounts[tipo] || 0) + 1;
-          });
-          
-          console.log('========== COUNTS OF EACH TIPO ==========');
-          Object.entries(tipoCounts)
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .forEach(([tipo, count]) => {
-              console.log(`"${tipo}": ${count} items`);
-            });
-          
-          // Check for similar strings that might be causing issues
-          console.log('========== CHECKING FOR SIMILAR STRINGS ==========');
-          ['Corredera', 'Correderas', 'corredera', 'correderas'].forEach(testStr => {
-            const matches = allTipos.filter((item: any) => 
-              item.tipo.toLowerCase().includes(testStr.toLowerCase())
-            );
-            console.log(`Items containing "${testStr}" (case-insensitive): ${matches.length}`);
-            if (matches.length > 0) {
-              const matchTipos = Array.from(new Set(matches.map((item: any) => item.tipo)));
-              console.log(`- Exact types: ${JSON.stringify(matchTipos)}`);
-            }
-          });
-        }
-        
-        // Fetch all materials first as before
-        fetchMaterials();
-        
-        // Then fetch each type directly using SQL query
-        const tabletos = await fetchMaterialsByType('Tabletos');
-        setTabletosMaterials(tabletos);
-        
-        const chapacinta = await fetchMaterialsByType('Chapacinta');
-        setChapacintaMaterials(chapacinta);
-        
-        const jaladera = await fetchMaterialsByType('Jaladera');
-        setJaladeraMaterials(jaladera);
-        
-        const correderas = await fetchMaterialsByType('Correderas');
-        setCorrederasMaterials(correderas);
-        
-        const bisagras = await fetchMaterialsByType('Bisagras');
-        setBisagrasMaterials(bisagras);
-        
-        console.log('All material types fetched directly:');
-        console.log('Tabletos:', tabletos.length);
-        console.log('Chapacinta:', chapacinta.length);
-        console.log('Jaladera:', jaladera.length);
-        console.log('Correderas:', correderas.length);
-        console.log('Bisagras:', bisagras.length);
-      } catch (error) {
-        console.error('Error fetching material types:', error);
-      } finally {
-        setIsLoadingMaterials(false);
-      }
-    };
-    
-    fetchAllMaterialTypes();
-  }, []);
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -997,10 +704,9 @@ export default function CotizacionForm() {
                         }
                       }}
                       placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
-                      emptyMessage="No se encontraron clientes"
                       disabled={isLoadingClients}
                       popoverWidth={320}
-                      className="h-11"
+                      className="h-11 combobox-small-options"
                     />
                   </FormControl>
                   <FormMessage />
@@ -1358,10 +1064,9 @@ export default function CotizacionForm() {
                             value={field.value || ''}
                             onChange={field.onChange}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
-                            emptyMessage={isLoadingMaterials ? "Cargando materiales..." : "No se encontraron materiales"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full"
+                            className="h-11 w-full text-sm combobox-small-options"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1386,10 +1091,9 @@ export default function CotizacionForm() {
                             value={field.value || ''}
                             onChange={field.onChange}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
-                            emptyMessage="No se encontraron chapacintas"
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full"
+                            className="h-11 w-full text-xs combobox-small-options"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1414,10 +1118,9 @@ export default function CotizacionForm() {
                             value={field.value || ''}
                             onChange={field.onChange}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar jaladera"}
-                            emptyMessage="No se encontraron jaladeras"
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full"
+                            className="h-11 w-full text-sm combobox-small-options"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1442,10 +1145,9 @@ export default function CotizacionForm() {
                             value={field.value || ''}
                             onChange={field.onChange}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
-                            emptyMessage="No se encontraron materiales"
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full"
+                            className="h-11 w-full text-sm combobox-small-options"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1470,10 +1172,9 @@ export default function CotizacionForm() {
                             value={field.value || ''}
                             onChange={field.onChange}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
-                            emptyMessage="No se encontraron chapacintas"
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full"
+                            className="h-11 w-full text-xs combobox-small-options"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1498,10 +1199,9 @@ export default function CotizacionForm() {
                             value={field.value || ''}
                             onChange={field.onChange}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar corredera"}
-                            emptyMessage="No se encontraron correderas"
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full"
+                            className="h-11 w-full text-sm combobox-small-options"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1526,10 +1226,9 @@ export default function CotizacionForm() {
                             value={field.value || ''}
                             onChange={field.onChange}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar bisagra"}
-                            emptyMessage="No se encontraron bisagras"
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
-                            className="h-11 w-full"
+                            className="h-11 w-full text-sm combobox-small-options"
                           />
                         </FormControl>
                         <FormMessage />
