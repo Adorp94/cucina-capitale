@@ -569,21 +569,21 @@ export default function CotizacionForm() {
         <Card className="shadow-sm">
           <CardHeader className="pb-3 border-b bg-muted/30">
             <div className="flex justify-between items-center">
-              <CardTitle>Información de Cliente y Proyecto</CardTitle>
+              <CardTitle>Información de Cliente</CardTitle>
               <Badge variant="outline" className="text-sm font-normal">Sección 1 de 5</Badge>
             </div>
           </CardHeader>
-          <CardContent className="p-6 space-y-6">
+          <CardContent className="p-6 space-y-4">
             <div className="grid md:grid-cols-2 gap-6">
               {/* Cliente selection - first column */}
               <div>
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center justify-between mb-4">
                   <Label htmlFor="cliente">Cliente</Label>
                   <Button 
                     type="button" 
                     variant="outline" 
                     size="sm"
-                    className="h-9 ml-auto"
+                    className="h-9"
                     onClick={() => setShowClientModal(true)}
                   >
                     <Plus className="h-4 w-4 mr-1" />
@@ -851,6 +851,93 @@ export default function CotizacionForm() {
                   )}
                 />
               </div>
+            </div>
+            
+            {/* Team information */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="vendedor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vendedor</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar vendedor" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {VENDEDORES.map(vendedor => (
+                          <SelectItem key={vendedor.id} value={vendedor.id}>
+                            {vendedor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="fabricante"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fabricante</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar fabricante" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {FABRICANTES.map(fabricante => (
+                          <SelectItem key={fabricante.id} value={fabricante.id}>
+                            {fabricante.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="instalador"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Instalador</FormLabel>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Seleccionar instalador" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {INSTALADORES.map(instalador => (
+                          <SelectItem key={instalador.id} value={instalador.id}>
+                            {instalador.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </CardContent>
         </Card>
@@ -1359,93 +1446,6 @@ export default function CotizacionForm() {
                           className="min-h-[80px] resize-none"
                         />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              {/* Team information */}
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="vendedor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vendedor</FormLabel>
-                      <Select 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Seleccionar vendedor" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {VENDEDORES.map(vendedor => (
-                            <SelectItem key={vendedor.id} value={vendedor.id}>
-                              {vendedor.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="fabricante"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fabricante</FormLabel>
-                      <Select 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Seleccionar fabricante" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {FABRICANTES.map(fabricante => (
-                            <SelectItem key={fabricante.id} value={fabricante.id}>
-                              {fabricante.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="instalador"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Instalador</FormLabel>
-                      <Select 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Seleccionar instalador" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {INSTALADORES.map(instalador => (
-                            <SelectItem key={instalador.id} value={instalador.id}>
-                              {instalador.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
