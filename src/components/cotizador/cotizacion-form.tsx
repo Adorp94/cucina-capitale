@@ -45,6 +45,14 @@ import { calculateQuotationTotals } from '@/lib/cotizador/calculator';
 import { formatCurrency as formatCurrencyUtil } from '@/lib/cotizador/calculator';
 import { DEFAULT_COTIZADOR_CONFIG, generateQuotationNumber } from '@/lib/cotizador/constants';
 import { CreateQuotationFormData, createQuotationSchema } from '@/types/cotizacion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Define furniture data schema for storing complete inventory records
 const furnitureDataSchema = z.object({
@@ -80,7 +88,7 @@ const materialDataSchema = z.object({
 // We'll use this for the form and handle the conversion in onSubmit
 const cotizacionFormSchema = z.object({
   // Client Information
-  clientId: z.string().optional(),
+  clientId: z.number().min(1, { message: "Cliente requerido" }),
   clientName: z.string().min(1, { message: "Nombre del cliente requerido" }),
   clientEmail: z.string().email({ message: "Email inválido" }).optional().or(z.literal("")),
   clientPhone: z.string().optional(),
@@ -183,12 +191,12 @@ function NuevoClienteModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (clientData: { id: string; nombre: string; correo?: string; celular?: string; direccion?: string }) => void;
+  onSave: (clientData: { id: number; nombre: string; correo?: string; celular?: string; direccion?: string }) => void;
 }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Form for the new client with updated schema for celular as text
+  // Form for the new client
   const clientForm = useForm({
     defaultValues: {
       nombre: "",
@@ -207,13 +215,12 @@ function NuevoClienteModal({
   });
   
   // Handle form submission
-  const handleSubmit = async (data: any) => {
+  const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Create a Supabase client
       const supabase = createClientComponentClient();
       
-      // Insert directly without authentication check since we have public insert policy
+      // Insert the new client
       const { data: newClient, error } = await supabase
         .from('clientes')
         .insert([{
@@ -224,151 +231,126 @@ function NuevoClienteModal({
         }])
         .select()
         .single();
-        
-      if (error) {
-        console.error("Error al guardar el cliente:", error);
-        toast({
-          id: "error-cliente",
-          title: "Error",
-          description: "Error al guardar el cliente: " + error.message
-        });
-        return;
-      }
       
-      console.log("Cliente creado:", newClient);
-      toast({
-        id: "cliente-creado",
-        title: "Cliente creado",
-        description: `El cliente "${data.nombre}" ha sido creado exitosamente`
-      });
+      if (error) throw error;
       
+      // Call onSave with the new client data
       onSave({
-        id: newClient.id_cliente,
-        nombre: data.nombre,
-        correo: data.correo || undefined,
-        celular: data.celular || undefined,
-        direccion: data.direccion || undefined
+        id: Number(newClient.id_cliente),
+        nombre: newClient.nombre,
+        correo: newClient.correo,
+        celular: newClient.celular,
+        direccion: newClient.direccion
       });
       
-      clientForm.reset();
+      // Close the modal
       onClose();
-    } catch (error) {
-      console.error("Error:", error);
+      
+      // Show success message
       toast({
-        id: "error-general",
+        id: "client-saved-success",
+        title: "Cliente guardado",
+        description: "El cliente ha sido creado exitosamente.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error saving client:', error);
+      toast({
+        id: "client-saved-error",
         title: "Error",
-        description: error instanceof Error ? error.message : 'Error desconocido'
+        description: "Hubo un error al guardar el cliente. Por favor intente de nuevo.",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  // If the modal is not open, don't render anything
-  if (!isOpen) return null;
-  
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Nuevo Cliente</h2>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nuevo Cliente</DialogTitle>
+          <DialogDescription>
+            Ingrese los datos del nuevo cliente
+          </DialogDescription>
+        </DialogHeader>
+        
+        <form onSubmit={clientForm.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={clientForm.control}
+            name="nombre"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombre</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
-          <Form {...clientForm}>
-            <form onSubmit={clientForm.handleSubmit(handleSubmit)} className="space-y-4">
-              <FormField
-                control={clientForm.control}
-                name="nombre"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre *</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="h-11" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={clientForm.control}
-                name="correo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Correo Electrónico</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="email" className="h-11 w-full px-3" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={clientForm.control}
-                name="celular"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Celular</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="text" 
-                        {...field}
-                        className="h-11" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={clientForm.control}
-                name="direccion"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dirección</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field}
-                        className="min-h-[80px] resize-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="flex justify-end gap-3 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={onClose}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Guardando..." : "Guardar Cliente"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </div>
-      </div>
-    </div>
+          <FormField
+            control={clientForm.control}
+            name="correo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Correo electrónico</FormLabel>
+                <FormControl>
+                  <Input {...field} type="email" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={clientForm.control}
+            name="celular"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Teléfono</FormLabel>
+                <FormControl>
+                  <Input {...field} type="tel" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={clientForm.control}
+            name="direccion"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Dirección</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <DialogFooter>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                'Guardar Cliente'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -379,7 +361,7 @@ export default function CotizacionForm() {
   const [showClientModal, setShowClientModal] = useState(false);
   const [currentTab, setCurrentTab] = useState<string>("cotizacion");
   const [currentSection, setCurrentSection] = useState<string>("cliente-proyecto");
-  const [clients, setClients] = useState<Array<{id: string; name: string; email: string | null; phone: string | null; address: string | null}>>([]);
+  const [clients, setClients] = useState<Array<{id: number; name: string; email: string | null; phone: string | null; address: string | null}>>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [materials, setMaterials] = useState<Array<{
     id_material: number;
@@ -432,7 +414,7 @@ export default function CotizacionForm() {
   const form = useForm<FormValues>({
     resolver: zodResolver(cotizacionFormSchema),
     defaultValues: {
-      clientId: "",
+      clientId: 0,
       clientName: "",
       clientEmail: "",
       clientPhone: "",
@@ -490,7 +472,7 @@ export default function CotizacionForm() {
       
       // Format the data to match our UI needs
       const formattedClients = data.map(client => ({
-        id: client.id_cliente,
+        id: Number(client.id_cliente),
         name: client.nombre,
         email: client.correo,
         phone: client.celular,
@@ -500,15 +482,19 @@ export default function CotizacionForm() {
       setClients(formattedClients);
     } catch (error) {
       console.error('Error fetching clients:', error);
-      // Use mock data in case of error
-      setClients(MOCK_CLIENTS);
+      // Update mock data to use numbers
+      setClients([
+        { id: 1, name: "Cliente Ejemplo 1", email: "cliente1@example.com", phone: "123-456-7890", address: "Dirección Ejemplo 1" },
+        { id: 2, name: "Cliente Ejemplo 2", email: "cliente2@example.com", phone: "098-765-4321", address: "Dirección Ejemplo 2" },
+        { id: 3, name: "Cliente Ejemplo 3", email: "cliente3@example.com", phone: "555-555-5555", address: "Dirección Ejemplo 3" },
+      ]);
     } finally {
       setIsLoadingClients(false);
     }
   };
 
   // Handle new client creation from modal
-  const handleNewClient = (clientData: { id: string; nombre: string; correo?: string; celular?: string; direccion?: string }) => {
+  const handleNewClient = (clientData: { id: number; nombre: string; correo?: string; celular?: string; direccion?: string }) => {
     const newClient = {
       id: clientData.id,
       name: clientData.nombre,
@@ -518,10 +504,7 @@ export default function CotizacionForm() {
     };
     
     // Add to clients list
-    setClients(prevClients => [
-      newClient,
-      ...prevClients
-    ]);
+    setClients(prevClients => [newClient, ...prevClients]);
     
     // Select the new client
     form.setValue("clientId", newClient.id);
@@ -1053,7 +1036,7 @@ export default function CotizacionForm() {
 
       // Insert the quotation
       const quotationData = {
-        id_cliente: data.clientId?.toString(), // Convert to string if it's a number
+        id_cliente: data.clientId, // Use clientId directly as a string
         project_name: data.projectName,
         project_type: data.projectType,
         status: 'draft',
@@ -1125,7 +1108,7 @@ export default function CotizacionForm() {
         description: "La cotización se ha generado exitosamente."
       });
 
-      // Reset form or redirect
+      // Reset form
       form.reset();
       
     } catch (error) {
@@ -1599,8 +1582,6 @@ export default function CotizacionForm() {
   };
 
   const handleFurnitureSelection = (value: string, index: number) => {
-    console.log(`Selected furniture value: ${value} for index: ${index}`);
-    
     // Find the selected inventory item based on nombre_mueble
     const selectedItem = rowInventory[index]?.items.find((item) => item.nombre_mueble === value);
     console.log("Selected item:", selectedItem);
@@ -1609,18 +1590,21 @@ export default function CotizacionForm() {
       // Store furniture data for price calculation
       const furnitureData = {
         mueble_id: selectedItem.mueble_id,
-        mat_huacal: selectedItem.mat_huacal || 0,
-        mat_vista: selectedItem.mat_vista || 0,
-        chap_huacal: selectedItem.chap_huacal || 0,
-        chap_vista: selectedItem.chap_vista || 0,
-        jaladera: selectedItem.jaladera || 0,
-        corredera: selectedItem.corredera || 0,
-        bisagras: selectedItem.bisagras || 0,
-        patas: selectedItem.patas || 0,
-        clip_patas: selectedItem.clip_patas || 0,
-        mensulas: selectedItem.mensulas || 0,
-        kit_tornillo: selectedItem.kit_tornillo || 0,
-        cif: selectedItem.cif || 0,
+        mat_huacal: selectedItem.mat_huacal || null,
+        mat_vista: selectedItem.mat_vista || null,
+        chap_huacal: selectedItem.chap_huacal || null,
+        chap_vista: selectedItem.chap_vista || null,
+        jaladera: selectedItem.jaladera || null,
+        corredera: selectedItem.corredera || null,
+        bisagras: selectedItem.bisagras || null,
+        patas: selectedItem.patas || null,
+        clip_patas: selectedItem.clip_patas || null,
+        mensulas: selectedItem.mensulas || null,
+        kit_tornillo: selectedItem.kit_tornillo || null,
+        cif: selectedItem.cif || null,
+        cajones: 0,
+        puertas: 0,
+        entrepaños: 0
       };
       
       console.log("Stored furniture data:", furnitureData);
@@ -1668,29 +1652,26 @@ export default function CotizacionForm() {
               name="clientId"
               render={({ field }) => (
                 <FormItem className="w-full">
+                  <FormLabel className="mb-2">Cliente</FormLabel>
                   <FormControl>
                     <CustomCombobox
                       options={clients.map(client => ({
                         label: client.name,
-                        value: client.id,
+                        value: client.id.toString(),
                         data: client
                       }))}
-                      value={field.value || ''}
-                      onChange={(value) => {
-                        field.onChange(value);
-                        // Find the selected client and update form fields
-                        const selectedClient = clients.find(client => client.id === value);
-                        if (selectedClient) {
-                          form.setValue("clientName", selectedClient.name);
-                          form.setValue("clientEmail", selectedClient.email || "");
-                          form.setValue("clientPhone", selectedClient.phone || "");
-                          form.setValue("clientAddress", selectedClient.address || "");
-                        } else {
-                          // Clear client details if no client is selected
-                          form.setValue("clientName", "");
-                          form.setValue("clientEmail", "");
-                          form.setValue("clientPhone", "");
-                          form.setValue("clientAddress", "");
+                      value={field.value ? field.value.toString() : ''}
+                      onChange={(selectedValue) => {
+                        const numericValue = Number(selectedValue);
+                        if (!isNaN(numericValue)) {
+                          const selectedClient = clients.find(client => client.id === numericValue);
+                          if (selectedClient) {
+                            field.onChange(numericValue);
+                            form.setValue("clientName", selectedClient.name);
+                            form.setValue("clientEmail", selectedClient.email || "");
+                            form.setValue("clientPhone", selectedClient.phone || "");
+                            form.setValue("clientAddress", selectedClient.address || "");
+                          }
                         }
                       }}
                       placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
