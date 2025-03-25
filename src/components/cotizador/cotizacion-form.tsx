@@ -1035,31 +1035,109 @@ export default function CotizacionForm() {
   };
 
   // Submit form
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
+    console.log('Form submission started');
+    console.log('Form data:', data);
     setIsSubmitting(true);
-    
-    // Process form data here, e.g., save to database
-    console.log("Form submitted:", data);
-    
-    // Log furniture data specifically to confirm it's correctly collected
-    const furnitureData = data.items.map((item, index) => ({
-      index,
-      description: item.description,
-      furnitureData: item.furnitureData
-    }));
-    
-    console.log("Collected furniture data:", furnitureData);
-    
-    // Log materials data to verify costs are stored
-    console.log("Selected materials with costs:", data.materialsData);
-    
-    toast({
-      id: "cotizacion-guardada",
-      title: "Cotización guardada",
-      description: "La cotización se ha guardado exitosamente."
-    });
-    
-    setIsSubmitting(false);
+    try {
+      // Create a Supabase client
+      const supabase = createClientComponentClient();
+      
+      // Calculate totals
+      const subtotal = data.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity * (1 - item.discount / 100)), 0);
+      const taxRate = 0.16; // 16% IVA
+      const taxes = subtotal * taxRate;
+      const total = subtotal + taxes;
+
+      console.log('Calculated totals:', { subtotal, taxRate, taxes, total });
+
+      // Insert the quotation
+      const quotationData = {
+        id_cliente: data.clientId?.toString(), // Convert to string if it's a number
+        project_name: data.projectName,
+        project_type: data.projectType,
+        status: 'draft',
+        subtotal: subtotal,
+        tax_rate: taxRate,
+        taxes: taxes,
+        total: total,
+        valid_until: data.validUntil,
+        delivery_time: data.deliveryTime.toString(),
+        notes: data.notes || null
+      };
+
+      console.log('Attempting to insert quotation:', quotationData);
+
+      const { data: newQuotation, error: quotationError } = await supabase
+        .from('cotizaciones')
+        .insert([quotationData])
+        .select()
+        .single();
+
+      if (quotationError) {
+        throw new Error(`Error al guardar la cotización: ${quotationError.message}`);
+      }
+
+      // Insert quotation items
+      const quotationItems = data.items.map((item, index) => ({
+        id_cotizacion: newQuotation.id_cotizacion,
+        mueble_id: item.furnitureData?.mueble_id || null,
+        position: index,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        total_price: item.unitPrice * item.quantity * (1 - item.discount / 100)
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('cotizacion_items')
+        .insert(quotationItems);
+
+      if (itemsError) {
+        throw new Error(`Error al guardar los items: ${itemsError.message}`);
+      }
+
+      // Insert materials used
+      if (data.materialsData) {
+        const materialsToInsert = Object.entries(data.materialsData)
+          .filter(([_, material]) => material && material.id_material)
+          .map(([tipo, material]) => ({
+            id_cotizacion: newQuotation.id_cotizacion,
+            id_material: material.id_material,
+            tipo: tipo,
+            costo_usado: material.costo
+          }));
+
+        if (materialsToInsert.length > 0) {
+          const { error: materialsError } = await supabase
+            .from('cotizacion_materiales')
+            .insert(materialsToInsert);
+
+          if (materialsError) {
+            throw new Error(`Error al guardar los materiales: ${materialsError.message}`);
+          }
+        }
+      }
+
+      toast({
+        id: "cotizacion-generada",
+        title: "Cotización generada",
+        description: "La cotización se ha generado exitosamente."
+      });
+
+      // Reset form or redirect
+      form.reset();
+      
+    } catch (error) {
+      console.error("Error:", error);
+      toast({
+        id: "error-cotizacion",
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Error al generar la cotización'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Helper function to find an accessory by name or category
@@ -3266,7 +3344,7 @@ export default function CotizacionForm() {
               </Button>
               <Button type="submit" className="h-11 px-5 bg-black hover:bg-gray-800 gap-2 font-medium">
                 <Check className="h-4 w-4" />
-                Guardar Cotización
+                Generar Cotización
               </Button>
             </div>
           </div>
