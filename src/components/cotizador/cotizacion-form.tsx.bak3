@@ -866,7 +866,7 @@ export default function CotizacionForm() {
     });
   }, [
     form.watch("materialsData.matHuacal"), 
-    form.watch("materialsData.chapVista"), 
+    form.watch("materialsData.chapHuacal"), 
     form.watch("materialsData.matVista"), 
     form.watch("materialsData.chapVista"), 
     form.watch("materialsData.jaladera"), 
@@ -1059,9 +1059,9 @@ export default function CotizacionForm() {
       }
       
       // Calculate chap_huacal cost
-      if (furnitureData.chap_huacal && materialsData.chapVista) {
-        const chapHuacalCost = furnitureData.chap_huacal * materialsData.chapVista.costo * multiplier;
-        console.log(`chap_huacal: ${furnitureData.chap_huacal} * ${materialsData.chapVista.costo} * ${multiplier} = ${chapHuacalCost}`);
+      if (furnitureData.chap_huacal && materialsData.chapHuacal) {
+        const chapHuacalCost = furnitureData.chap_huacal * materialsData.chapHuacal.costo * multiplier;
+        console.log(`chap_huacal: ${furnitureData.chap_huacal} * ${materialsData.chapHuacal.costo} * ${multiplier} = ${chapHuacalCost}`);
         totalPrice += chapHuacalCost;
       }
       
@@ -1188,8 +1188,8 @@ export default function CotizacionForm() {
       if (furnitureData.mat_vista && materialsData.matVista) {
         console.log(`- Material Vista: $${(furnitureData.mat_vista * materialsData.matVista.costo * multiplier).toFixed(2)}`);
       }
-      if (furnitureData.chap_huacal && materialsData.chapVista) {
-        console.log(`- Chapacinta Huacal: $${(furnitureData.chap_huacal * materialsData.chapVista.costo * multiplier).toFixed(2)}`);
+      if (furnitureData.chap_huacal && materialsData.chapHuacal) {
+        console.log(`- Chapacinta Huacal: $${(furnitureData.chap_huacal * materialsData.chapHuacal.costo * multiplier).toFixed(2)}`);
       }
       if (furnitureData.chap_vista && materialsData.chapVista) {
         console.log(`- Chapacinta Vista: $${(furnitureData.chap_vista * materialsData.chapVista.costo * multiplier).toFixed(2)}`);
@@ -1694,7 +1694,7 @@ export default function CotizacionForm() {
                               // Store the selected material's data including the cost
                               const selectedMaterial = tabletosMaterials.find(m => m.nombre === value);
                               if (selectedMaterial) {
-                                form.setValue('materialsData.matHuacal', {
+                                form.setValue('materialsData.matVista', {
                                   id_material: selectedMaterial.id_material,
                                   nombre: selectedMaterial.nombre,
                                   costo: selectedMaterial.costo,
@@ -1702,12 +1702,12 @@ export default function CotizacionForm() {
                                   categoria: selectedMaterial.categoria,
                                   comentario: selectedMaterial.comentario
                                 });
-                                console.log(`Selected Material Huacal: ${value}, Cost: ${selectedMaterial.costo}`);
+                                console.log(`Selected Material Vista: ${value}, Cost: ${selectedMaterial.costo}`);
                                 
                                 // Explicitly recalculate all prices
                                 recalculateAllPrices();
                               } else {
-                                form.setValue('materialsData.matHuacal', undefined);
+                                form.setValue('materialsData.matVista', undefined);
                               }
                             }}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
@@ -1832,6 +1832,25 @@ export default function CotizacionForm() {
                             value={field.value || ''}
                             onChange={(value) => {
                               field.onChange(value);
+                              // Store the selected material's data including the cost
+                              const selectedMaterial = tabletosMaterials.find(m => m.nombre === value);
+                              if (selectedMaterial) {
+                                form.setValue('materialsData.matVista', {
+                                  id_material: selectedMaterial.id_material,
+                                  nombre: selectedMaterial.nombre,
+                                  costo: selectedMaterial.costo,
+                                  tipo: selectedMaterial.tipo,
+                                  categoria: selectedMaterial.categoria,
+                                  comentario: selectedMaterial.comentario
+                                });
+                                console.log(`Selected Material Vista: ${value}, Cost: ${selectedMaterial.costo}`);
+                                
+                                // Explicitly recalculate all prices
+                                recalculateAllPrices();
+                              } else {
+                                form.setValue('materialsData.matVista', undefined);
+                              }
+
                               // Store the selected material's data including the cost
                               const selectedMaterial = tabletosMaterials.find(m => m.nombre === value);
                               if (selectedMaterial) {
