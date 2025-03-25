@@ -79,7 +79,7 @@ export default function CotizacionesPage() {
           </p>
         </div>
         <Button asChild className="shadow-sm">
-          <Link href="/cotizador">
+          <Link href="/cotizador/nueva">
             <FileText className="mr-2 h-4 w-4" />
             Nueva Cotización
           </Link>
@@ -137,7 +137,7 @@ export default function CotizacionesPage() {
                         variant="outline"
                         className="shadow-sm"
                       >
-                        <Link href={`/cotizaciones/${quotation.id_cotizacion}`}>
+                        <Link href={`/cotizador/${quotation.id_cotizacion}`}>
                           <Eye className="h-4 w-4 mr-2" />
                           Ver
                         </Link>

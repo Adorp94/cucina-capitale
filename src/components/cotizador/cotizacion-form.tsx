@@ -8,8 +8,11 @@ import { es } from 'date-fns/locale';
 import { Decimal } from 'decimal.js';
 import { 
   Plus, X, ChevronRight, Edit2, PenTool, Trash2, 
-  ChevronDown, ChevronUp, CalendarIcon, ArrowUp, Check, Loader2, Search, Calculator 
+  ChevronDown, ChevronUp, CalendarIcon, ArrowUp, Check, 
+  Loader2, Search, Calculator, FileText, ArrowLeft 
 } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useToast } from "@/components/ui/use-toast";
@@ -356,6 +359,7 @@ function NuevoClienteModal({
 
 // Main component
 export default function CotizacionForm() {
+  const router = useRouter();
   // State for form and UI
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -1625,6 +1629,15 @@ export default function CotizacionForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="flex justify-between items-center mb-6">
+          <Button asChild variant="ghost">
+            <Link href="/cotizaciones">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver a Cotizaciones
+            </Link>
+          </Button>
+        </div>
+
         {/* Client information section card */}
         <Card className="shadow-sm rounded-lg">
           <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
@@ -3327,17 +3340,19 @@ export default function CotizacionForm() {
               </span>
             </div>
             
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" className="h-11 px-5 font-medium">
+            <div className="flex justify-end gap-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="h-11 px-5 font-medium"
+                onClick={() => router.push('/cotizaciones')}
+              >
                 Cancelar
-              </Button>
-              <Button type="button" variant="secondary" className="h-11 px-5 font-medium">
-                Guardar Borrador
               </Button>
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="w-full sm:w-auto"
+                className="shadow-sm"
               >
                 {isSubmitting ? (
                   <>
@@ -3345,7 +3360,10 @@ export default function CotizacionForm() {
                     Generando...
                   </>
                 ) : (
-                  "Generar Cotización"
+                  <>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Generar Cotización
+                  </>
                 )}
               </Button>
             </div>
