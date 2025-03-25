@@ -251,7 +251,6 @@ function NuevoClienteModal({
       
       // Show success message
       toast({
-        id: "client-saved-success",
         title: "Cliente guardado",
         description: "El cliente ha sido creado exitosamente.",
         variant: "default"
@@ -259,7 +258,6 @@ function NuevoClienteModal({
     } catch (error) {
       console.error('Error saving client:', error);
       toast({
-        id: "client-saved-error",
         title: "Error",
         description: "Hubo un error al guardar el cliente. Por favor intente de nuevo.",
         variant: "destructive"
@@ -1028,7 +1026,7 @@ export default function CotizacionForm() {
       console.log("Starting form submission with data:", data);
       
       // Calculate totals
-      const subtotal = data.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+      const subtotal = data.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity || 0), 0);
       const taxRate = 0.16;
       const taxes = subtotal * taxRate;
       const total = subtotal + taxes;
@@ -1051,6 +1049,9 @@ export default function CotizacionForm() {
 
       console.log("Preparing to insert quotation data:", quotationData);
 
+      // Initialize supabase client
+      const supabase = createClientComponentClient();
+      
       // Insert quotation
       const { data: quotation, error: quotationError } = await supabase
         .from('cotizaciones')
@@ -1180,7 +1181,6 @@ export default function CotizacionForm() {
       if (!projectType) {
         console.error("Project type not selected. Please select a project type first.");
         toast({
-          id: "project-type-missing",
           title: "Error de cálculo",
           description: "Por favor seleccione un tipo de proyecto primero."
         });
@@ -1293,7 +1293,6 @@ export default function CotizacionForm() {
     } catch (error) {
       console.error('Error calculating item price:', error);
       toast({
-        id: "calculation-error",
         title: "Error de cálculo",
         description: "Ocurrió un error al calcular el precio. Revise los datos e intente nuevamente."
       });
@@ -1311,7 +1310,12 @@ export default function CotizacionForm() {
         .order('categoria', { ascending: true });
       
       if (error) {
-        throw error;
+        console.error('Error fetching accessories:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los accesorios"
+        });
+        return;
       }
       
       if (data) {
@@ -1333,7 +1337,6 @@ export default function CotizacionForm() {
     } catch (error) {
       console.error('Error fetching accessories:', error);
       toast({
-        id: "error-accesorios",
         title: "Error",
         description: "No se pudieron cargar los accesorios"
       });
@@ -1355,7 +1358,6 @@ export default function CotizacionForm() {
       if (!projectType) {
         console.error("Project type not selected. Please select a project type first.");
         toast({
-          id: "project-type-missing",
           title: "Error de cálculo",
           description: "Por favor seleccione un tipo de proyecto primero."
         });
@@ -1469,7 +1471,6 @@ export default function CotizacionForm() {
     } catch (error) {
       console.error('Error recalculating prices:', error);
       toast({
-        id: "recalculation-error",
         title: "Error de recálculo",
         description: "Ocurrió un error al recalcular los precios."
       });
@@ -1479,9 +1480,9 @@ export default function CotizacionForm() {
   // Add this useEffect to make sure the updates are reflected in the UI
   useEffect(() => {
     // We specifically want to watch item prices to ensure they display correctly
-    const subscription = form.watch((value, { name }) => {
+    const subscription = form.watch((value: any, { name }: { name?: string }) => {
       if (name && name.includes('items') && name.includes('unitPrice')) {
-        console.log(`Price updated for ${name}:`, form.getValues(name));
+        console.log(`Price updated for ${name}:`, value);
         
         // Force UI update for debug section
         const debugSection = document.getElementById('debug-section');
@@ -1614,7 +1615,7 @@ export default function CotizacionForm() {
       console.log("Stored furniture data:", furnitureData);
       
       // First update furniture details in the form
-      form.setValue(`items.${index}.detail`, selectedItem.nombre_mueble);
+      form.setValue(`items.${index}.description`, selectedItem.nombre_mueble);
       form.setValue(`items.${index}.quantity`, form.getValues(`items.${index}.quantity`) || 1);
       form.setValue(`items.${index}.furnitureData`, furnitureData);
       
