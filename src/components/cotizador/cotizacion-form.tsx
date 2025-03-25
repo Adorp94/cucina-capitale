@@ -1602,6 +1602,9 @@ export default function CotizacionForm() {
       // Store furniture data for price calculation
       const furnitureData = {
         mueble_id: selectedItem.mueble_id,
+        cajones: selectedItem.cajones || null,
+        puertas: selectedItem.puertas || null,
+        entrepaños: selectedItem.entrepaños || null,
         mat_huacal: selectedItem.mat_huacal || 0,
         mat_vista: selectedItem.mat_vista || 0,
         chap_huacal: selectedItem.chap_huacal || 0,
@@ -1619,7 +1622,7 @@ export default function CotizacionForm() {
       console.log("Stored furniture data:", furnitureData);
       
       // First update furniture details in the form
-      form.setValue(`items.${index}.detail`, selectedItem.nombre_mueble);
+      form.setValue(`items.${index}.description`, selectedItem.nombre_mueble);
       form.setValue(`items.${index}.quantity`, form.getValues(`items.${index}.quantity`) || 1);
       form.setValue(`items.${index}.furnitureData`, furnitureData);
       
