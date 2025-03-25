@@ -558,7 +558,20 @@ export default function CotizacionForm() {
     }
   };
 
-  // Fetch inventory items with optional filtering by search term and selected type
+  // Add debounce utility function at the top of the component
+  const debounce = (func: Function, wait: number) => {
+    let timeout: NodeJS.Timeout;
+    return function executedFunction(...args: any[]) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  };
+
+  // Fetch inventory items with optimized PostgreSQL search
   const fetchInventory = async (
     searchQuery = '', 
     selectedType = '', 
@@ -566,31 +579,51 @@ export default function CotizacionForm() {
     page = 1,
     append = false
   ) => {
+    // Prevent unnecessary fetches
+    if (rowIndex !== null && rowInventory[rowIndex]?.searchQuery === searchQuery && 
+        rowInventory[rowIndex]?.selectedType === selectedType && 
+        rowInventory[rowIndex]?.page === page && 
+        !append) {
+      return;
+    }
+
     setIsLoadingInventory(true);
     try {
-      const PAGE_SIZE = 20; // Number of items per page
+      const PAGE_SIZE = 20;
       const from = (page - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
       
       const supabase = createClientComponentClient();
+      
+      // Build the base query
       let query = supabase
         .from('inventario')
         .select('*', { count: 'exact' });
-      
-      // Filter by type if selected
+
+      // Add type filter if specified
       if (selectedType) {
-        query = query.ilike('tipo', selectedType);
+        query = query.eq('tipo', selectedType);
       }
-      
-      // Add search filter
-      if (searchQuery) {
+
+      // Implement optimized search using PostgreSQL full-text search
+      if (searchQuery && searchQuery.length >= 2) {
+        // Clean and prepare the search query
+        const cleanQuery = searchQuery
+          .trim()
+          .toLowerCase()
+          .replace(/[%_]/g, ' ') // Remove SQL wildcards
+          .split(/\s+/)
+          .filter(word => word.length >= 2)
+          .join(' & '); // PostgreSQL full-text search operator
+
+        // Use ILIKE for partial matches
         query = query.ilike('nombre_mueble', `%${searchQuery}%`);
       }
-      
+
       // Add pagination
       query = query.range(from, to);
       
-      // Order results
+      // Order results by name
       query = query.order('nombre_mueble');
       
       const { data, error, count } = await query;
@@ -605,10 +638,8 @@ export default function CotizacionForm() {
       
       // Store the results in row-specific state or global state
       if (rowIndex !== null) {
-        // Create a copy of the current state to modify
         const newRowInventory = { ...rowInventory };
         
-        // Initialize if not exist or append items
         if (!newRowInventory[rowIndex] || !append) {
           newRowInventory[rowIndex] = {
             items: data || [],
@@ -618,7 +649,6 @@ export default function CotizacionForm() {
             selectedType
           };
         } else {
-          // Append items to existing list
           newRowInventory[rowIndex] = {
             items: [...newRowInventory[rowIndex].items, ...(data || [])],
             hasMore,
@@ -630,7 +660,6 @@ export default function CotizacionForm() {
         
         setRowInventory(newRowInventory);
       } else {
-        // Update global inventory items
         if (append) {
           setInventoryItems(prev => [...prev, ...(data || [])]);
         } else {
@@ -640,7 +669,6 @@ export default function CotizacionForm() {
     } catch (error) {
       console.error('Error in fetchInventory:', error);
       if (rowIndex !== null) {
-        // Update row-specific inventory with empty array or keep existing
         if (!append) {
           const newRowInventory = { ...rowInventory };
           newRowInventory[rowIndex] = {
@@ -660,28 +688,49 @@ export default function CotizacionForm() {
     }
   };
 
-  // Function to handle searching inventory items
-  const searchInventoryItems = (searchQuery: string, selectedType: string = '', rowIndex: number | null = null) => {
+  // Create debounced version of searchInventoryItems with increased delay
+  const debouncedSearchInventoryItems = debounce((searchQuery: string, selectedType: string = '', rowIndex: number | null = null) => {
+    // Skip if we're already loading
+    if (isLoadingInventory) return;
+
     // If this is for a specific row, handle it that way
     if (rowIndex !== null) {
-      // Maintain the current type filter if not specified in this search
       const typeFilter = selectedType || (form.watch(`items.${rowIndex}.type`) || '');
-      
-      // Reset pagination and search when query changes
       fetchInventory(searchQuery, typeFilter, rowIndex, 1, false);
     } else {
-      // Global search (legacy behavior)
-      // Maintain the current type filter if not specified in this search
       if (!selectedType && currentTypeFilter) {
         selectedType = currentTypeFilter;
       }
-      
-      // Update current type filter
       setCurrentTypeFilter(selectedType);
-      
-      // Reset pagination and search
       fetchInventory(searchQuery, selectedType, null, 1, false);
     }
+  }, 800); // Increased delay to 800ms for better performance
+
+  // Function to handle searching inventory items
+  const searchInventoryItems = (searchQuery: string, selectedType: string = '', rowIndex: number | null = null) => {
+    // Skip if we're already loading
+    if (isLoadingInventory) return;
+
+    // If search query is less than 2 characters, don't search
+    if (searchQuery && searchQuery.length < 2) {
+      if (rowIndex !== null) {
+        const newRowInventory = { ...rowInventory };
+        newRowInventory[rowIndex] = {
+          items: [],
+          hasMore: false,
+          page: 1,
+          searchQuery: '',
+          selectedType
+        };
+        setRowInventory(newRowInventory);
+      } else {
+        setInventoryItems([]);
+      }
+      return;
+    }
+
+    // Use debounced search
+    debouncedSearchInventoryItems(searchQuery, selectedType, rowIndex);
   };
   
   // Function to load more items
