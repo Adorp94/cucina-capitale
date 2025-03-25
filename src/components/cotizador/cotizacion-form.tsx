@@ -307,7 +307,7 @@ function NuevoClienteModal({
                   <FormItem>
                     <FormLabel>Correo Electrónico</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" className="h-11" />
+                      <Input {...field} type="email" className="h-11 w-full px-3" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -809,27 +809,73 @@ export default function CotizacionForm() {
 
   // Recalculate totals whenever form items change
   useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (name?.startsWith('items')) {
+        const items = form.getValues("items") || [];
+        // Add positions if not present to avoid type errors and ensure description is there
+        const itemsWithPosition = items.map((item, index) => ({
+          ...item,
+          position: index,
+          description: item.description || `Item ${index + 1}`, // Ensure description exists
+          quantity: item.quantity || 1, // Ensure quantity exists
+          unitPrice: item.unitPrice || 0 // Ensure unitPrice exists
+        }));
+        
+        try {
+          // Calculate subtotal by summing up each item's total (quantity * unitPrice)
+          const subtotal = itemsWithPosition.reduce((acc, item) => {
+            const itemTotal = new Decimal(item.quantity || 0).mul(new Decimal(item.unitPrice || 0));
+            return acc.plus(itemTotal);
+          }, new Decimal(0));
+
+          // Calculate taxes
+          const taxes = subtotal.mul(new Decimal(DEFAULT_COTIZADOR_CONFIG.taxRate).div(100));
+          
+          // Calculate total
+          const total = subtotal.plus(taxes);
+          
+          // Update totals state
+          setTotals({
+            subtotal,
+            taxes,
+            total
+          });
+        } catch (error) {
+          console.error("Error calculating totals:", error);
+        }
+      }
+    });
+
+    // Initial calculation
     const items = form.getValues("items") || [];
-    // Add positions if not present to avoid type errors and ensure description is there
     const itemsWithPosition = items.map((item, index) => ({
       ...item,
       position: index,
-      description: item.description || `Item ${index + 1}` // Ensure description exists
+      description: item.description || `Item ${index + 1}`,
+      quantity: item.quantity || 1,
+      unitPrice: item.unitPrice || 0
     }));
     
     try {
-      const { subtotal, taxes, total } = calculateQuotationTotals(itemsWithPosition, DEFAULT_COTIZADOR_CONFIG.taxRate);
+      const subtotal = itemsWithPosition.reduce((acc, item) => {
+        const itemTotal = new Decimal(item.quantity || 0).mul(new Decimal(item.unitPrice || 0));
+        return acc.plus(itemTotal);
+      }, new Decimal(0));
+
+      const taxes = subtotal.mul(new Decimal(DEFAULT_COTIZADOR_CONFIG.taxRate).div(100));
+      const total = subtotal.plus(taxes);
       
-      // Update totals state
       setTotals({
         subtotal,
         taxes,
         total
       });
     } catch (error) {
-      console.error("Error calculating totals:", error);
+      console.error("Error calculating initial totals:", error);
     }
-  }, [form.watch("items")]);
+
+    return () => subscription.unsubscribe();
+  }, [form]); // Watch the entire form for changes
 
   // Add this useEffect to recalculate all prices when project type changes
   useEffect(() => {
@@ -2932,7 +2978,18 @@ export default function CotizacionForm() {
                                         placeholder="Cant."
                                         min={1}
                                         className="h-8 text-center px-2 text-sm"
-                                        onChange={e => field.onChange(parseFloat(e.target.value) || 1)}
+                                        onChange={e => {
+                                          const value = parseFloat(e.target.value) || 1;
+                                          field.onChange(value);
+                                          // Force a recalculation of totals by updating the form state
+                                          const currentItems = form.getValues("items");
+                                          const updatedItems = [...currentItems];
+                                          updatedItems[index] = {
+                                            ...updatedItems[index],
+                                            quantity: value
+                                          };
+                                          form.setValue("items", updatedItems, { shouldDirty: true, shouldValidate: true });
+                                        }}
                                       />
                                     </FormControl>
                                   </FormItem>
