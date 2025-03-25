@@ -810,8 +810,108 @@ export default function CotizacionForm() {
   // Recalculate totals whenever form items change
   useEffect(() => {
     const items = form.getValues("items") || [];
+    
+    // Force recalculation of prices before computing totals to ensure they're correct
+    const updatedItems = [...items].map((item, index) => {
+      if (!item.furnitureData) return item;
+      
+      const fd = item.furnitureData;
+      const projectType = form.getValues('projectType');
+      const materialsData = form.getValues('materialsData') || {};
+      
+      // Calculate correct price using the same logic as calculateItemPrice
+      let totalPrice = new Decimal(0);
+      let multiplier = projectType === "1" ? 1.8 : projectType === "3" ? 1.5 : 1;
+      
+      // Add all material components
+      if (fd.mat_huacal && materialsData.matHuacal) {
+        totalPrice = totalPrice.plus(new Decimal(fd.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier));
+      }
+      if (fd.mat_vista && materialsData.matVista) {
+        totalPrice = totalPrice.plus(new Decimal(fd.mat_vista).times(materialsData.matVista.costo).times(multiplier));
+      }
+      if (fd.chap_huacal && materialsData.chapHuacal) {
+        totalPrice = totalPrice.plus(new Decimal(fd.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier));
+      }
+      if (fd.chap_vista && materialsData.chapVista) {
+        totalPrice = totalPrice.plus(new Decimal(fd.chap_vista).times(materialsData.chapVista.costo).times(multiplier));
+      }
+      if (fd.jaladera && materialsData.jaladera) {
+        totalPrice = totalPrice.plus(new Decimal(fd.jaladera).times(materialsData.jaladera.costo).times(multiplier));
+      }
+      if (fd.corredera && materialsData.corredera) {
+        totalPrice = totalPrice.plus(new Decimal(fd.corredera).times(materialsData.corredera.costo).times(multiplier));
+      }
+      if (fd.bisagras && materialsData.bisagra) {
+        totalPrice = totalPrice.plus(new Decimal(fd.bisagras).times(materialsData.bisagra.costo).times(multiplier));
+      }
+      
+      // Add accessory components
+      if (fd.patas && fd.patas > 0) {
+        const patasMaterial = accesoriosList.find(acc => 
+          acc.accesorios.toLowerCase().includes('pata') || 
+          acc.categoria.toLowerCase().includes('pata')
+        );
+        totalPrice = totalPrice.plus(new Decimal(fd.patas).times(patasMaterial?.costo || 15).times(multiplier));
+      }
+      if (fd.clip_patas && fd.clip_patas > 0) {
+        const clipMaterial = accesoriosList.find(acc => 
+          acc.accesorios.toLowerCase().includes('clip') || 
+          acc.categoria.toLowerCase().includes('clip')
+        );
+        totalPrice = totalPrice.plus(new Decimal(fd.clip_patas).times(clipMaterial?.costo || 5).times(multiplier));
+      }
+      if (fd.mensulas && fd.mensulas > 0) {
+        const mensulasMaterial = accesoriosList.find(acc => 
+          acc.accesorios.toLowerCase().includes('mensul') || 
+          acc.categoria.toLowerCase().includes('mensul')
+        );
+        totalPrice = totalPrice.plus(new Decimal(fd.mensulas).times(mensulasMaterial?.costo || 8).times(multiplier));
+      }
+      if (fd.kit_tornillo && fd.kit_tornillo > 0) {
+        const kitMaterial = accesoriosList.find(acc => 
+          acc.accesorios.toLowerCase().includes('tornillo') || 
+          acc.categoria.toLowerCase().includes('tornillo')
+        );
+        totalPrice = totalPrice.plus(new Decimal(fd.kit_tornillo).times(kitMaterial?.costo || 10).times(multiplier));
+      }
+      if (fd.cif && fd.cif > 0) {
+        const cifMaterial = accesoriosList.find(acc => 
+          acc.accesorios.toLowerCase().includes('cif') || 
+          acc.categoria.toLowerCase().includes('cif')
+        );
+        totalPrice = totalPrice.plus(new Decimal(fd.cif).times(cifMaterial?.costo || 12).times(multiplier));
+      }
+      
+      // Convert to number with precise decimal places
+      const finalPrice = totalPrice.toDecimalPlaces(2).toNumber();
+      
+      // Return the item with the correctly calculated price
+      return {
+        ...item,
+        unitPrice: finalPrice
+      };
+    });
+    
+    // Update form items if needed
+    let pricesChanged = false;
+    updatedItems.forEach((item, index) => {
+      const originalItem = items[index];
+      if (Math.abs((originalItem?.unitPrice || 0) - (item?.unitPrice || 0)) > 0.01) {
+        pricesChanged = true;
+        form.setValue(`items.${index}.unitPrice`, item.unitPrice);
+      }
+    });
+    
+    if (pricesChanged) {
+      // Wait a bit for the form to update
+      setTimeout(() => {
+        debugCalculationMismatch();
+      }, 100);
+    }
+    
     // Add positions if not present to avoid type errors and ensure description is there
-    const itemsWithPosition = items.map((item, index) => ({
+    const itemsWithPosition = updatedItems.map((item, index) => ({
       ...item,
       position: index,
       description: item.description || `Item ${index + 1}` // Ensure description exists
@@ -829,7 +929,7 @@ export default function CotizacionForm() {
     } catch (error) {
       console.error("Error calculating totals:", error);
     }
-  }, [form.watch("items")]);
+  }, [form.watch("items"), accesoriosList]);
 
   // Add this useEffect to recalculate all prices when project type changes
   useEffect(() => {
