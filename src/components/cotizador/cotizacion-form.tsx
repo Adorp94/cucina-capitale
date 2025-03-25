@@ -1047,89 +1047,113 @@ export default function CotizacionForm() {
       // Calculate all component costs with detailed logging
       let componentLog = [];
       
-      // Calculations for base materials - identical to debug function and recalculateAllPrices
+      // Calculations for base materials with enhanced logging
       if (furnitureData.mat_huacal && materialsData.matHuacal) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier));
-        componentLog.push(`mat_huacal: ${furnitureData.mat_huacal} * ${materialsData.matHuacal.costo} * ${multiplier} = ${new Decimal(furnitureData.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`mat_huacal: ${furnitureData.mat_huacal} * ${materialsData.matHuacal.costo} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.mat_vista && materialsData.matVista) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.mat_vista).times(materialsData.matVista.costo).times(multiplier));
-        componentLog.push(`mat_vista: ${furnitureData.mat_vista} * ${materialsData.matVista.costo} * ${multiplier} = ${new Decimal(furnitureData.mat_vista).times(materialsData.matVista.costo).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.mat_vista).times(materialsData.matVista.costo).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`mat_vista: ${furnitureData.mat_vista} * ${materialsData.matVista.costo} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.chap_huacal && materialsData.chapHuacal) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier));
-        componentLog.push(`chap_huacal: ${furnitureData.chap_huacal} * ${materialsData.chapHuacal.costo} * ${multiplier} = ${new Decimal(furnitureData.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`chap_huacal: ${furnitureData.chap_huacal} * ${materialsData.chapHuacal.costo} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.chap_vista && materialsData.chapVista) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.chap_vista).times(materialsData.chapVista.costo).times(multiplier));
-        componentLog.push(`chap_vista: ${furnitureData.chap_vista} * ${materialsData.chapVista.costo} * ${multiplier} = ${new Decimal(furnitureData.chap_vista).times(materialsData.chapVista.costo).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.chap_vista).times(materialsData.chapVista.costo).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`chap_vista: ${furnitureData.chap_vista} * ${materialsData.chapVista.costo} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.jaladera && materialsData.jaladera) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.jaladera).times(materialsData.jaladera.costo).times(multiplier));
-        componentLog.push(`jaladera: ${furnitureData.jaladera} * ${materialsData.jaladera.costo} * ${multiplier} = ${new Decimal(furnitureData.jaladera).times(materialsData.jaladera.costo).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.jaladera).times(materialsData.jaladera.costo).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`jaladera: ${furnitureData.jaladera} * ${materialsData.jaladera.costo} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.corredera && materialsData.corredera) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.corredera).times(materialsData.corredera.costo).times(multiplier));
-        componentLog.push(`corredera: ${furnitureData.corredera} * ${materialsData.corredera.costo} * ${multiplier} = ${new Decimal(furnitureData.corredera).times(materialsData.corredera.costo).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.corredera).times(materialsData.corredera.costo).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`corredera: ${furnitureData.corredera} * ${materialsData.corredera.costo} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.bisagras && materialsData.bisagra) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.bisagras).times(materialsData.bisagra.costo).times(multiplier));
-        componentLog.push(`bisagras: ${furnitureData.bisagras} * ${materialsData.bisagra.costo} * ${multiplier} = ${new Decimal(furnitureData.bisagras).times(materialsData.bisagra.costo).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.bisagras).times(materialsData.bisagra.costo).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`bisagras: ${furnitureData.bisagras} * ${materialsData.bisagra.costo} * ${multiplier} = ${cost}`);
       }
       
-      // Direct accessory calculations - identical to debug function and recalculateAllPrices
+      // Direct accessory calculations with enhanced logging
       if (furnitureData.patas && furnitureData.patas > 0) {
         const patasMaterial = findAccessory({ name: 'patas', category: 'patas' });
-        const cost = patasMaterial ? patasMaterial.costo : 15;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.patas).times(cost).times(multiplier));
-        componentLog.push(`patas: ${furnitureData.patas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.patas).times(cost).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.patas).times(patasMaterial?.costo || 15).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`patas: ${furnitureData.patas} * ${patasMaterial?.costo || 15} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.clip_patas && furnitureData.clip_patas > 0) {
         const clipMaterial = findAccessory({ name: 'clip_patas', category: 'clip patas' });
-        const cost = clipMaterial ? clipMaterial.costo : 5;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.clip_patas).times(cost).times(multiplier));
-        componentLog.push(`clip_patas: ${furnitureData.clip_patas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.clip_patas).times(cost).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.clip_patas).times(clipMaterial?.costo || 5).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`clip_patas: ${furnitureData.clip_patas} * ${clipMaterial?.costo || 5} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.mensulas && furnitureData.mensulas > 0) {
         const mensulasMaterial = findAccessory({ name: 'mensulas', category: 'mensulas' });
-        const cost = mensulasMaterial ? mensulasMaterial.costo : 8;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.mensulas).times(cost).times(multiplier));
-        componentLog.push(`mensulas: ${furnitureData.mensulas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.mensulas).times(cost).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.mensulas).times(mensulasMaterial?.costo || 8).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`mensulas: ${furnitureData.mensulas} * ${mensulasMaterial?.costo || 8} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.kit_tornillo && furnitureData.kit_tornillo > 0) {
         const kitMaterial = findAccessory({ name: 'kit_tornillo', category: 'kit tornillo' });
-        const cost = kitMaterial ? kitMaterial.costo : 10;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.kit_tornillo).times(cost).times(multiplier));
-        componentLog.push(`kit_tornillo: ${furnitureData.kit_tornillo} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.kit_tornillo).times(cost).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.kit_tornillo).times(kitMaterial?.costo || 10).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`kit_tornillo: ${furnitureData.kit_tornillo} * ${kitMaterial?.costo || 10} * ${multiplier} = ${cost}`);
       }
       
       if (furnitureData.cif && furnitureData.cif > 0) {
         const cifMaterial = findAccessory({ name: 'cif', category: 'cif' });
-        const cost = cifMaterial ? cifMaterial.costo : 12;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.cif).times(cost).times(multiplier));
-        componentLog.push(`cif: ${furnitureData.cif} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.cif).times(cost).times(multiplier)}`);
+        const cost = new Decimal(furnitureData.cif).times(cifMaterial?.costo || 12).times(multiplier);
+        totalPrice = totalPrice.plus(cost);
+        componentLog.push(`cif: ${furnitureData.cif} * ${cifMaterial?.costo || 12} * ${multiplier} = ${cost}`);
       }
       
       // Generate a summary of all component costs for debugging
-      console.log("Price components:");
+      console.log("Price components for consistent calculation:");
       componentLog.forEach(log => console.log(`- ${log}`));
       console.log("Total calculated price before rounding:", totalPrice.toString());
       
-      // Convert to number with precise decimal places - identical to recalculateAllPrices
+      // Convert to number with precise decimal places for consistency
       const finalPrice = totalPrice.toDecimalPlaces(2).toNumber();
       console.log(`Final rounded price for item ${index}: ${finalPrice}`);
       
-      // Directly update the unitPrice field
+      // IMPORTANT: Directly update the unitPrice field and ensure it's properly stored
       form.setValue(`items.${index}.unitPrice`, finalPrice);
+      
+      // Verify the value was saved correctly
+      const savedValue = form.getValues(`items.${index}.unitPrice`);
+      console.log(`Saved price value for item ${index}: ${savedValue}`);
+      
+      if (savedValue !== finalPrice) {
+        console.warn(`Value mismatch! Calculated: ${finalPrice}, Saved: ${savedValue}`);
+        // Try to force update if there's a mismatch
+        setTimeout(() => {
+          form.setValue(`items.${index}.unitPrice`, finalPrice);
+        }, 50);
+      }
+      
+      // Force verification via debug function
+      setTimeout(() => {
+        debugCalculationMismatch();
+      }, 100);
     } catch (error) {
       console.error('Error calculating item price:', error);
       toast({
@@ -1231,68 +1255,92 @@ export default function CotizacionForm() {
         
         // Initialize total price
         let totalPrice = new Decimal(0);
+        let componentLog = [];
         
         console.log(`Calculating price for item ${index}`);
         
-        // Calculate all material costs with the same logic everywhere
+        // Calculate all material costs with the same consistent logic
         if (fd.mat_huacal && materialsData.matHuacal) {
-          totalPrice = totalPrice.plus(new Decimal(fd.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier));
+          const cost = new Decimal(fd.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`mat_huacal: ${fd.mat_huacal} * ${materialsData.matHuacal.costo} * ${multiplier} = ${cost}`);
         }
         
         if (fd.mat_vista && materialsData.matVista) {
-          totalPrice = totalPrice.plus(new Decimal(fd.mat_vista).times(materialsData.matVista.costo).times(multiplier));
+          const cost = new Decimal(fd.mat_vista).times(materialsData.matVista.costo).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`mat_vista: ${fd.mat_vista} * ${materialsData.matVista.costo} * ${multiplier} = ${cost}`);
         }
         
         if (fd.chap_huacal && materialsData.chapHuacal) {
-          totalPrice = totalPrice.plus(new Decimal(fd.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier));
+          const cost = new Decimal(fd.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`chap_huacal: ${fd.chap_huacal} * ${materialsData.chapHuacal.costo} * ${multiplier} = ${cost}`);
         }
         
         if (fd.chap_vista && materialsData.chapVista) {
-          totalPrice = totalPrice.plus(new Decimal(fd.chap_vista).times(materialsData.chapVista.costo).times(multiplier));
+          const cost = new Decimal(fd.chap_vista).times(materialsData.chapVista.costo).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`chap_vista: ${fd.chap_vista} * ${materialsData.chapVista.costo} * ${multiplier} = ${cost}`);
         }
         
         if (fd.jaladera && materialsData.jaladera) {
-          totalPrice = totalPrice.plus(new Decimal(fd.jaladera).times(materialsData.jaladera.costo).times(multiplier));
+          const cost = new Decimal(fd.jaladera).times(materialsData.jaladera.costo).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`jaladera: ${fd.jaladera} * ${materialsData.jaladera.costo} * ${multiplier} = ${cost}`);
         }
         
         if (fd.corredera && materialsData.corredera) {
-          totalPrice = totalPrice.plus(new Decimal(fd.corredera).times(materialsData.corredera.costo).times(multiplier));
+          const cost = new Decimal(fd.corredera).times(materialsData.corredera.costo).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`corredera: ${fd.corredera} * ${materialsData.corredera.costo} * ${multiplier} = ${cost}`);
         }
         
         if (fd.bisagras && materialsData.bisagra) {
-          totalPrice = totalPrice.plus(new Decimal(fd.bisagras).times(materialsData.bisagra.costo).times(multiplier));
+          const cost = new Decimal(fd.bisagras).times(materialsData.bisagra.costo).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`bisagras: ${fd.bisagras} * ${materialsData.bisagra.costo} * ${multiplier} = ${cost}`);
         }
         
-        // Calculate accessories costs
+        // Calculate accessories costs consistently
         if (fd.patas && fd.patas > 0) {
           const patasMaterial = findAccessory({ name: 'patas', category: 'patas' });
-          const cost = patasMaterial ? patasMaterial.costo : 15;
-          totalPrice = totalPrice.plus(new Decimal(fd.patas).times(cost).times(multiplier));
+          const cost = new Decimal(fd.patas).times(patasMaterial?.costo || 15).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`patas: ${fd.patas} * ${patasMaterial?.costo || 15} * ${multiplier} = ${cost}`);
         }
         
         if (fd.clip_patas && fd.clip_patas > 0) {
           const clipMaterial = findAccessory({ name: 'clip_patas', category: 'clip patas' });
-          const cost = clipMaterial ? clipMaterial.costo : 5;
-          totalPrice = totalPrice.plus(new Decimal(fd.clip_patas).times(cost).times(multiplier));
+          const cost = new Decimal(fd.clip_patas).times(clipMaterial?.costo || 5).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`clip_patas: ${fd.clip_patas} * ${clipMaterial?.costo || 5} * ${multiplier} = ${cost}`);
         }
         
         if (fd.mensulas && fd.mensulas > 0) {
           const mensulasMaterial = findAccessory({ name: 'mensulas', category: 'mensulas' });
-          const cost = mensulasMaterial ? mensulasMaterial.costo : 8;
-          totalPrice = totalPrice.plus(new Decimal(fd.mensulas).times(cost).times(multiplier));
+          const cost = new Decimal(fd.mensulas).times(mensulasMaterial?.costo || 8).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`mensulas: ${fd.mensulas} * ${mensulasMaterial?.costo || 8} * ${multiplier} = ${cost}`);
         }
         
         if (fd.kit_tornillo && fd.kit_tornillo > 0) {
           const kitMaterial = findAccessory({ name: 'kit_tornillo', category: 'kit tornillo' });
-          const cost = kitMaterial ? kitMaterial.costo : 10;
-          totalPrice = totalPrice.plus(new Decimal(fd.kit_tornillo).times(cost).times(multiplier));
+          const cost = new Decimal(fd.kit_tornillo).times(kitMaterial?.costo || 10).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`kit_tornillo: ${fd.kit_tornillo} * ${kitMaterial?.costo || 10} * ${multiplier} = ${cost}`);
         }
         
         if (fd.cif && fd.cif > 0) {
           const cifMaterial = findAccessory({ name: 'cif', category: 'cif' });
-          const cost = cifMaterial ? cifMaterial.costo : 12;
-          totalPrice = totalPrice.plus(new Decimal(fd.cif).times(cost).times(multiplier));
+          const cost = new Decimal(fd.cif).times(cifMaterial?.costo || 12).times(multiplier);
+          totalPrice = totalPrice.plus(cost);
+          componentLog.push(`cif: ${fd.cif} * ${cifMaterial?.costo || 12} * ${multiplier} = ${cost}`);
         }
+        
+        // Log the detailed calculation for this item
+        console.log(`Detailed calculation for item ${index}:`);
+        componentLog.forEach(log => console.log(`- ${log}`));
         
         // Convert to number with precise decimal places
         const finalPrice = totalPrice.toDecimalPlaces(2).toNumber();
@@ -1304,6 +1352,24 @@ export default function CotizacionForm() {
       
       // Batch update all prices at once
       form.setValue('items', updatedItems);
+      
+      // Verify prices were updated correctly
+      setTimeout(() => {
+        const updatedValues = form.getValues('items');
+        console.log("Verifying updated prices:", updatedValues.map((item, i) => 
+          `Item ${i}: ${item.unitPrice}`
+        ));
+        
+        // Force UI update for debug section
+        const debugSection = document.getElementById('debug-section');
+        if (debugSection && debugSection.style.display !== 'none') {
+          debugSection.classList.toggle('updated');
+          setTimeout(() => debugSection.classList.toggle('updated'), 50);
+        }
+        
+        // Run debug function to verify
+        debugCalculationMismatch();
+      }, 100);
       
       console.log("Completed recalculation of all prices");
     } catch (error) {
@@ -2808,98 +2874,132 @@ export default function CotizacionForm() {
                                             
                                             // Auto-calculate the price based on materials and project type
                                             console.log(`Calculating price for item ${index} after furniture selection`);
-                                            // We no longer call calculateItemPrice, already calculating directly
-                                            // calculateItemPrice(index, furnitureData);
                                             
+                                            // Calculate price consistently - force immediate calculation
+                                            const projectType = form.getValues('projectType');
+                                            const materialsData = form.getValues('materialsData') || {};
+                                            
+                                            // Skip if no project type
+                                            if (!projectType) {
+                                              console.warn("No project type selected, skipping price calculation");
+                                              return;
+                                            }
+                                            
+                                            // Determine multiplier
+                                            let multiplier = 1;
+                                            if (projectType === "1") multiplier = 1.8;
+                                            else if (projectType === "3") multiplier = 1.5;
+                                            
+                                            console.log(`Using multiplier: ${multiplier} for project type: ${projectType}`);
+                                            
+                                            // Get furniture data
+                                            const fd = form.getValues(`items.${index}.furnitureData`);
+                                            if (!fd) {
+                                              console.warn("No furniture data available, skipping price calculation");
+                                              return;
+                                            }
+                                            
+                                            // Initialize total price with Decimal for better precision
+                                            let totalPrice = new Decimal(0);
+                                            
+                                            // Calculate component costs with detailed logging
+                                            let componentLog = [];
+                                            
+                                            // Calculations for base materials
+                                            if (fd.mat_huacal && materialsData.matHuacal) {
+                                              const cost = new Decimal(fd.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`mat_huacal: ${fd.mat_huacal} * ${materialsData.matHuacal.costo} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.mat_vista && materialsData.matVista) {
+                                              const cost = new Decimal(fd.mat_vista).times(materialsData.matVista.costo).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`mat_vista: ${fd.mat_vista} * ${materialsData.matVista.costo} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.chap_huacal && materialsData.chapHuacal) {
+                                              const cost = new Decimal(fd.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`chap_huacal: ${fd.chap_huacal} * ${materialsData.chapHuacal.costo} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.chap_vista && materialsData.chapVista) {
+                                              const cost = new Decimal(fd.chap_vista).times(materialsData.chapVista.costo).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`chap_vista: ${fd.chap_vista} * ${materialsData.chapVista.costo} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.jaladera && materialsData.jaladera) {
+                                              const cost = new Decimal(fd.jaladera).times(materialsData.jaladera.costo).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`jaladera: ${fd.jaladera} * ${materialsData.jaladera.costo} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.corredera && materialsData.corredera) {
+                                              const cost = new Decimal(fd.corredera).times(materialsData.corredera.costo).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`corredera: ${fd.corredera} * ${materialsData.corredera.costo} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.bisagras && materialsData.bisagra) {
+                                              const cost = new Decimal(fd.bisagras).times(materialsData.bisagra.costo).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`bisagras: ${fd.bisagras} * ${materialsData.bisagra.costo} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            // Direct accessory calculations
+                                            if (fd.patas && fd.patas > 0) {
+                                              const patasMaterial = findAccessory({ name: 'patas', category: 'patas' });
+                                              const cost = new Decimal(fd.patas).times(patasMaterial?.costo || 15).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`patas: ${fd.patas} * ${patasMaterial?.costo || 15} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.clip_patas && fd.clip_patas > 0) {
+                                              const clipMaterial = findAccessory({ name: 'clip_patas', category: 'clip patas' });
+                                              const cost = new Decimal(fd.clip_patas).times(clipMaterial?.costo || 5).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`clip_patas: ${fd.clip_patas} * ${clipMaterial?.costo || 5} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.mensulas && fd.mensulas > 0) {
+                                              const mensulasMaterial = findAccessory({ name: 'mensulas', category: 'mensulas' });
+                                              const cost = new Decimal(fd.mensulas).times(mensulasMaterial?.costo || 8).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`mensulas: ${fd.mensulas} * ${mensulasMaterial?.costo || 8} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.kit_tornillo && fd.kit_tornillo > 0) {
+                                              const kitMaterial = findAccessory({ name: 'kit_tornillo', category: 'kit tornillo' });
+                                              const cost = new Decimal(fd.kit_tornillo).times(kitMaterial?.costo || 10).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`kit_tornillo: ${fd.kit_tornillo} * ${kitMaterial?.costo || 10} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            if (fd.cif && fd.cif > 0) {
+                                              const cifMaterial = findAccessory({ name: 'cif', category: 'cif' });
+                                              const cost = new Decimal(fd.cif).times(cifMaterial?.costo || 12).times(multiplier);
+                                              totalPrice = totalPrice.plus(cost);
+                                              componentLog.push(`cif: ${fd.cif} * ${cifMaterial?.costo || 12} * ${multiplier} = ${cost}`);
+                                            }
+                                            
+                                            // Generate a summary of all component costs for debugging
+                                            console.log("Price components for item", index);
+                                            componentLog.forEach(log => console.log(`- ${log}`));
+                                            console.log("Total calculated price before rounding:", totalPrice.toString());
+                                            
+                                            // Convert to number with precise decimal places
+                                            const finalPrice = totalPrice.toDecimalPlaces(2).toNumber();
+                                            console.log(`Final calculated price for item ${index}: ${finalPrice}`);
+                                            
+                                            // IMPORTANT: Directly update the unit price
+                                            form.setValue(`items.${index}.unitPrice`, finalPrice);
+                                            
+                                            // Force refresh calculations
                                             setTimeout(() => {
-                                              // Use the debug function to calculate the correct price
-                                              const items = form.getValues('items');
-                                              const projectType = form.getValues('projectType');
-                                              const materialsData = form.getValues('materialsData') || {};
-                                              
-                                              let multiplier = 1;
-                                              if (projectType === "1") multiplier = 1.8;
-                                              else if (projectType === "3") multiplier = 1.5;
-                                              
-                                              // Initialize total price
-                                              let totalPrice = new Decimal(0);
-                                              
-                                              // Calculate component costs for this specific item
-                                              const item = items[index];
-                                              const fd = item.furnitureData;
-                                              
-                                              if (!fd) return;
-                                              
-                                              // Use the same calculation logic across all functions
-                                              if (fd.mat_huacal && materialsData.matHuacal) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.mat_vista && materialsData.matVista) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.mat_vista).times(materialsData.matVista.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.chap_huacal && materialsData.chapHuacal) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.chap_vista && materialsData.chapVista) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.chap_vista).times(materialsData.chapVista.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.jaladera && materialsData.jaladera) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.jaladera).times(materialsData.jaladera.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.corredera && materialsData.corredera) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.corredera).times(materialsData.corredera.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.bisagras && materialsData.bisagra) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.bisagras).times(materialsData.bisagra.costo).times(multiplier));
-                                              }
-                                              
-                                              // Handle accessories directly
-                                              if (fd.patas && fd.patas > 0) {
-                                                const patasMaterial = findAccessory({ name: 'patas', category: 'patas' });
-                                                const cost = patasMaterial ? patasMaterial.costo : 15;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.patas).times(cost).times(multiplier));
-                                              }
-                                              
-                                              if (fd.clip_patas && fd.clip_patas > 0) {
-                                                const clipMaterial = findAccessory({ name: 'clip_patas', category: 'clip patas' });
-                                                const cost = clipMaterial ? clipMaterial.costo : 5;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.clip_patas).times(cost).times(multiplier));
-                                              }
-                                              
-                                              if (fd.mensulas && fd.mensulas > 0) {
-                                                const mensulasMaterial = findAccessory({ name: 'mensulas', category: 'mensulas' });
-                                                const cost = mensulasMaterial ? mensulasMaterial.costo : 8;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.mensulas).times(cost).times(multiplier));
-                                              }
-                                              
-                                              if (fd.kit_tornillo && fd.kit_tornillo > 0) {
-                                                const kitMaterial = findAccessory({ name: 'kit_tornillo', category: 'kit tornillo' });
-                                                const cost = kitMaterial ? kitMaterial.costo : 10;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.kit_tornillo).times(cost).times(multiplier));
-                                              }
-                                              
-                                              if (fd.cif && fd.cif > 0) {
-                                                const cifMaterial = findAccessory({ name: 'cif', category: 'cif' });
-                                                const cost = cifMaterial ? cifMaterial.costo : 12;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.cif).times(cost).times(multiplier));
-                                              }
-                                              
-                                              // Round price to 2 decimal places
-                                              const finalPrice = totalPrice.toDecimalPlaces(2).toNumber();
-                                              console.log(`Directly calculated price for item ${index}: ${finalPrice}`);
-                                              
-                                              // Directly update the form state with the calculated price
-                                              form.setValue(`items.${index}.unitPrice`, finalPrice);
-                                              
-                                              // Debug to verify price calculation consistency
-                                              setTimeout(() => debugCalculationMismatch(), 200);
-                                            }, 0);
+                                              debugCalculationMismatch();
+                                            }, 100);
                                           }
                                         }}
                                         onSearch={(searchText) => {
