@@ -8,7 +8,7 @@ import { es } from 'date-fns/locale';
 import { Decimal } from 'decimal.js';
 import { 
   Plus, X, ChevronRight, Edit2, PenTool, Trash2, 
-  ChevronDown, ChevronUp, CalendarIcon, ArrowUp, Check, Loader2, Search 
+  ChevronDown, ChevronUp, CalendarIcon, ArrowUp, Check, Loader2, Search, Calculator 
 } from 'lucide-react';
 import { z } from 'zod';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -66,6 +66,16 @@ const furnitureDataSchema = z.object({
   cif: z.number().nullable(),
 }).optional();
 
+// Define material data schema to store the selected material and its cost
+const materialDataSchema = z.object({
+  id_material: z.number(),
+  nombre: z.string(),
+  costo: z.number(),
+  tipo: z.string().nullable(),
+  categoria: z.string().nullable(),
+  comentario: z.string().nullable(),
+}).optional();
+
 // Use a modified schema for the form with fixed QuotationItem issue
 // We'll use this for the form and handle the conversion in onSubmit
 const cotizacionFormSchema = z.object({
@@ -92,8 +102,17 @@ const cotizacionFormSchema = z.object({
   deliveryTime: z.number().int().min(1, { message: "Tiempo de entrega requerido" }),
   paymentTerms: z.string().min(1, { message: "Condiciones de pago requeridas" }),
   
-  // Materials
+  // Materials with their data
   materials: z.record(z.string().optional()).optional(),
+  materialsData: z.object({
+    matHuacal: materialDataSchema,
+    chapHuacal: materialDataSchema,
+    matVista: materialDataSchema,
+    chapVista: materialDataSchema,
+    jaladera: materialDataSchema,
+    corredera: materialDataSchema,
+    bisagra: materialDataSchema,
+  }).partial().optional(),
   
   // Products and Items
   items: z.array(
@@ -402,6 +421,10 @@ export default function CotizacionForm() {
   const [isCotizacionDateOpen, setIsCotizacionDateOpen] = useState(false);
   const [isValidUntilOpen, setIsValidUntilOpen] = useState(false);
   
+  // Add accessory state
+  const [accesoriosList, setAccesoriosList] = useState<any[]>([]);
+  const [isLoadingAccesorios, setIsLoadingAccesorios] = useState(false);
+  
   // Toast notifications
   const { toast } = useToast();
 
@@ -421,6 +444,7 @@ export default function CotizacionForm() {
       validUntil: addDays(new Date(), 15),
       deliveryTime: 30,
       materials: {},
+      materialsData: {},
       vendedor: "",
       fabricante: "",
       instalador: "",
@@ -442,6 +466,7 @@ export default function CotizacionForm() {
     fetchClients();
     fetchFurnitureTypes();
     fetchInventory('', '', null, 1, false); // Load initial set of inventory items
+    fetchAccesorios(); // Load accessories from new table
   }, []);
   
   // Fetch clients from Supabase on mount
@@ -764,6 +789,9 @@ export default function CotizacionForm() {
         const bisagras = await fetchMaterialsByType('Bisagras');
         setBisagrasMaterials(bisagras);
         
+        // Fetch accessories from the new accesorios table
+        fetchAccesorios();
+        
         // Fetch initial set of inventory items
         fetchInventory();
         
@@ -802,6 +830,44 @@ export default function CotizacionForm() {
       console.error("Error calculating totals:", error);
     }
   }, [form.watch("items")]);
+
+  // Add this useEffect to recalculate all prices when project type changes
+  useEffect(() => {
+    const projectType = form.watch("projectType");
+    
+    // Skip if there are no items yet or if we're initially loading
+    const items = form.getValues("items") || [];
+    if (items.length === 0 || isLoadingMaterials) return;
+    
+    console.log("Project type changed to:", projectType);
+    
+    // Update prices for all items when project type changes
+    items.forEach((item, index) => {
+      if (item.furnitureData) {
+        calculateItemPrice(index, item.furnitureData);
+      }
+    });
+  }, [form.watch("projectType")]);
+
+  // Recalculate item prices when project type or materials change
+  useEffect(() => {
+    // Skip if there are no items yet
+    const items = form.getValues("items") || [];
+    if (items.length === 0) return;
+    
+    // Get the current values we care about
+    const projectType = form.getValues("projectType");
+    const materialsData = form.getValues("materialsData");
+    
+    console.log("Recalculating prices due to project type or material change", { projectType, materialsData });
+    
+    // Update prices for all items
+    items.forEach((item, index) => {
+      if (item.furnitureData) {
+        calculateItemPrice(index, item.furnitureData);
+      }
+    });
+  }, [form]);  // Just depend on the form itself
 
   // Calculate progress for the progress bar
   const calculateProgress = useCallback(() => {
@@ -864,6 +930,9 @@ export default function CotizacionForm() {
     
     console.log("Collected furniture data:", furnitureData);
     
+    // Log materials data to verify costs are stored
+    console.log("Selected materials with costs:", data.materialsData);
+    
     toast({
       id: "cotizacion-guardada",
       title: "Cotización guardada",
@@ -871,6 +940,301 @@ export default function CotizacionForm() {
     });
     
     setIsSubmitting(false);
+  };
+
+  // Helper function to find an accessory by name or category
+  const findAccessory = (criteria: { name?: string, category?: string }) => {
+    if (!accesoriosList || accesoriosList.length === 0) {
+      console.log("No accessories loaded yet");
+      return null;
+    }
+    
+    let result = null;
+    
+    // Try to find by exact name match first
+    if (criteria.name && criteria.name.length > 0) {
+      result = accesoriosList.find(acc => 
+        acc.accesorios?.toLowerCase().includes(criteria.name?.toLowerCase())
+      );
+    }
+    
+    // If not found by name, try category
+    if (!result && criteria.category && criteria.category.length > 0) {
+      result = accesoriosList.find(acc => 
+        acc.categoria?.toLowerCase().includes(criteria.category?.toLowerCase())
+      );
+    }
+    
+    // Log for debugging
+    if (result) {
+      console.log(`Found accessory for ${criteria.name || criteria.category}: ${result.accesorios} - $${result.costo}`);
+    } else {
+      console.log(`No accessory found for ${criteria.name || criteria.category}`);
+    }
+    
+    return result;
+  };
+
+  // Calculate the price based on the furniture data and selected materials
+  const calculateItemPrice = (index: number, furnitureData: any) => {
+    try {
+      /* 
+       * PRICE CALCULATION PROCESS:
+       * 1. The BASE PRICE is calculated from all individual components (materials, accessories)
+       * 2. This base price is shown as the UNIT PRICE (not editable)
+       * 3. The SUBTOTAL is calculated as: UNIT PRICE × QUANTITY
+       * 4. Price calculations take into account the PROJECT TYPE (Residencial, Desarrollo, etc.)
+       *    which applies different multipliers to the costs.
+       */
+      
+      // Get all the required values
+      const projectType = form.getValues('projectType');
+      const materialsData = form.getValues('materialsData') || {};
+      
+      // Check if project type is selected
+      if (!projectType) {
+        console.error("Project type not selected. Please select a project type first.");
+        toast({
+          id: "project-type-missing",
+          title: "Error de cálculo",
+          description: "Por favor seleccione un tipo de proyecto primero."
+        });
+        return;
+      }
+      
+      // Determine the multiplier based on project type
+      let multiplier = 1;
+      if (projectType === "1") { // Residencial
+        multiplier = 1.8; // 180%
+        console.log("Using Residencial multiplier: 1.8 (180%)");
+      } else if (projectType === "3") { // Desarrollo
+        multiplier = 1.5; // 150%
+        console.log("Using Desarrollo multiplier: 1.5 (150%)");
+      } else {
+        console.log(`Using default multiplier: 1.0 (100%) for project type: ${projectType}`);
+      }
+      
+      console.log(`Project type: ${projectType}, Multiplier: ${multiplier}`);
+      
+      // Initialize total price
+      let totalPrice = 0;
+      
+      // Calculate mat_huacal cost
+      if (furnitureData.mat_huacal && materialsData.matHuacal) {
+        const matHuacalCost = furnitureData.mat_huacal * materialsData.matHuacal.costo * multiplier;
+        console.log(`mat_huacal: ${furnitureData.mat_huacal} * ${materialsData.matHuacal.costo} * ${multiplier} = ${matHuacalCost}`);
+        totalPrice += matHuacalCost;
+      }
+      
+      // Calculate mat_vista cost
+      if (furnitureData.mat_vista && materialsData.matVista) {
+        const matVistaCost = furnitureData.mat_vista * materialsData.matVista.costo * multiplier;
+        console.log(`mat_vista: ${furnitureData.mat_vista} * ${materialsData.matVista.costo} * ${multiplier} = ${matVistaCost}`);
+        totalPrice += matVistaCost;
+      }
+      
+      // Calculate chap_huacal cost
+      if (furnitureData.chap_huacal && materialsData.chapHuacal) {
+        const chapHuacalCost = furnitureData.chap_huacal * materialsData.chapHuacal.costo * multiplier;
+        console.log(`chap_huacal: ${furnitureData.chap_huacal} * ${materialsData.chapHuacal.costo} * ${multiplier} = ${chapHuacalCost}`);
+        totalPrice += chapHuacalCost;
+      }
+      
+      // Calculate chap_vista cost
+      if (furnitureData.chap_vista && materialsData.chapVista) {
+        const chapVistaCost = furnitureData.chap_vista * materialsData.chapVista.costo * multiplier;
+        console.log(`chap_vista: ${furnitureData.chap_vista} * ${materialsData.chapVista.costo} * ${multiplier} = ${chapVistaCost}`);
+        totalPrice += chapVistaCost;
+      }
+      
+      // Calculate jaladera cost
+      if (furnitureData.jaladera && materialsData.jaladera) {
+        const jaladeraCost = furnitureData.jaladera * materialsData.jaladera.costo * multiplier;
+        console.log(`jaladera: ${furnitureData.jaladera} * ${materialsData.jaladera.costo} * ${multiplier} = ${jaladeraCost}`);
+        totalPrice += jaladeraCost;
+      }
+      
+      // Calculate corredera cost
+      if (furnitureData.corredera && materialsData.corredera) {
+        const correderaCost = furnitureData.corredera * materialsData.corredera.costo * multiplier;
+        console.log(`corredera: ${furnitureData.corredera} * ${materialsData.corredera.costo} * ${multiplier} = ${correderaCost}`);
+        totalPrice += correderaCost;
+      }
+      
+      // Calculate bisagras cost
+      if (furnitureData.bisagras && materialsData.bisagra) {
+        const bisagrasCost = furnitureData.bisagras * materialsData.bisagra.costo * multiplier;
+        console.log(`bisagras: ${furnitureData.bisagras} * ${materialsData.bisagra.costo} * ${multiplier} = ${bisagrasCost}`);
+        totalPrice += bisagrasCost;
+      }
+      
+      // Calculate accessories costs using the new accesorios table
+      
+      // Calculate patas cost
+      if (furnitureData.patas && furnitureData.patas > 0) {
+        const patasMaterial = findAccessory({ name: 'patas', category: 'patas' });
+        
+        if (patasMaterial) {
+          const patasCost = furnitureData.patas * patasMaterial.costo * multiplier;
+          console.log(`patas: ${furnitureData.patas} * ${patasMaterial.costo} * ${multiplier} = ${patasCost}`);
+          totalPrice += patasCost;
+        } else {
+          // Fallback if material not found
+          const defaultPatasCost = 15; // Default cost if not found
+          const patasCost = furnitureData.patas * defaultPatasCost * multiplier;
+          console.log(`patas (default cost): ${furnitureData.patas} * ${defaultPatasCost} * ${multiplier} = ${patasCost}`);
+          totalPrice += patasCost;
+        }
+      }
+      
+      // Calculate clip_patas cost
+      if (furnitureData.clip_patas && furnitureData.clip_patas > 0) {
+        const clipPatasMaterial = findAccessory({ name: 'clip_patas', category: 'clip patas' });
+        
+        if (clipPatasMaterial) {
+          const clipPatasCost = furnitureData.clip_patas * clipPatasMaterial.costo * multiplier;
+          console.log(`clip_patas: ${furnitureData.clip_patas} * ${clipPatasMaterial.costo} * ${multiplier} = ${clipPatasCost}`);
+          totalPrice += clipPatasCost;
+        } else {
+          // Fallback if material not found
+          const defaultClipPatasCost = 5; // Default cost if not found
+          const clipPatasCost = furnitureData.clip_patas * defaultClipPatasCost * multiplier;
+          console.log(`clip_patas (default cost): ${furnitureData.clip_patas} * ${defaultClipPatasCost} * ${multiplier} = ${clipPatasCost}`);
+          totalPrice += clipPatasCost;
+        }
+      }
+      
+      // Calculate mensulas cost
+      if (furnitureData.mensulas && furnitureData.mensulas > 0) {
+        const mensulasMaterial = findAccessory({ name: 'mensulas', category: 'mensulas' });
+        
+        if (mensulasMaterial) {
+          const mensulasCost = furnitureData.mensulas * mensulasMaterial.costo * multiplier;
+          console.log(`mensulas: ${furnitureData.mensulas} * ${mensulasMaterial.costo} * ${multiplier} = ${mensulasCost}`);
+          totalPrice += mensulasCost;
+        } else {
+          // Fallback if material not found
+          const defaultMensulasCost = 8; // Default cost if not found
+          const mensulasCost = furnitureData.mensulas * defaultMensulasCost * multiplier;
+          console.log(`mensulas (default cost): ${furnitureData.mensulas} * ${defaultMensulasCost} * ${multiplier} = ${mensulasCost}`);
+          totalPrice += mensulasCost;
+        }
+      }
+      
+      // Calculate kit_tornillo cost
+      if (furnitureData.kit_tornillo && furnitureData.kit_tornillo > 0) {
+        const kitTornilloMaterial = findAccessory({ name: 'kit_tornillo', category: 'kit tornillo' });
+        
+        if (kitTornilloMaterial) {
+          const kitTornilloCost = furnitureData.kit_tornillo * kitTornilloMaterial.costo * multiplier;
+          console.log(`kit_tornillo: ${furnitureData.kit_tornillo} * ${kitTornilloMaterial.costo} * ${multiplier} = ${kitTornilloCost}`);
+          totalPrice += kitTornilloCost;
+        } else {
+          // Fallback if material not found
+          const defaultKitTornilloCost = 10; // Default cost if not found
+          const kitTornilloCost = furnitureData.kit_tornillo * defaultKitTornilloCost * multiplier;
+          console.log(`kit_tornillo (default cost): ${furnitureData.kit_tornillo} * ${defaultKitTornilloCost} * ${multiplier} = ${kitTornilloCost}`);
+          totalPrice += kitTornilloCost;
+        }
+      }
+      
+      // Calculate cif cost
+      if (furnitureData.cif && furnitureData.cif > 0) {
+        const cifMaterial = findAccessory({ name: 'cif', category: 'cif' });
+        
+        if (cifMaterial) {
+          const cifCost = furnitureData.cif * cifMaterial.costo * multiplier;
+          console.log(`cif: ${furnitureData.cif} * ${cifMaterial.costo} * ${multiplier} = ${cifCost}`);
+          totalPrice += cifCost;
+        } else {
+          // Fallback if material not found
+          const defaultCifCost = 12; // Default cost if not found
+          const cifCost = furnitureData.cif * defaultCifCost * multiplier;
+          console.log(`cif (default cost): ${furnitureData.cif} * ${defaultCifCost} * ${multiplier} = ${cifCost}`);
+          totalPrice += cifCost;
+        }
+      }
+      
+      // Generate a summary of all component costs for debugging
+      console.log("Price breakdown summary:");
+      if (furnitureData.mat_huacal && materialsData.matHuacal) {
+        console.log(`- Material Huacal: $${(furnitureData.mat_huacal * materialsData.matHuacal.costo * multiplier).toFixed(2)}`);
+      }
+      if (furnitureData.mat_vista && materialsData.matVista) {
+        console.log(`- Material Vista: $${(furnitureData.mat_vista * materialsData.matVista.costo * multiplier).toFixed(2)}`);
+      }
+      if (furnitureData.chap_huacal && materialsData.chapHuacal) {
+        console.log(`- Chapacinta Huacal: $${(furnitureData.chap_huacal * materialsData.chapHuacal.costo * multiplier).toFixed(2)}`);
+      }
+      if (furnitureData.chap_vista && materialsData.chapVista) {
+        console.log(`- Chapacinta Vista: $${(furnitureData.chap_vista * materialsData.chapVista.costo * multiplier).toFixed(2)}`);
+      }
+      if (furnitureData.jaladera && materialsData.jaladera) {
+        console.log(`- Jaladera: $${(furnitureData.jaladera * materialsData.jaladera.costo * multiplier).toFixed(2)}`);
+      }
+      if (furnitureData.corredera && materialsData.corredera) {
+        console.log(`- Corredera: $${(furnitureData.corredera * materialsData.corredera.costo * multiplier).toFixed(2)}`);
+      }
+      if (furnitureData.bisagras && materialsData.bisagra) {
+        console.log(`- Bisagras: $${(furnitureData.bisagras * materialsData.bisagra.costo * multiplier).toFixed(2)}`);
+      }
+      
+      // Round to 2 decimal places
+      totalPrice = Math.round(totalPrice * 100) / 100;
+      console.log(`Total calculated price for item ${index}: ${totalPrice}`);
+      
+      // Update the unitPrice field
+      form.setValue(`items.${index}.unitPrice`, totalPrice);
+    } catch (error) {
+      console.error('Error calculating item price:', error);
+      toast({
+        id: "calculation-error",
+        title: "Error de cálculo",
+        description: "Ocurrió un error al calcular el precio. Revise los datos e intente nuevamente."
+      });
+    }
+  };
+
+  // Fetch accessories from database
+  const fetchAccesorios = async () => {
+    setIsLoadingAccesorios(true);
+    try {
+      const supabase = createClientComponentClient();
+      const { data, error } = await supabase
+        .from('accesorios')
+        .select('id_accesorios, accesorios, costo, categoria, comentario')
+        .order('categoria', { ascending: true });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        setAccesoriosList(data);
+        console.log("Loaded accessories from accesorios table:", data.map(acc => 
+          `${acc.accesorios} (${acc.categoria}): $${acc.costo}`
+        ));
+        
+        // Test lookups for common accessory types
+        setTimeout(() => {
+          console.log("Testing accessory lookups:");
+          findAccessory({ name: 'patas' });
+          findAccessory({ name: 'clip' });
+          findAccessory({ name: 'mensula' });
+          findAccessory({ name: 'tornillo' });
+          findAccessory({ name: 'cif' });
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Error fetching accessories:', error);
+      toast({
+        id: "error-accesorios",
+        title: "Error",
+        description: "No se pudieron cargar los accesorios"
+      });
+    } finally {
+      setIsLoadingAccesorios(false);
+    }
   };
 
   return (
@@ -1287,7 +1651,26 @@ export default function CotizacionForm() {
                               data: material
                             }))}
                             value={field.value || ''}
-                            onChange={field.onChange}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Store the selected material's data including the cost
+                              const selectedMaterial = tabletosMaterials.find(m => m.nombre === value);
+                              if (selectedMaterial) {
+                                form.setValue('materialsData.matHuacal', {
+                                  id_material: selectedMaterial.id_material,
+                                  nombre: selectedMaterial.nombre,
+                                  costo: selectedMaterial.costo,
+                                  tipo: selectedMaterial.tipo,
+                                  categoria: selectedMaterial.categoria,
+                                  comentario: selectedMaterial.comentario
+                                });
+                                console.log(`Selected Material Huacal: ${value}, Cost: ${selectedMaterial.costo}`);
+                                
+                                // Price updates happen automatically via useEffect
+                              } else {
+                                form.setValue('materialsData.matHuacal', undefined);
+                              }
+                            }}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
@@ -1314,7 +1697,26 @@ export default function CotizacionForm() {
                               data: material
                             }))}
                             value={field.value || ''}
-                            onChange={field.onChange}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Store the selected material's data including the cost
+                              const selectedMaterial = chapacintaMaterials.find(m => m.nombre === value);
+                              if (selectedMaterial) {
+                                form.setValue('materialsData.chapHuacal', {
+                                  id_material: selectedMaterial.id_material,
+                                  nombre: selectedMaterial.nombre,
+                                  costo: selectedMaterial.costo,
+                                  tipo: selectedMaterial.tipo,
+                                  categoria: selectedMaterial.categoria,
+                                  comentario: selectedMaterial.comentario
+                                });
+                                console.log(`Selected Chapacinta Huacal: ${value}, Cost: ${selectedMaterial.costo}`);
+                                
+                                // Price updates happen automatically via useEffect
+                              } else {
+                                form.setValue('materialsData.chapHuacal', undefined);
+                              }
+                            }}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
@@ -1341,7 +1743,26 @@ export default function CotizacionForm() {
                               data: material
                             }))}
                             value={field.value || ''}
-                            onChange={field.onChange}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Store the selected material's data including the cost
+                              const selectedMaterial = jaladeraMaterials.find(m => m.nombre === value);
+                              if (selectedMaterial) {
+                                form.setValue('materialsData.jaladera', {
+                                  id_material: selectedMaterial.id_material,
+                                  nombre: selectedMaterial.nombre,
+                                  costo: selectedMaterial.costo,
+                                  tipo: selectedMaterial.tipo,
+                                  categoria: selectedMaterial.categoria,
+                                  comentario: selectedMaterial.comentario
+                                });
+                                console.log(`Selected Jaladera: ${value}, Cost: ${selectedMaterial.costo}`);
+                                
+                                // Price updates happen automatically via useEffect
+                              } else {
+                                form.setValue('materialsData.jaladera', undefined);
+                              }
+                            }}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar jaladera"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
@@ -1368,7 +1789,26 @@ export default function CotizacionForm() {
                               data: material
                             }))}
                             value={field.value || ''}
-                            onChange={field.onChange}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Store the selected material's data including the cost
+                              const selectedMaterial = tabletosMaterials.find(m => m.nombre === value);
+                              if (selectedMaterial) {
+                                form.setValue('materialsData.matVista', {
+                                  id_material: selectedMaterial.id_material,
+                                  nombre: selectedMaterial.nombre,
+                                  costo: selectedMaterial.costo,
+                                  tipo: selectedMaterial.tipo,
+                                  categoria: selectedMaterial.categoria,
+                                  comentario: selectedMaterial.comentario
+                                });
+                                console.log(`Selected Material Vista: ${value}, Cost: ${selectedMaterial.costo}`);
+                                
+                                // Price updates happen automatically via useEffect
+                              } else {
+                                form.setValue('materialsData.matVista', undefined);
+                              }
+                            }}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
@@ -1395,7 +1835,26 @@ export default function CotizacionForm() {
                               data: material
                             }))}
                             value={field.value || ''}
-                            onChange={field.onChange}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Store the selected material's data including the cost
+                              const selectedMaterial = chapacintaMaterials.find(m => m.nombre === value);
+                              if (selectedMaterial) {
+                                form.setValue('materialsData.chapVista', {
+                                  id_material: selectedMaterial.id_material,
+                                  nombre: selectedMaterial.nombre,
+                                  costo: selectedMaterial.costo,
+                                  tipo: selectedMaterial.tipo,
+                                  categoria: selectedMaterial.categoria,
+                                  comentario: selectedMaterial.comentario
+                                });
+                                console.log(`Selected Chapacinta Vista: ${value}, Cost: ${selectedMaterial.costo}`);
+                                
+                                // Price updates happen automatically via useEffect
+                              } else {
+                                form.setValue('materialsData.chapVista', undefined);
+                              }
+                            }}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
@@ -1422,7 +1881,26 @@ export default function CotizacionForm() {
                               data: material
                             }))}
                             value={field.value || ''}
-                            onChange={field.onChange}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Store the selected material's data including the cost
+                              const selectedMaterial = correderasMaterials.find(m => m.nombre === value);
+                              if (selectedMaterial) {
+                                form.setValue('materialsData.corredera', {
+                                  id_material: selectedMaterial.id_material,
+                                  nombre: selectedMaterial.nombre,
+                                  costo: selectedMaterial.costo,
+                                  tipo: selectedMaterial.tipo,
+                                  categoria: selectedMaterial.categoria,
+                                  comentario: selectedMaterial.comentario
+                                });
+                                console.log(`Selected Corredera: ${value}, Cost: ${selectedMaterial.costo}`);
+                                
+                                // Price updates happen automatically via useEffect
+                              } else {
+                                form.setValue('materialsData.corredera', undefined);
+                              }
+                            }}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar corredera"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
@@ -1449,7 +1927,26 @@ export default function CotizacionForm() {
                               data: material
                             }))}
                             value={field.value || ''}
-                            onChange={field.onChange}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Store the selected material's data including the cost
+                              const selectedMaterial = bisagrasMaterials.find(m => m.nombre === value);
+                              if (selectedMaterial) {
+                                form.setValue('materialsData.bisagra', {
+                                  id_material: selectedMaterial.id_material,
+                                  nombre: selectedMaterial.nombre,
+                                  costo: selectedMaterial.costo,
+                                  tipo: selectedMaterial.tipo,
+                                  categoria: selectedMaterial.categoria,
+                                  comentario: selectedMaterial.comentario
+                                });
+                                console.log(`Selected Bisagra: ${value}, Cost: ${selectedMaterial.costo}`);
+                                
+                                // Price updates happen automatically via useEffect
+                              } else {
+                                form.setValue('materialsData.bisagra', undefined);
+                              }
+                            }}
                             placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar bisagra"}
                             disabled={isLoadingMaterials}
                             popoverWidth={320}
@@ -1604,12 +2101,7 @@ export default function CotizacionForm() {
                                             item.nombre_mueble === value
                                           );
                                           if (selectedItem) {
-                                            // Update the price field
-                                            if (selectedItem.precio) {
-                                              form.setValue(`items.${index}.unitPrice`, selectedItem.precio);
-                                            }
-                                            
-                                            // Store all the furniture data
+                                            // Update furniture data
                                             const furnitureData = {
                                               mueble_id: selectedItem.mueble_id,
                                               cajones: selectedItem.cajones,
@@ -1636,6 +2128,9 @@ export default function CotizacionForm() {
                                             form.setValue(`items.${index}.drawers`, selectedItem.cajones || 0);
                                             form.setValue(`items.${index}.doors`, selectedItem.puertas || 0);
                                             form.setValue(`items.${index}.shelves`, selectedItem.entrepaños || 0);
+                                            
+                                            // Calculate price based on materials and project type
+                                            calculateItemPrice(index, furnitureData);
                                           }
                                         }}
                                         onSearch={(searchText) => {
@@ -1739,32 +2234,50 @@ export default function CotizacionForm() {
                               />
                             </td>
                             <td className="py-2 px-2">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.unitPrice`}
-                                render={({ field }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <Input
-                                        {...field}
-                                        type="number"
-                                        placeholder="$0.00"
-                                        min={0}
-                                        step={0.01}
-                                        className="h-8 text-right px-2 text-sm bg-muted/10"
-                                        readOnly
-                                        disabled
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
+                              <div className="flex items-center gap-1">
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.unitPrice`}
+                                  render={({ field }) => (
+                                    <FormItem className="mb-0 flex-1">
+                                      <FormControl>
+                                        <Input
+                                          {...field}
+                                          type="text"
+                                          placeholder="$0.00"
+                                          className="h-8 text-right px-2 text-sm"
+                                          readOnly
+                                          value={`$${formatCurrencyDisplay(new Decimal(field.value || 0))}`}
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 flex-shrink-0"
+                                  onClick={() => {
+                                    const furnitureData = form.getValues(`items.${index}.furnitureData`);
+                                    if (furnitureData) {
+                                      calculateItemPrice(index, furnitureData);
+                                    }
+                                  }}
+                                  title="Calcular precio"
+                                >
+                                  <Calculator className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </td>
                             <td className="py-2 px-2 text-right font-medium text-sm">
-                              {formatCurrencyDisplay(
-                                new Decimal(form.watch(`items.${index}.quantity`) || 0)
-                                  .mul(new Decimal(form.watch(`items.${index}.unitPrice`) || 0))
-                              )}
+                              {(() => {
+                                const quantity = new Decimal(form.watch(`items.${index}.quantity`) || 0);
+                                const unitPrice = new Decimal(form.watch(`items.${index}.unitPrice`) || 0);
+                                const subtotal = quantity.mul(unitPrice);
+                                
+                                return formatCurrencyDisplay(subtotal);
+                              })()}
                             </td>
                             <td className="py-2 px-2 text-center">
                               <Button
@@ -1907,11 +2420,11 @@ export default function CotizacionForm() {
               <div className="w-72 bg-gray-200 rounded-full h-3">
                 <div 
                   className="bg-black h-3 rounded-full" 
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${calculateProgress()}%` }}
                 ></div>
               </div>
               <span className="text-sm font-medium text-gray-600">
-                {Math.round(progress)}% completado
+                {Math.round(calculateProgress())}% completado
               </span>
             </div>
             
