@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "npm install --legacy-peer-deps && next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -43,7 +43,7 @@
     "@supabase/supabase-js": "^2.49.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "date-fns": "^3.6.0",
+    "date-fns": "3.6.0",
     "decimal.js": "^10.5.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.1",
@@ -51,7 +51,6 @@
     "next": "15.2.3",
     "postgres": "^3.4.5",
     "react": "^19.0.0",
-    "react-day-picker": "^8.10.1",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
     "sonner": "^2.0.1",
@@ -72,6 +71,9 @@
     "typescript": "^5"
   },
   "overrides": {
-    "date-fns": "^3.6.0"
+    "date-fns": "3.6.0"
+  },
+  "resolutions": {
+    "date-fns": "3.6.0"
   }
 }
