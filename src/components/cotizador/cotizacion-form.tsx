@@ -1118,13 +1118,13 @@ export default function CotizacionForm() {
       
       // Check if project type is selected
       if (!projectType) {
-        console.error("Project type not selected. Please select a project type first.");
+        console.warn("Project type not selected. Please select a project type first.");
         toast({
           id: "project-type-missing",
           title: "Error de cálculo",
           description: "Por favor seleccione un tipo de proyecto primero."
         });
-        return;
+        return; // Return without throwing an error
       }
       
       // Determine multiplier (identical code across all functions)
@@ -1317,7 +1317,7 @@ export default function CotizacionForm() {
       
       // Check if project type is selected
       if (!projectType) {
-        console.error("Project type not selected. Please select a project type first.");
+        console.warn("Project type not selected. Please select a project type first.");
         toast({
           id: "project-type-missing",
           title: "Error de cálculo",
@@ -1496,6 +1496,23 @@ export default function CotizacionForm() {
           debugSection.classList.toggle('updated');
           setTimeout(() => debugSection.classList.toggle('updated'), 50);
         }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  // Add useEffect to recalculate prices when quantities change or items are added/removed
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      // Check if change in quantity or items array length
+      if (name && ((name.includes('items') && name.includes('quantity')) || name === 'items')) {
+        console.log(`Quantity or items changed - recalculating all prices`);
+        
+        // A small delay to ensure form values are updated
+        setTimeout(() => {
+          recalculateAllPrices();
+        }, 100);
       }
     });
     
@@ -2774,7 +2791,7 @@ export default function CotizacionForm() {
                                       <div className="text-red-500 font-bold text-sm bg-red-50 p-1 rounded">
                                         ¡Diferencia detectada!
                                         <br />
-                                        Calculado: ${runningTotal.toFixed(2)}
+                                        Calculado (valor correcto): ${runningTotal.toFixed(2)}
                                         <br />
                                         Guardado: ${item.unitPrice}
                                       </div>
@@ -3135,7 +3152,14 @@ export default function CotizacionForm() {
                                         placeholder="Cant."
                                         min={1}
                                         className="h-8 text-center px-2 text-sm"
-                                        onChange={e => field.onChange(parseFloat(e.target.value) || 1)}
+                                        onChange={e => {
+                                          field.onChange(parseFloat(e.target.value) || 1);
+                                          // Recalculate prices when quantity changes
+                                          const furnitureData = form.getValues(`items.${index}.furnitureData`);
+                                          if (furnitureData) {
+                                            calculateItemPrice(index, furnitureData);
+                                          }
+                                        }}
                                       />
                                     </FormControl>
                                   </FormItem>
