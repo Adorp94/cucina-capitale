@@ -1972,20 +1972,6 @@ export default function CotizacionForm() {
               >
                 Mostrar Debug
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="text-xs h-8"
-                onClick={() => {
-                  console.log("Manual recalculation of all prices");
-                  debugCalculationMismatch(); // Debug before recalculation
-                  recalculateAllPrices();
-                  setTimeout(() => debugCalculationMismatch(), 500); // Debug after recalculation
-                }}
-              >
-                Recalcular Precios
-              </Button>
               <Badge variant="outline" className="text-sm font-normal">Sección 3 de 5</Badge>
             </div>
           </CardHeader>
