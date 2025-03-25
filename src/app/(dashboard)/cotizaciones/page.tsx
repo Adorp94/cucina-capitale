@@ -1,52 +1,74 @@
-import { Metadata } from 'next';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { QUOTATION_STATUSES } from '@/lib/cotizador/constants';
+import { Eye, FileText } from "lucide-react";
+import { formatCurrency } from "@/lib/cotizador/calculator";
 
-export const metadata: Metadata = {
-  title: 'Cotizaciones | GRUPO UCMV',
-  description: 'Listado de cotizaciones',
+type Quotation = {
+  id_cotizacion: number;
+  created_at: string;
+  id_cliente: number;
+  project_name: string;
+  project_type: string;
+  status: string;
+  subtotal: number;
+  tax_rate: number;
+  taxes: number;
+  total: number;
+  valid_until: string | null;
+  delivery_time: string | null;
+  notes: string | null;
+  cliente: {
+    nombre: string;
+    correo: string;
+    celular: string;
+  };
 };
 
-// Mock de datos para la vista de ejemplo
-// En producción, esto vendría de la base de datos
-const MOCK_QUOTATIONS = [
-  {
-    id: '1',
-    number: 'COT-202503-001',
-    title: 'Cotización para proyecto de cocina',
-    clientName: 'Capital Cocinas y Equipos',
-    projectName: 'Remodelación Residencial',
-    total: 45000,
-    createdAt: new Date('2025-03-15'),
-    status: 'sent'
-  },
-  {
-    id: '2',
-    number: 'COT-202503-002',
-    title: 'Cotización para vestidor',
-    clientName: 'Cliente Ejemplo 2',
-    projectName: 'Proyecto Vestidor',
-    total: 78500,
-    createdAt: new Date('2025-03-10'),
-    status: 'approved'
-  },
-  {
-    id: '3',
-    number: 'COT-202503-003',
-    title: 'Cotización de muebles para oficina',
-    clientName: 'Cliente Ejemplo 3',
-    projectName: 'Oficina Corporativa',
-    total: 32800,
-    createdAt: new Date('2025-03-05'),
-    status: 'draft'
-  },
-];
-
 export default function CotizacionesPage() {
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    fetchQuotations();
+  }, []);
+
+  const fetchQuotations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cotizaciones')
+        .select(`
+          *,
+          cliente:clientes (
+            nombre,
+            correo,
+            celular
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setQuotations(data || []);
+    } catch (error) {
+      console.error('Error fetching quotations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Cargando...</div>;
+  }
+
   return (
     <div className="container px-4 md:px-6 py-8 md:py-10 max-w-7xl mx-auto">
       <div className="mb-8 flex justify-between items-center">
@@ -57,7 +79,8 @@ export default function CotizacionesPage() {
           </p>
         </div>
         <Button asChild className="shadow-sm">
-          <Link href="/cotizaciones/nueva">
+          <Link href="/cotizador">
+            <FileText className="mr-2 h-4 w-4" />
             Nueva Cotización
           </Link>
         </Button>
@@ -71,9 +94,10 @@ export default function CotizacionesPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50 hover:bg-gray-50">
-                <TableHead className="py-3">No. Cotización</TableHead>
+                <TableHead className="py-3">ID</TableHead>
                 <TableHead className="py-3">Cliente</TableHead>
                 <TableHead className="py-3">Proyecto</TableHead>
+                <TableHead className="py-3">Tipo</TableHead>
                 <TableHead className="py-3">Fecha</TableHead>
                 <TableHead className="py-3">Total</TableHead>
                 <TableHead className="py-3">Estado</TableHead>
@@ -81,61 +105,47 @@ export default function CotizacionesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {MOCK_QUOTATIONS.map((cotizacion) => {
-                const statusInfo = QUOTATION_STATUSES[cotizacion.status as keyof typeof QUOTATION_STATUSES];
-                
-                return (
-                  <TableRow key={cotizacion.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium py-3">{cotizacion.number}</TableCell>
-                    <TableCell className="py-3">{cotizacion.clientName}</TableCell>
-                    <TableCell className="py-3">{cotizacion.projectName}</TableCell>
-                    <TableCell className="py-3">
-                      {cotizacion.createdAt.toLocaleDateString('es-MX', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </TableCell>
-                    <TableCell className="py-3">
-                      ${cotizacion.total.toLocaleString('es-MX', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <Badge 
-                        variant={statusInfo.color as "default" | "secondary" | "destructive" | "outline"}
+              {quotations.map((quotation) => (
+                <TableRow key={quotation.id_cotizacion} className="hover:bg-gray-50">
+                  <TableCell className="font-medium py-3">{quotation.id_cotizacion}</TableCell>
+                  <TableCell className="py-3">
+                    <div>
+                      <div className="font-medium">{quotation.cliente.nombre}</div>
+                      <div className="text-sm text-gray-500">{quotation.cliente.correo}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3">{quotation.project_name}</TableCell>
+                  <TableCell className="py-3">{quotation.project_type}</TableCell>
+                  <TableCell className="py-3">
+                    {format(new Date(quotation.created_at), 'dd/MM/yyyy', { locale: es })}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {formatCurrency(quotation.total)}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Badge 
+                      variant={quotation.status === 'draft' ? "secondary" : "default"}
+                    >
+                      {quotation.status === 'draft' ? 'Borrador' : 'Generada'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right py-3">
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        asChild 
+                        size="sm" 
+                        variant="outline"
+                        className="shadow-sm"
                       >
-                        {statusInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          asChild 
-                          size="sm" 
-                          variant="outline"
-                          className="shadow-sm"
-                        >
-                          <Link href={`/cotizaciones/${cotizacion.id}`}>
-                            Ver
-                          </Link>
-                        </Button>
-                        <Button 
-                          asChild 
-                          size="sm" 
-                          variant="outline"
-                          className="shadow-sm"
-                        >
-                          <Link href={`/cotizaciones/${cotizacion.id}/editar`}>
-                            Editar
-                          </Link>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                        <Link href={`/cotizaciones/${quotation.id_cotizacion}`}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver
+                        </Link>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>

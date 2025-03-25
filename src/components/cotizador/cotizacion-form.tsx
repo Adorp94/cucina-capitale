@@ -1019,51 +1019,54 @@ export default function CotizacionForm() {
 
   // Submit form
   const onSubmit = async (data: FormValues) => {
-    console.log('Form submission started');
-    console.log('Form data:', data);
-    setIsSubmitting(true);
     try {
-      // Create a Supabase client
-      const supabase = createClientComponentClient();
+      setIsSubmitting(true);
+      console.log("Starting form submission with data:", data);
       
       // Calculate totals
-      const subtotal = data.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity * (1 - item.discount / 100)), 0);
-      const taxRate = 0.16; // 16% IVA
+      const subtotal = data.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+      const taxRate = 0.16;
       const taxes = subtotal * taxRate;
       const total = subtotal + taxes;
 
-      console.log('Calculated totals:', { subtotal, taxRate, taxes, total });
+      console.log("Calculated totals:", { subtotal, taxRate, taxes, total });
 
-      // Insert the quotation
+      // Prepare quotation data
       const quotationData = {
-        id_cliente: data.clientId, // Use clientId directly as a string
+        id_cliente: data.clientId,
         project_name: data.projectName,
         project_type: data.projectType,
-        status: 'draft',
-        subtotal: subtotal,
+        subtotal,
         tax_rate: taxRate,
-        taxes: taxes,
-        total: total,
+        taxes,
+        total,
         valid_until: data.validUntil,
-        delivery_time: data.deliveryTime.toString(),
-        notes: data.notes || null
+        delivery_time: data.deliveryTime,
+        notes: data.notes
       };
 
-      console.log('Attempting to insert quotation:', quotationData);
+      console.log("Preparing to insert quotation data:", quotationData);
 
-      const { data: newQuotation, error: quotationError } = await supabase
+      // Insert quotation
+      const { data: quotation, error: quotationError } = await supabase
         .from('cotizaciones')
         .insert([quotationData])
         .select()
         .single();
 
       if (quotationError) {
-        throw new Error(`Error al guardar la cotización: ${quotationError.message}`);
+        console.error("Error inserting quotation:", quotationError);
+        toast({
+          title: "Error",
+          description: "No se pudo crear la cotización. Por favor, intente de nuevo.",
+          variant: "destructive",
+        });
+        return;
       }
 
       // Insert quotation items
       const quotationItems = data.items.map((item, index) => ({
-        id_cotizacion: newQuotation.id_cotizacion,
+        id_cotizacion: quotation.id_cotizacion,
         mueble_id: item.furnitureData?.mueble_id || null,
         position: index,
         description: item.description,
@@ -1085,7 +1088,7 @@ export default function CotizacionForm() {
         const materialsToInsert = Object.entries(data.materialsData)
           .filter(([_, material]) => material && material.id_material)
           .map(([tipo, material]) => ({
-            id_cotizacion: newQuotation.id_cotizacion,
+            id_cotizacion: quotation.id_cotizacion,
             id_material: material.id_material,
             tipo: tipo,
             costo_usado: material.costo
@@ -1103,20 +1106,17 @@ export default function CotizacionForm() {
       }
 
       toast({
-        id: "cotizacion-generada",
-        title: "Cotización generada",
-        description: "La cotización se ha generado exitosamente."
+        title: "Éxito",
+        description: "Cotización generada correctamente",
       });
-
-      // Reset form
-      form.reset();
       
+      form.reset();
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error in form submission:", error);
       toast({
-        id: "error-cotizacion",
         title: "Error",
-        description: error instanceof Error ? error.message : 'Error al generar la cotización'
+        description: "Ocurrió un error al generar la cotización. Por favor, intente de nuevo.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -1652,7 +1652,6 @@ export default function CotizacionForm() {
               name="clientId"
               render={({ field }) => (
                 <FormItem className="w-full">
-                  <FormLabel className="mb-2">Cliente</FormLabel>
                   <FormControl>
                     <CustomCombobox
                       options={clients.map(client => ({
@@ -1660,13 +1659,23 @@ export default function CotizacionForm() {
                         value: client.id.toString(),
                         data: client
                       }))}
-                      value={field.value ? field.value.toString() : ''}
+                      value={field.value ? field.value.toString() : ""}
                       onChange={(selectedValue) => {
+                        if (!selectedValue) {
+                          field.onChange(null);
+                          form.setValue("clientName", "");
+                          form.setValue("clientEmail", "");
+                          form.setValue("clientPhone", "");
+                          form.setValue("clientAddress", "");
+                          return;
+                        }
+                        
                         const numericValue = Number(selectedValue);
                         if (!isNaN(numericValue)) {
                           const selectedClient = clients.find(client => client.id === numericValue);
+                          field.onChange(numericValue);
+                          
                           if (selectedClient) {
-                            field.onChange(numericValue);
                             form.setValue("clientName", selectedClient.name);
                             form.setValue("clientEmail", selectedClient.email || "");
                             form.setValue("clientPhone", selectedClient.phone || "");
@@ -1680,7 +1689,9 @@ export default function CotizacionForm() {
                       className="h-11"
                     />
                   </FormControl>
-                  <FormMessage />
+                  {form.formState.errors.clientId && (
+                    <FormMessage>{form.formState.errors.clientId.message}</FormMessage>
+                  )}
                 </FormItem>
               )}
             />
@@ -3323,9 +3334,19 @@ export default function CotizacionForm() {
               <Button type="button" variant="secondary" className="h-11 px-5 font-medium">
                 Guardar Borrador
               </Button>
-              <Button type="submit" className="h-11 px-5 bg-black hover:bg-gray-800 gap-2 font-medium">
-                <Check className="h-4 w-4" />
-                Generar Cotización
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full sm:w-auto"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  "Generar Cotización"
+                )}
               </Button>
             </div>
           </div>
