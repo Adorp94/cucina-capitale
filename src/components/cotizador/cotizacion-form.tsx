@@ -172,7 +172,7 @@ type FormValues = z.infer<typeof cotizacionFormSchema>;
 
 // Format currency for display
 const formatCurrencyDisplay = (amount: Decimal) => {
-  return `$${amount.toFixed(2)}`;
+  return `$${amount.toFixed(2)}`.replace('$$', '$');
 };
 
 // New Client modal component
@@ -2011,7 +2011,7 @@ export default function CotizacionForm() {
                         <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Cajones</TableHead>
                         <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Puertas</TableHead>
                         <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Entre.</TableHead>
-                        <TableHead className="w-[90px] text-right bg-muted/30 py-2 px-2 text-xs">Precio</TableHead>
+                        <TableHead className="w-[90px] text-right bg-muted/30 py-2 px-2 text-xs">Precio (auto)</TableHead>
                         <TableHead className="w-[90px] text-right bg-muted/30 py-2 px-2 text-xs">Total</TableHead>
                         <TableHead className="w-[40px] bg-muted/30 py-2 px-2 text-xs"></TableHead>
                       </tr>
@@ -2233,42 +2233,20 @@ export default function CotizacionForm() {
                                 )}
                               />
                             </td>
-                            <td className="py-2 px-2">
-                              <div className="flex items-center gap-1">
-                                <FormField
-                                  control={form.control}
-                                  name={`items.${index}.unitPrice`}
-                                  render={({ field }) => (
-                                    <FormItem className="mb-0 flex-1">
-                                      <FormControl>
-                                        <Input
-                                          {...field}
-                                          type="text"
-                                          placeholder="$0.00"
-                                          className="h-8 text-right px-2 text-sm"
-                                          readOnly
-                                          value={`$${formatCurrencyDisplay(new Decimal(field.value || 0))}`}
-                                        />
-                                      </FormControl>
-                                    </FormItem>
-                                  )}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0 flex-shrink-0"
-                                  onClick={() => {
-                                    const furnitureData = form.getValues(`items.${index}.furnitureData`);
-                                    if (furnitureData) {
-                                      calculateItemPrice(index, furnitureData);
-                                    }
-                                  }}
-                                  title="Calcular precio"
-                                >
-                                  <Calculator className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
+                            <td className="py-2 px-2 text-right">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.unitPrice`}
+                                render={({ field }) => (
+                                  <FormItem className="mb-0">
+                                    <FormControl>
+                                      <div className="h-8 text-right px-2 text-sm font-medium py-1.5">
+                                        {formatCurrencyDisplay(new Decimal(field.value || 0))}
+                                      </div>
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
                             </td>
                             <td className="py-2 px-2 text-right font-medium text-sm">
                               {(() => {
