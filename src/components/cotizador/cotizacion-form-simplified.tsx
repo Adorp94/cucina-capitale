@@ -966,11 +966,19 @@ export default function CotizacionForm() {
       const taxes = subtotal * taxRate;
       const total = subtotal + taxes;
       
+      // Get project type text based on ID
+      const projectTypeMap: Record<string, string> = {
+        "1": "Residencial",
+        "2": "Comercial",
+        "3": "Desarrollo",
+        "4": "Institucional",
+      };
+      
       // Create the quotation object
       const quotationData = {
         id_cliente: data.clientId || null,
         project_name: data.projectName,
-        project_type: data.projectType,
+        project_type: data.projectType,  // The ID will be used in the PDF generation with a mapping
         subtotal,
         tax_rate: taxRate,
         taxes,
@@ -1017,6 +1025,99 @@ export default function CotizacionForm() {
 
       if (itemsError) {
         throw new Error(`Error al guardar los items: ${itemsError.message}`);
+      }
+      
+      // Save materials to cotizacion_materiales table
+      const materialsToSave = [];
+      
+      // Helper function to find material cost by ID
+      const getMaterialCost = (materialId: string, collection: any[]) => {
+        const material = collection.find(m => m.id_material.toString() === materialId);
+        return material ? material.costo : 0;
+      };
+      
+      // Process each material if it's not "none"
+      if (data.matHuacal && data.matHuacal !== "none") {
+        const costo = getMaterialCost(data.matHuacal, tabletosMaterials);
+        materialsToSave.push({
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: "matHuacal",
+          id_material: parseInt(data.matHuacal),
+          costo_usado: costo
+        });
+      }
+      
+      if (data.matVista && data.matVista !== "none") {
+        const costo = getMaterialCost(data.matVista, tabletosMaterials);
+        materialsToSave.push({
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: "matVista",
+          id_material: parseInt(data.matVista),
+          costo_usado: costo
+        });
+      }
+      
+      if (data.chapHuacal && data.chapHuacal !== "none") {
+        const costo = getMaterialCost(data.chapHuacal, chapacintaMaterials);
+        materialsToSave.push({
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: "chapHuacal",
+          id_material: parseInt(data.chapHuacal),
+          costo_usado: costo
+        });
+      }
+      
+      if (data.chapVista && data.chapVista !== "none") {
+        const costo = getMaterialCost(data.chapVista, chapacintaMaterials);
+        materialsToSave.push({
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: "chapVista",
+          id_material: parseInt(data.chapVista),
+          costo_usado: costo
+        });
+      }
+      
+      if (data.jaladera && data.jaladera !== "none") {
+        const costo = getMaterialCost(data.jaladera, jaladeraMaterials);
+        materialsToSave.push({
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: "jaladera",
+          id_material: parseInt(data.jaladera),
+          costo_usado: costo
+        });
+      }
+      
+      if (data.corredera && data.corredera !== "none") {
+        const costo = getMaterialCost(data.corredera, correderasMaterials);
+        materialsToSave.push({
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: "corredera",
+          id_material: parseInt(data.corredera),
+          costo_usado: costo
+        });
+      }
+      
+      if (data.bisagras && data.bisagras !== "none") {
+        const costo = getMaterialCost(data.bisagras, bisagrasMaterials);
+        materialsToSave.push({
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: "bisagras",
+          id_material: parseInt(data.bisagras),
+          costo_usado: costo
+        });
+      }
+      
+      console.log("Saving materials:", materialsToSave);
+      
+      if (materialsToSave.length > 0) {
+        const { error: materialsError } = await supabase
+          .from('cotizacion_materiales')
+          .insert(materialsToSave);
+          
+        if (materialsError) {
+          console.error("Error saving materials:", materialsError);
+          // Don't throw error here, continue with success flow
+        }
       }
       
       // Show success message using toast
