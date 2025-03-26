@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import ClientLayout from "@/app/client-layout";
+import AuthProvider from "@/app/auth-provider";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "react-day-picker/dist/style.css";
@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
-        <ClientLayout>{children}</ClientLayout>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
