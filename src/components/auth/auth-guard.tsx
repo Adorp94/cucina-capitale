@@ -1,7 +1,7 @@
 'use client';
 
-import { useAuth0 } from "@auth0/auth0-react";
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
+import { useSafeAuth0 } from "@/hooks/use-safe-auth0";
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -9,9 +9,17 @@ interface AuthGuardProps {
 }
 
 export function AuthenticatedGuard({ children, fallback = null }: AuthGuardProps) {
-  const { isAuthenticated, isLoading } = useAuth0();
+  const [mounted, setMounted] = useState(false);
+  const { isAuthenticated, isLoading } = useSafeAuth0();
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Only use Auth0 data after client-side mount
+  const shouldShow = mounted && !isLoading;
 
-  if (isLoading) {
+  if (!shouldShow) {
     return <div className="p-4 text-center">Cargando...</div>;
   }
 
@@ -23,9 +31,17 @@ export function AuthenticatedGuard({ children, fallback = null }: AuthGuardProps
 }
 
 export function UnauthenticatedGuard({ children, fallback = null }: AuthGuardProps) {
-  const { isAuthenticated, isLoading } = useAuth0();
+  const [mounted, setMounted] = useState(false);
+  const { isAuthenticated, isLoading } = useSafeAuth0();
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Only use Auth0 data after client-side mount
+  const shouldShow = mounted && !isLoading;
 
-  if (isLoading) {
+  if (!shouldShow) {
     return <div className="p-4 text-center">Cargando...</div>;
   }
 

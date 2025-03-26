@@ -2,12 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useAuth0 } from "@auth0/auth0-react";
 import { AuthenticatedGuard, UnauthenticatedGuard } from "@/components/auth/auth-guard";
 import LoginButton from "@/components/auth/login-button";
+import { useState, useEffect } from "react";
+import { useSafeAuth0 } from "@/hooks/use-safe-auth0";
 
 export default function HomePage() {
-  const { isLoading } = useAuth0();
+  const [mounted, setMounted] = useState(false);
+  const { isLoading } = useSafeAuth0();
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Only use Auth0 data after client-side mount
+  const shouldShow = mounted && !isLoading;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -24,7 +33,7 @@ export default function HomePage() {
                 </p>
               </div>
               
-              {isLoading ? (
+              {!shouldShow ? (
                 <div className="h-10 w-40 bg-gray-200 rounded animate-pulse"></div>
               ) : (
                 <>

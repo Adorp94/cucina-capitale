@@ -1,5 +1,5 @@
 /**
- * Configuration for authenticated routes in the application
+ * Configuration for routes in the application
  */
 
 // Public routes that don't require authentication
@@ -10,7 +10,12 @@ export const publicRoutes = [
   '/register',
   '/sign-up',
   '/reset-password',
-  '/api/(.*)' // API routes
+  '/api/(.*)', // API routes
+  '/callback', // Auth0 callback route
+  '/auth-test', // Auth0 test page
+  '/not-found',
+  '/favicon.ico',
+  '/_next/(.*)' // Next.js static assets
 ];
 
 // Routes that require authentication

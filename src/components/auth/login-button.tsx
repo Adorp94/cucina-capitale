@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth0 } from "@auth0/auth0-react";
+import { useSafeAuth0 } from "@/hooks/use-safe-auth0";
 
 interface LoginButtonProps {
   className?: string;
@@ -8,7 +8,7 @@ interface LoginButtonProps {
 }
 
 export default function LoginButton({ className, children }: LoginButtonProps) {
-  const { loginWithRedirect } = useAuth0();
+  const { loginWithRedirect } = useSafeAuth0();
 
   return (
     <button 

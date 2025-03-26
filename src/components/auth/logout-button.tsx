@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth0 } from "@auth0/auth0-react";
+import { useSafeAuth0 } from "@/hooks/use-safe-auth0";
 
 interface LogoutButtonProps {
   className?: string;
@@ -8,7 +8,7 @@ interface LogoutButtonProps {
 }
 
 export default function LogoutButton({ className, children }: LogoutButtonProps) {
-  const { logout } = useAuth0();
+  const { logout } = useSafeAuth0();
 
   return (
     <button 
