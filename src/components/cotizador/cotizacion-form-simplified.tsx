@@ -88,7 +88,7 @@ const cotizacionFormSchema = z.object({
   chapHuacal: z.string().optional(),
   chapVista: z.string().optional(),
   jaladera: z.string().optional(),
-  correderas: z.string().optional(),
+  corredera: z.string().optional(),  // Changed from correderas to corredera
   bisagras: z.string().optional(),
   
   // Delivery and Payment
@@ -109,13 +109,16 @@ const cotizacionFormSchema = z.object({
         chap_huacal: z.number().nullable().optional(),
         chap_vista: z.number().nullable().optional(),
         jaladera: z.number().nullable().optional(),
-        correderas: z.number().nullable().optional(),
+        corredera: z.number().nullable().optional(),  // Fixed: Changed from correderas to corredera
         bisagras: z.number().nullable().optional(),
         patas: z.number().nullable().optional(),
         clip_patas: z.number().nullable().optional(),
         mensulas: z.number().nullable().optional(),
         kit_tornillo: z.number().nullable().optional(),
         cif: z.number().nullable().optional(),
+        cajones: z.number().nullable().optional(),
+        puertas: z.number().nullable().optional(),
+        entrepaños: z.number().nullable().optional(),
       }).optional(),
     })
   ),
@@ -241,7 +244,7 @@ export default function CotizacionForm() {
       chapHuacal: "none",
       chapVista: "none",
       jaladera: "none",
-      correderas: "none",
+      corredera: "none",
       bisagras: "none",
       deliveryTime: 30,
       paymentTerms: "50% anticipo, 50% contra entrega",
@@ -507,7 +510,7 @@ export default function CotizacionForm() {
       chap_huacal: item.chap_huacal || null,
       chap_vista: item.chap_vista || null,
       jaladera: item.jaladera || null,
-      correderas: item.correderas || null,
+      corredera: item.corredera || null,  // Fixed: Changed from correderas to corredera
       bisagras: item.bisagras || null,
       // Add additional fields from the formula
       patas: item.patas || null,
@@ -515,6 +518,10 @@ export default function CotizacionForm() {
       mensulas: item.mensulas || null,
       kit_tornillo: item.kit_tornillo || null,
       cif: item.cif || null,
+      // Add these as well from the database
+      cajones: item.cajones || null,
+      puertas: item.puertas || null,
+      entrepaños: item.entrepaños || null,
     };
     
     console.log("Furniture data:", furnitureData);
@@ -527,11 +534,11 @@ export default function CotizacionForm() {
     const chapHuacalId = form.getValues('chapHuacal');
     const chapVistaId = form.getValues('chapVista');
     const jaladeraId = form.getValues('jaladera');
-    const correderasId = form.getValues('correderas');
+    const correderaId = form.getValues('corredera');
     const bisagrasId = form.getValues('bisagras');
     
     console.log("Selected material IDs:", {
-      matHuacalId, matVistaId, chapHuacalId, chapVistaId, jaladeraId, correderasId, bisagrasId
+      matHuacalId, matVistaId, chapHuacalId, chapVistaId, jaladeraId, correderaId, bisagrasId
     });
     
     // Get all selected material objects with costs
@@ -545,8 +552,8 @@ export default function CotizacionForm() {
       chapacintaMaterials.find(m => m.id_material.toString() === chapVistaId) : null;
     const jaladeraMaterial = jaladeraId && jaladeraId !== "none" ? 
       jaladeraMaterials.find(m => m.id_material.toString() === jaladeraId) : null;
-    const correderasMaterial = correderasId && correderasId !== "none" ? 
-      correderasMaterials.find(m => m.id_material.toString() === correderasId) : null;
+    const correderaMaterial = correderaId && correderaId !== "none" ? 
+      correderasMaterials.find(m => m.id_material.toString() === correderaId) : null;
     const bisagrasMaterial = bisagrasId && bisagrasId !== "none" ? 
       bisagrasMaterials.find(m => m.id_material.toString() === bisagrasId) : null;
     
@@ -559,7 +566,7 @@ export default function CotizacionForm() {
     
     console.log("Material objects:", {
       matHuacalMaterial, matVistaMaterial, chapHuacalMaterial, chapVistaMaterial, 
-      jaladeraMaterial, correderasMaterial, bisagrasMaterial
+      jaladeraMaterial, correderaMaterial, bisagrasMaterial
     });
     
     // Apply multiplier based on project type
@@ -609,10 +616,10 @@ export default function CotizacionForm() {
       console.log(`Jaladera: ${furnitureData.jaladera} * ${jaladeraMaterial.costo} * ${multiplier} = ${componentPrice}`);
     }
     
-    if (furnitureData.correderas && correderasMaterial) {
-      const componentPrice = furnitureData.correderas * correderasMaterial.costo * multiplier;
+    if (furnitureData.corredera && correderaMaterial) {
+      const componentPrice = furnitureData.corredera * correderaMaterial.costo * multiplier;
       price += componentPrice;
-      console.log(`Correderas: ${furnitureData.correderas} * ${correderasMaterial.costo} * ${multiplier} = ${componentPrice}`);
+      console.log(`Corredera: ${furnitureData.corredera} * ${correderaMaterial.costo} * ${multiplier} = ${componentPrice}`);
     }
     
     if (furnitureData.bisagras && bisagrasMaterial) {
@@ -1656,7 +1663,7 @@ export default function CotizacionForm() {
                         
                         <FormField
                           control={form.control}
-                          name="correderas"
+                          name="corredera"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
                               <FormLabel>Correderas</FormLabel>
@@ -1693,7 +1700,7 @@ export default function CotizacionForm() {
                                       <CommandItem
                                         value="none"
                                         onSelect={() => {
-                                          form.setValue("correderas", "none");
+                                          form.setValue("corredera", "none");
                                           setOpenCorrederasCombobox(false);
                                         }}
                                       >
@@ -1704,7 +1711,7 @@ export default function CotizacionForm() {
                                           key={material.id_material}
                                           value={material.id_material.toString()}
                                           onSelect={() => {
-                                            form.setValue("correderas", material.id_material.toString());
+                                            form.setValue("corredera", material.id_material.toString());
                                             setOpenCorrederasCombobox(false);
                                           }}
                                         >
@@ -1828,8 +1835,8 @@ export default function CotizacionForm() {
                           </div>
                           <div>
                             <span className="font-medium">Correderas:</span>{" "}
-                            {form.watch("correderas") && form.watch("correderas") !== "none" 
-                              ? correderasMaterials.find(m => m.id_material.toString() === form.watch("correderas"))?.nombre 
+                            {form.watch("corredera") && form.watch("corredera") !== "none" 
+                              ? correderasMaterials.find(m => m.id_material.toString() === form.watch("corredera"))?.nombre 
                               : "Ninguno"}
                           </div>
                           <div>
@@ -2075,7 +2082,7 @@ export default function CotizacionForm() {
                         const chapHuacalId = form.getValues('chapHuacal');
                         const chapVistaId = form.getValues('chapVista');
                         const jaladeraId = form.getValues('jaladera');
-                        const correderasId = form.getValues('correderas');
+                        const correderaId = form.getValues('corredera');
                         const bisagrasId = form.getValues('bisagras');
                         
                         // Get material objects
@@ -2089,8 +2096,8 @@ export default function CotizacionForm() {
                           chapacintaMaterials.find(m => m.id_material.toString() === chapVistaId) : null;
                         const jaladeraMaterial = jaladeraId && jaladeraId !== "none" ? 
                           jaladeraMaterials.find(m => m.id_material.toString() === jaladeraId) : null;
-                        const correderasMaterial = correderasId && correderasId !== "none" ? 
-                          correderasMaterials.find(m => m.id_material.toString() === correderasId) : null;
+                        const correderaMaterial = correderaId && correderaId !== "none" ? 
+                          correderasMaterials.find(m => m.id_material.toString() === correderaId) : null;
                         const bisagrasMaterial = bisagrasId && bisagrasId !== "none" ? 
                           bisagrasMaterials.find(m => m.id_material.toString() === bisagrasId) : null;
                           
@@ -2154,10 +2161,10 @@ export default function CotizacionForm() {
                                 </div>
                               )}
                               
-                              {fd.correderas && correderasMaterial && (
+                              {fd.corredera && correderaMaterial && (
                                 <div>
-                                  <div className="font-medium">Correderas:</div>
-                                  <div>{fd.correderas} × ${correderasMaterial.costo} × {multiplier} = ${(fd.correderas * correderasMaterial.costo * multiplier).toFixed(2)}</div>
+                                  <div className="font-medium">Corredera:</div>
+                                  <div>{fd.corredera} × ${correderaMaterial.costo} × {multiplier} = ${(fd.corredera * correderaMaterial.costo * multiplier).toFixed(2)}</div>
                                 </div>
                               )}
                               
