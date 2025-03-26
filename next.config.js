@@ -28,6 +28,42 @@ const nextConfig = {
     // This makes sure Clerk authentication works properly with Vercel deployment
     appDir: true,
   },
+  // Disable SWC minifier to avoid minification issues with dynamic imports
+  swcMinify: false,
+  // Disable static page generation for any route that's protected
+  staticPageGenerationTimeout: 120,
+  // Configure specific routes as dynamic
+  async headers() {
+    return [
+      {
+        source: '/cotizador/:path*',
+        headers: [
+          {
+            key: 'x-nextjs-data',
+            value: 'dynamic',
+          },
+        ],
+      },
+      {
+        source: '/cotizaciones/:path*',
+        headers: [
+          {
+            key: 'x-nextjs-data',
+            value: 'dynamic',
+          },
+        ],
+      },
+      {
+        source: '/dashboard/:path*',
+        headers: [
+          {
+            key: 'x-nextjs-data',
+            value: 'dynamic',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig; 
