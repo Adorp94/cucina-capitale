@@ -5,11 +5,10 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, CalendarIcon, Plus, Trash2, Loader2, Search, ChevronDown } from 'lucide-react';
+import { ChevronLeft, CalendarIcon, Plus, Trash2, Loader2, Search, ChevronDown, Calculator } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
-import { Decimal } from 'decimal.js';
 import { createBrowserClient } from '@supabase/ssr';
 
 import { Button } from '@/components/ui/button';
@@ -112,6 +111,11 @@ const cotizacionFormSchema = z.object({
         jaladera: z.number().nullable().optional(),
         correderas: z.number().nullable().optional(),
         bisagras: z.number().nullable().optional(),
+        patas: z.number().nullable().optional(),
+        clip_patas: z.number().nullable().optional(),
+        mensulas: z.number().nullable().optional(),
+        kit_tornillo: z.number().nullable().optional(),
+        cif: z.number().nullable().optional(),
       }).optional(),
     })
   ),
@@ -170,9 +174,9 @@ export default function CotizacionForm() {
   
   // State for tracking totals
   const [totals, setTotals] = useState({
-    subtotal: new Decimal(0),
-    taxes: new Decimal(0.16),  // 16% IVA
-    total: new Decimal(0)
+    subtotal: 0,
+    tax: 0,
+    total: 0
   });
   
   // Add inventory state
@@ -351,28 +355,91 @@ export default function CotizacionForm() {
     fetchMaterials();
   }, []);
   
-  // Calculate totals when items change
+  // Calculate totals for the quotation
   const calculateTotals = () => {
-    const items = form.getValues("items") || [];
+    try {
+      console.log("Calculating totals for all items");
+      
+      // Get current items
+      const items = form.getValues("items") || [];
+      
+      // Skip calculation if there are no items
+      if (items.length === 0) {
+        console.log("No items to calculate totals for");
+        setTotals({
+          subtotal: 0,
+          tax: 0,
+          total: 0
+        });
+        return;
+      }
+      
+      console.log("Items to calculate totals for:", items);
+      
+      // Calculate subtotal - sum of (quantity * unitPrice * (1 - discount/100))
+      let subtotal = 0;
+      
+      items.forEach((item, index) => {
+        // Ensure numeric values
+        const quantity = parseFloat(item.quantity.toString()) || 0;
+        const unitPrice = parseFloat(item.unitPrice.toString()) || 0;
+        const discount = parseFloat(item.discount.toString()) || 0;
+        
+        // Calculate item total considering discount
+        const discountMultiplier = 1 - (discount / 100);
+        const itemTotal = quantity * unitPrice * discountMultiplier;
+        
+        console.log(`Item ${index+1} (${item.description}): ${quantity} × $${unitPrice} × ${discountMultiplier} = $${itemTotal.toFixed(2)}`);
+        
+        // Add to subtotal
+        subtotal += itemTotal;
+      });
+      
+      // Calculate tax (16%)
+      const taxRate = 0.16;
+      const tax = subtotal * taxRate;
+      
+      // Calculate total
+      const total = subtotal + tax;
+      
+      console.log(`Subtotal: $${subtotal.toFixed(2)}, Tax (16%): $${tax.toFixed(2)}, Total: $${total.toFixed(2)}`);
+      
+      // Update the totals state
+      setTotals({
+        subtotal: parseFloat(subtotal.toFixed(2)),
+        tax: parseFloat(tax.toFixed(2)),
+        total: parseFloat(total.toFixed(2))
+      });
+    } catch (error) {
+      console.error("Error calculating totals:", error);
+    }
+  };
+
+  // Add function to handle price, quantity, or discount changes
+  const handleItemValueChange = (index: number, field: string, value: any) => {
+    console.log(`Updating ${field} for item ${index} to:`, value);
     
-    // Calculate subtotal
-    const subtotal = items.reduce((total, item) => {
-      const itemPrice = new Decimal(item.quantity || 0).mul(new Decimal(item.unitPrice || 0));
-      const discount = itemPrice.mul(new Decimal(item.discount || 0).div(100));
-      return total.plus(itemPrice.minus(discount));
-    }, new Decimal(0));
+    // Parse the value to make sure it's a number
+    let numValue = parseFloat(value);
     
-    // Calculate taxes
-    const taxes = subtotal.mul(new Decimal(0.16));
+    // Set to 0 if NaN
+    if (isNaN(numValue)) {
+      numValue = 0;
+    }
     
-    // Calculate total
-    const total = subtotal.plus(taxes);
+    // Update the form with the parsed value using the appropriate path
+    if (field === 'quantity') {
+      form.setValue(`items.${index}.quantity`, numValue);
+    } else if (field === 'unitPrice') {
+      form.setValue(`items.${index}.unitPrice`, numValue);
+    } else if (field === 'discount') {
+      form.setValue(`items.${index}.discount`, numValue);
+    }
     
-    setTotals({
-      subtotal,
-      taxes: new Decimal(0.16),
-      total
-    });
+    // Recalculate totals with a slight delay to ensure state is updated
+    setTimeout(() => {
+      calculateTotals();
+    }, 10);
   };
 
   // Watch for changes to items to update totals
@@ -381,6 +448,11 @@ export default function CotizacionForm() {
       calculateTotals();
     }
   });
+
+  // Initialize totals when component mounts
+  useEffect(() => {
+    calculateTotals();
+  }, []);
 
   // Fetch inventory items
   const fetchInventory = useCallback(async (searchQuery = '') => {
@@ -425,7 +497,9 @@ export default function CotizacionForm() {
   
   // Add function to add an inventory item
   const addInventoryItem = (item: any) => {
-    // Create furniture data object
+    console.log("Adding inventory item:", item);
+    
+    // Create furniture data object with all possible fields from inventory
     const furnitureData = {
       mueble_id: item.mueble_id,
       mat_huacal: item.mat_huacal || null,
@@ -435,10 +509,19 @@ export default function CotizacionForm() {
       jaladera: item.jaladera || null,
       correderas: item.correderas || null,
       bisagras: item.bisagras || null,
+      // Add additional fields from the formula
+      patas: item.patas || null,
+      clip_patas: item.clip_patas || null,
+      mensulas: item.mensulas || null,
+      kit_tornillo: item.kit_tornillo || null,
+      cif: item.cif || null,
     };
     
-    // Calculate price based on materials
+    console.log("Furniture data:", furnitureData);
+    
+    // Calculate price based on complete formula
     let price = 0;
+    // Get all selected material IDs
     const matHuacalId = form.getValues('matHuacal');
     const matVistaId = form.getValues('matVista');
     const chapHuacalId = form.getValues('chapHuacal');
@@ -447,7 +530,11 @@ export default function CotizacionForm() {
     const correderasId = form.getValues('correderas');
     const bisagrasId = form.getValues('bisagras');
     
-    // Get material costs
+    console.log("Selected material IDs:", {
+      matHuacalId, matVistaId, chapHuacalId, chapVistaId, jaladeraId, correderasId, bisagrasId
+    });
+    
+    // Get all selected material objects with costs
     const matHuacalMaterial = matHuacalId && matHuacalId !== "none" ? 
       tabletosMaterials.find(m => m.id_material.toString() === matHuacalId) : null;
     const matVistaMaterial = matVistaId && matVistaId !== "none" ? 
@@ -463,58 +550,146 @@ export default function CotizacionForm() {
     const bisagrasMaterial = bisagrasId && bisagrasId !== "none" ? 
       bisagrasMaterials.find(m => m.id_material.toString() === bisagrasId) : null;
     
-    // Calculate price components
-    if (furnitureData.mat_huacal && matHuacalMaterial) {
-      price += furnitureData.mat_huacal * matHuacalMaterial.costo;
-    }
-    if (furnitureData.mat_vista && matVistaMaterial) {
-      price += furnitureData.mat_vista * matVistaMaterial.costo;
-    }
-    if (furnitureData.chap_huacal && chapHuacalMaterial) {
-      price += furnitureData.chap_huacal * chapHuacalMaterial.costo;
-    }
-    if (furnitureData.chap_vista && chapVistaMaterial) {
-      price += furnitureData.chap_vista * chapVistaMaterial.costo;
-    }
-    if (furnitureData.jaladera && jaladeraMaterial) {
-      price += furnitureData.jaladera * jaladeraMaterial.costo;
-    }
-    if (furnitureData.correderas && correderasMaterial) {
-      price += furnitureData.correderas * correderasMaterial.costo;
-    }
-    if (furnitureData.bisagras && bisagrasMaterial) {
-      price += furnitureData.bisagras * bisagrasMaterial.costo;
-    }
+    // Default cost values for fixed materials that are not selectable
+    const DEFAULT_PATAS_COST = 10;
+    const DEFAULT_CLIP_PATAS_COST = 2;
+    const DEFAULT_MENSULAS_COST = 0.9;
+    const DEFAULT_KIT_TORNILLO_COST = 30;
+    const DEFAULT_CIF_COST = 100;
+    
+    console.log("Material objects:", {
+      matHuacalMaterial, matVistaMaterial, chapHuacalMaterial, chapVistaMaterial, 
+      jaladeraMaterial, correderasMaterial, bisagrasMaterial
+    });
     
     // Apply multiplier based on project type
     const projectType = form.getValues('projectType');
     let multiplier = 1;
+    
+    // Set multiplier based on project type
     if (projectType === "Residencial") {
       multiplier = 1.8; // 180%
     } else if (projectType === "Desarrollo") {
       multiplier = 1.5; // 150%
     }
-    price *= multiplier;
+    
+    console.log(`Project type: ${projectType}, Multiplier: ${multiplier}`);
+    
+    // COMPLETE FORMULA IMPLEMENTATION:
+    // Calculate price components from selected materials
+    
+    // 1. Selected materials calculations
+    if (furnitureData.mat_huacal && matHuacalMaterial) {
+      const componentPrice = furnitureData.mat_huacal * matHuacalMaterial.costo * multiplier;
+      price += componentPrice;
+      console.log(`Material Huacal: ${furnitureData.mat_huacal} * ${matHuacalMaterial.costo} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.mat_vista && matVistaMaterial) {
+      const componentPrice = furnitureData.mat_vista * matVistaMaterial.costo * multiplier;
+      price += componentPrice;
+      console.log(`Material Vista: ${furnitureData.mat_vista} * ${matVistaMaterial.costo} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.chap_huacal && chapHuacalMaterial) {
+      const componentPrice = furnitureData.chap_huacal * chapHuacalMaterial.costo * multiplier;
+      price += componentPrice;
+      console.log(`Chapacinta Huacal: ${furnitureData.chap_huacal} * ${chapHuacalMaterial.costo} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.chap_vista && chapVistaMaterial) {
+      const componentPrice = furnitureData.chap_vista * chapVistaMaterial.costo * multiplier;
+      price += componentPrice;
+      console.log(`Chapacinta Vista: ${furnitureData.chap_vista} * ${chapVistaMaterial.costo} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.jaladera && jaladeraMaterial) {
+      const componentPrice = furnitureData.jaladera * jaladeraMaterial.costo * multiplier;
+      price += componentPrice;
+      console.log(`Jaladera: ${furnitureData.jaladera} * ${jaladeraMaterial.costo} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.correderas && correderasMaterial) {
+      const componentPrice = furnitureData.correderas * correderasMaterial.costo * multiplier;
+      price += componentPrice;
+      console.log(`Correderas: ${furnitureData.correderas} * ${correderasMaterial.costo} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.bisagras && bisagrasMaterial) {
+      const componentPrice = furnitureData.bisagras * bisagrasMaterial.costo * multiplier;
+      price += componentPrice;
+      console.log(`Bisagras: ${furnitureData.bisagras} * ${bisagrasMaterial.costo} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    // 2. Additional auto-included materials - these are not selectable but always added
+    if (furnitureData.patas && furnitureData.patas > 0) {
+      const componentPrice = furnitureData.patas * DEFAULT_PATAS_COST * multiplier;
+      price += componentPrice;
+      console.log(`Patas: ${furnitureData.patas} * ${DEFAULT_PATAS_COST} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.clip_patas && furnitureData.clip_patas > 0) {
+      const componentPrice = furnitureData.clip_patas * DEFAULT_CLIP_PATAS_COST * multiplier;
+      price += componentPrice;
+      console.log(`Clip Patas: ${furnitureData.clip_patas} * ${DEFAULT_CLIP_PATAS_COST} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.mensulas && furnitureData.mensulas > 0) {
+      const componentPrice = furnitureData.mensulas * DEFAULT_MENSULAS_COST * multiplier;
+      price += componentPrice;
+      console.log(`Mensulas: ${furnitureData.mensulas} * ${DEFAULT_MENSULAS_COST} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.kit_tornillo && furnitureData.kit_tornillo > 0) {
+      const componentPrice = furnitureData.kit_tornillo * DEFAULT_KIT_TORNILLO_COST * multiplier;
+      price += componentPrice;
+      console.log(`Kit Tornillo: ${furnitureData.kit_tornillo} * ${DEFAULT_KIT_TORNILLO_COST} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    if (furnitureData.cif && furnitureData.cif > 0) {
+      const componentPrice = furnitureData.cif * DEFAULT_CIF_COST * multiplier;
+      price += componentPrice;
+      console.log(`CIF: ${furnitureData.cif} * ${DEFAULT_CIF_COST} * ${multiplier} = ${componentPrice}`);
+    }
+    
+    // Log total price calculation summary  
+    console.log(`Final calculated price before rounding: ${price}`);
     
     // Round to 2 decimal places
     price = Math.round(price * 100) / 100;
     
-    // Add new item to the form
-    append({
+    console.log(`Final rounded price: ${price}`);
+    
+    // Create the new item with all the calculated data
+    const newItem = {
       description: item.nombre_mueble,
       quantity: 1,
       unitPrice: price,
       discount: 0,
       furnitureData,
-    });
+    };
+    
+    console.log("Adding new item to form:", newItem);
+    
+    // Add new item to the form
+    append(newItem);
+    
+    // Ensure totals are recalculated immediately
+    calculateTotals();
     
     // Close inventory search
     setShowInventorySearch(false);
     setSelectedInventoryItem(null);
     setInventorySearchQuery("");
     
-    // Switch to items tab
-    setCurrentTab("items");
+    // Give React time to update the DOM before switching tabs
+    setTimeout(() => {
+      // Switch to items tab
+      setCurrentTab("items");
+      // Log the final state for debugging
+      console.log("Final form values after adding item:", form.getValues());
+      console.log("Updated totals:", totals);
+    }, 10);
   };
   
   // Load inventory items when needed
@@ -1672,14 +1847,38 @@ export default function CotizacionForm() {
                 <TabsContent value="items" className="space-y-4 mt-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">Productos/Artículos</h3>
-                    <Button 
-                      type="button" 
-                      onClick={() => setShowInventorySearch(true)} 
-                      variant="outline" 
-                      size="sm"
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> Agregar Producto
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button 
+                        type="button" 
+                        onClick={() => {
+                          // Recalculate prices for all items based on current material selections
+                          const items = form.getValues('items');
+                          items.forEach((item, index) => {
+                            if (item.furnitureData) {
+                              // Re-add the item to trigger price calculation
+                              const tempItem = {
+                                ...item,
+                                mueble_id: item.furnitureData.mueble_id,
+                                nombre_mueble: item.description
+                              };
+                              addInventoryItem(tempItem);
+                            }
+                          });
+                        }}
+                        variant="outline" 
+                        size="sm"
+                      >
+                        <Calculator className="h-4 w-4 mr-2" /> Recalcular Precios
+                      </Button>
+                      <Button 
+                        type="button" 
+                        onClick={() => setShowInventorySearch(true)} 
+                        variant="outline" 
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-2" /> Agregar Producto
+                      </Button>
+                    </div>
                   </div>
                   <Separator />
                   
@@ -1734,7 +1933,11 @@ export default function CotizacionForm() {
                                       type="number" 
                                       className="w-20 text-right ml-auto"
                                       min={1}
-                                      onChange={e => field.onChange(parseInt(e.target.value) || 1)}
+                                      onChange={e => {
+                                        const value = parseInt(e.target.value) || 1;
+                                        field.onChange(value);
+                                        handleItemValueChange(index, 'quantity', value);
+                                      }}
                                     />
                                   )}
                                 />
@@ -1744,14 +1947,21 @@ export default function CotizacionForm() {
                                   control={form.control}
                                   name={`items.${index}.unitPrice`}
                                   render={({ field }) => (
-                                    <Input 
-                                      {...field} 
-                                      type="number" 
-                                      className="w-28 text-right ml-auto"
-                                      min={0}
-                                      step={0.01}
-                                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                                    />
+                                    <div className="flex items-center justify-end">
+                                      <span className="mr-1 text-muted-foreground">$</span>
+                                      <Input 
+                                        {...field} 
+                                        type="number" 
+                                        className="w-24 text-right"
+                                        min={0}
+                                        step={0.01}
+                                        onChange={e => {
+                                          const value = parseFloat(e.target.value) || 0;
+                                          field.onChange(value);
+                                          handleItemValueChange(index, 'unitPrice', value);
+                                        }}
+                                      />
+                                    </div>
                                   )}
                                 />
                               </TableCell>
@@ -1766,18 +1976,22 @@ export default function CotizacionForm() {
                                       className="w-20 text-right ml-auto"
                                       min={0}
                                       max={100}
-                                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                      onChange={e => {
+                                        const value = parseFloat(e.target.value) || 0;
+                                        field.onChange(value);
+                                        handleItemValueChange(index, 'discount', value);
+                                      }}
                                     />
                                   )}
                                 />
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-right font-medium">
                                 {(() => {
                                   const item = form.getValues(`items.${index}`);
                                   if (!item) return "—";
-                                  const quantity = item.quantity || 0;
-                                  const price = item.unitPrice || 0;
-                                  const discount = item.discount || 0;
+                                  const quantity = Number(item.quantity) || 0;
+                                  const price = Number(item.unitPrice) || 0;
+                                  const discount = Number(item.discount) || 0;
                                   const total = quantity * price * (1 - discount / 100);
                                   return formatCurrency(total);
                                 })()}
@@ -1786,7 +2000,10 @@ export default function CotizacionForm() {
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  onClick={() => remove(index)}
+                                  onClick={() => {
+                                    remove(index);
+                                    setTimeout(calculateTotals, 10);
+                                  }}
                                   size="icon"
                                 >
                                   <Trash2 className="h-4 w-4 text-red-500" />
@@ -1802,15 +2019,15 @@ export default function CotizacionForm() {
                   <div className="flex flex-col items-end mt-4 space-y-2">
                     <div className="flex justify-between w-48">
                       <span className="text-sm">Subtotal:</span>
-                      <span>{formatCurrency(totals.subtotal.toNumber())}</span>
+                      <span>{formatCurrency(totals.subtotal)}</span>
                     </div>
                     <div className="flex justify-between w-48">
                       <span className="text-sm">IVA (16%):</span>
-                      <span>{formatCurrency(totals.subtotal.mul(totals.taxes).toNumber())}</span>
+                      <span>{formatCurrency(totals.tax)}</span>
                     </div>
                     <div className="flex justify-between w-48 font-semibold">
                       <span>Total:</span>
-                      <span>{formatCurrency(totals.subtotal.mul(new Decimal(1).plus(totals.taxes)).toNumber())}</span>
+                      <span>{formatCurrency(totals.total)}</span>
                     </div>
                   </div>
                   
@@ -1831,6 +2048,170 @@ export default function CotizacionForm() {
                       </FormItem>
                     )}
                   />
+                  
+                  {/* Debugging section to show formula details */}
+                  <div className="mt-8 border border-gray-200 rounded-md p-4 text-sm">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-medium text-gray-700">Detalles de Cálculo de Precios (Debugging)</h4>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => document.getElementById('formula-details')?.classList.toggle('hidden')}
+                      >
+                        Mostrar/Ocultar
+                      </Button>
+                    </div>
+                    
+                    <div id="formula-details" className="mt-2 space-y-4 hidden">
+                      {fields.map((field, index) => {
+                        const item = form.getValues(`items.${index}`);
+                        const fd = item?.furnitureData;
+                        if (!fd) return <div key={field.id}>No hay datos para este elemento</div>;
+                        
+                        // Get selected materials
+                        const matHuacalId = form.getValues('matHuacal');
+                        const matVistaId = form.getValues('matVista');
+                        const chapHuacalId = form.getValues('chapHuacal');
+                        const chapVistaId = form.getValues('chapVista');
+                        const jaladeraId = form.getValues('jaladera');
+                        const correderasId = form.getValues('correderas');
+                        const bisagrasId = form.getValues('bisagras');
+                        
+                        // Get material objects
+                        const matHuacalMaterial = matHuacalId && matHuacalId !== "none" ? 
+                          tabletosMaterials.find(m => m.id_material.toString() === matHuacalId) : null;
+                        const matVistaMaterial = matVistaId && matVistaId !== "none" ? 
+                          tabletosMaterials.find(m => m.id_material.toString() === matVistaId) : null;
+                        const chapHuacalMaterial = chapHuacalId && chapHuacalId !== "none" ? 
+                          chapacintaMaterials.find(m => m.id_material.toString() === chapHuacalId) : null;
+                        const chapVistaMaterial = chapVistaId && chapVistaId !== "none" ? 
+                          chapacintaMaterials.find(m => m.id_material.toString() === chapVistaId) : null;
+                        const jaladeraMaterial = jaladeraId && jaladeraId !== "none" ? 
+                          jaladeraMaterials.find(m => m.id_material.toString() === jaladeraId) : null;
+                        const correderasMaterial = correderasId && correderasId !== "none" ? 
+                          correderasMaterials.find(m => m.id_material.toString() === correderasId) : null;
+                        const bisagrasMaterial = bisagrasId && bisagrasId !== "none" ? 
+                          bisagrasMaterials.find(m => m.id_material.toString() === bisagrasId) : null;
+                          
+                        // Default costs for fixed materials
+                        const DEFAULT_PATAS_COST = 10;
+                        const DEFAULT_CLIP_PATAS_COST = 2;
+                        const DEFAULT_MENSULAS_COST = 0.9;
+                        const DEFAULT_KIT_TORNILLO_COST = 30;
+                        const DEFAULT_CIF_COST = 100;
+                        
+                        // Calculate multiplier
+                        const projectType = form.getValues('projectType');
+                        let multiplier = 1;
+                        if (projectType === "Residencial") {
+                          multiplier = 1.8;
+                        } else if (projectType === "Desarrollo") {
+                          multiplier = 1.5;
+                        }
+                        
+                        return (
+                          <div key={field.id} className="border-t pt-4">
+                            <h5 className="font-semibold mb-2">{item.description} (Item {index + 1})</h5>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                              <div className="col-span-2 mb-1">
+                                <div className="font-medium">Multiplicador por tipo de proyecto: {multiplier}x ({projectType})</div>
+                              </div>
+                              
+                              {fd.mat_huacal && matHuacalMaterial && (
+                                <div>
+                                  <div className="font-medium">Material Huacal:</div>
+                                  <div>{fd.mat_huacal} × ${matHuacalMaterial.costo} × {multiplier} = ${(fd.mat_huacal * matHuacalMaterial.costo * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.mat_vista && matVistaMaterial && (
+                                <div>
+                                  <div className="font-medium">Material Vista:</div>
+                                  <div>{fd.mat_vista} × ${matVistaMaterial.costo} × {multiplier} = ${(fd.mat_vista * matVistaMaterial.costo * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.chap_huacal && chapHuacalMaterial && (
+                                <div>
+                                  <div className="font-medium">Chapacinta Huacal:</div>
+                                  <div>{fd.chap_huacal} × ${chapHuacalMaterial.costo} × {multiplier} = ${(fd.chap_huacal * chapHuacalMaterial.costo * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.chap_vista && chapVistaMaterial && (
+                                <div>
+                                  <div className="font-medium">Chapacinta Vista:</div>
+                                  <div>{fd.chap_vista} × ${chapVistaMaterial.costo} × {multiplier} = ${(fd.chap_vista * chapVistaMaterial.costo * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.jaladera && jaladeraMaterial && (
+                                <div>
+                                  <div className="font-medium">Jaladera:</div>
+                                  <div>{fd.jaladera} × ${jaladeraMaterial.costo} × {multiplier} = ${(fd.jaladera * jaladeraMaterial.costo * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.correderas && correderasMaterial && (
+                                <div>
+                                  <div className="font-medium">Correderas:</div>
+                                  <div>{fd.correderas} × ${correderasMaterial.costo} × {multiplier} = ${(fd.correderas * correderasMaterial.costo * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.bisagras && bisagrasMaterial && (
+                                <div>
+                                  <div className="font-medium">Bisagras:</div>
+                                  <div>{fd.bisagras} × ${bisagrasMaterial.costo} × {multiplier} = ${(fd.bisagras * bisagrasMaterial.costo * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.patas && fd.patas > 0 && (
+                                <div>
+                                  <div className="font-medium">Patas:</div>
+                                  <div>{fd.patas} × ${DEFAULT_PATAS_COST} × {multiplier} = ${(fd.patas * DEFAULT_PATAS_COST * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.clip_patas && fd.clip_patas > 0 && (
+                                <div>
+                                  <div className="font-medium">Clip Patas:</div>
+                                  <div>{fd.clip_patas} × ${DEFAULT_CLIP_PATAS_COST} × {multiplier} = ${(fd.clip_patas * DEFAULT_CLIP_PATAS_COST * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.mensulas && fd.mensulas > 0 && (
+                                <div>
+                                  <div className="font-medium">Ménsulas:</div>
+                                  <div>{fd.mensulas} × ${DEFAULT_MENSULAS_COST} × {multiplier} = ${(fd.mensulas * DEFAULT_MENSULAS_COST * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.kit_tornillo && fd.kit_tornillo > 0 && (
+                                <div>
+                                  <div className="font-medium">Kit Tornillo:</div>
+                                  <div>{fd.kit_tornillo} × ${DEFAULT_KIT_TORNILLO_COST} × {multiplier} = ${(fd.kit_tornillo * DEFAULT_KIT_TORNILLO_COST * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              {fd.cif && fd.cif > 0 && (
+                                <div>
+                                  <div className="font-medium">CIF:</div>
+                                  <div>{fd.cif} × ${DEFAULT_CIF_COST} × {multiplier} = ${(fd.cif * DEFAULT_CIF_COST * multiplier).toFixed(2)}</div>
+                                </div>
+                              )}
+                              
+                              <div className="col-span-2 mt-2 font-semibold">
+                                <div>Precio Total: ${item.unitPrice.toFixed(2)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
               
