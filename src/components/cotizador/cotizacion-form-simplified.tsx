@@ -1672,24 +1672,14 @@ export default function CotizacionForm() {
                 <TabsContent value="items" className="space-y-4 mt-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">Productos/Artículos</h3>
-                    <div className="flex space-x-2">
-                      <Button 
-                        type="button" 
-                        onClick={() => setShowInventorySearch(true)} 
-                        variant="outline" 
-                        size="sm"
-                      >
-                        <Search className="h-4 w-4 mr-2" /> Buscar en Inventario
-                      </Button>
-                      <Button 
-                        type="button" 
-                        onClick={addNewItem} 
-                        variant="outline" 
-                        size="sm"
-                      >
-                        <Plus className="h-4 w-4 mr-2" /> Agregar Manual
-                      </Button>
-                    </div>
+                    <Button 
+                      type="button" 
+                      onClick={() => setShowInventorySearch(true)} 
+                      variant="outline" 
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> Agregar Producto
+                    </Button>
                   </div>
                   <Separator />
                   
@@ -1699,7 +1689,7 @@ export default function CotizacionForm() {
                       <div className="mt-2">
                         <Button 
                           type="button" 
-                          onClick={addNewItem} 
+                          onClick={() => setShowInventorySearch(true)} 
                           variant="outline"
                         >
                           <Plus className="h-4 w-4 mr-2" /> Agregar Producto
@@ -1861,7 +1851,7 @@ export default function CotizacionForm() {
       <Dialog open={showInventorySearch} onOpenChange={setShowInventorySearch}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Buscar en Inventario</DialogTitle>
+            <DialogTitle>Agregar Producto</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
