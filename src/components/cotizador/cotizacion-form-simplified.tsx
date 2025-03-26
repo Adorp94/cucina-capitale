@@ -2330,28 +2330,6 @@ export default function CotizacionForm() {
                     <div className="flex space-x-2">
                       <Button 
                         type="button" 
-                        onClick={() => {
-                          // Recalculate prices for all items based on current material selections
-                          const items = form.getValues('items');
-                          items.forEach((item, index) => {
-                            if (item.furnitureData) {
-                              // Re-add the item to trigger price calculation
-                              const tempItem = {
-                                ...item,
-                                mueble_id: item.furnitureData.mueble_id,
-                                nombre_mueble: item.description
-                              };
-                              addInventoryItem(tempItem);
-                            }
-                          });
-                        }}
-                        variant="outline" 
-                        size="sm"
-                      >
-                        <Calculator className="h-4 w-4 mr-2" /> Recalcular Precios
-                      </Button>
-                      <Button 
-                        type="button" 
                         onClick={() => setShowInventorySearch(true)} 
                         variant="outline" 
                         size="sm"
@@ -2498,19 +2476,23 @@ export default function CotizacionForm() {
                   
                   {/* Display the calculated totals */}
                   <div className="rounded-md border mt-8 p-4">
-                    <h3 className="text-lg font-medium mb-4">Totales</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-sm text-gray-500">Subtotal</div>
-                        <div className="text-xl font-medium">${formatCurrency(totals.subtotal)}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-500">IVA (16%)</div>
-                        <div className="text-xl font-medium">${formatCurrency(totals.tax)}</div>
-                      </div>
-                      <div className="col-span-2">
-                        <div className="text-sm text-gray-500">Total</div>
-                        <div className="text-2xl font-bold">${formatCurrency(totals.total)}</div>
+                    <div className="flex justify-end">
+                      <div className="w-64">
+                        <h3 className="text-base font-medium mb-2">Totales</h3>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <div className="text-sm text-gray-500">Subtotal</div>
+                            <div className="text-sm font-medium">{formatCurrency(totals.subtotal)}</div>
+                          </div>
+                          <div className="flex justify-between">
+                            <div className="text-sm text-gray-500">IVA (16%)</div>
+                            <div className="text-sm font-medium">{formatCurrency(totals.tax)}</div>
+                          </div>
+                          <div className="pt-2 border-t flex justify-between">
+                            <div className="text-sm text-gray-500">Total</div>
+                            <div className="text-base font-bold">{formatCurrency(totals.total)}</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
