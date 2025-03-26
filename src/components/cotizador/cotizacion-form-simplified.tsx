@@ -2433,7 +2433,7 @@ export default function CotizacionForm() {
                 {currentTab === "items" ? (
                   <Button 
                     type="submit" 
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || fields.length === 0}
                     className="bg-primary hover:bg-primary/90 text-white"
                   >
                     {isSubmitting ? (
@@ -2457,8 +2457,11 @@ export default function CotizacionForm() {
                       } else if (currentTab === "project") {
                         form.trigger(["projectName", "projectType", "vendedor", "fabricante", "instalador"])
                           .then(isValid => {
-                            if (isValid) setCurrentTab("items");
+                            if (isValid) setCurrentTab("materials");
                           });
+                      } else if (currentTab === "materials") {
+                        // No validation needed for materials since they're optional
+                        setCurrentTab("items");
                       }
                     }}
                     className="bg-primary hover:bg-primary/90 text-white"
