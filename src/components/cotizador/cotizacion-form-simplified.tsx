@@ -1207,6 +1207,17 @@ export default function CotizacionForm() {
     }
   }, [bisagrasSearch, bisagrasMaterials]);
 
+  // Add watchers for form fields
+  const clientTabWatch = form.watch(["clientName", "clientId"]);
+  const projectTabWatch = form.watch(["projectName", "projectType", "vendedor", "fabricante", "instalador", "deliveryTime", "paymentTerms"]);
+  
+  // Compute validity of tabs
+  const isClientTabValid = !!form.getValues("clientName") && !!form.getValues("clientId");
+  const isProjectTabValid = !!form.getValues("projectName") && !!form.getValues("projectType") && 
+                           !!form.getValues("vendedor") && !!form.getValues("fabricante") && 
+                           !!form.getValues("instalador") && !!form.getValues("deliveryTime") && 
+                           !!form.getValues("paymentTerms");
+
   return (
     <>
       <Card className="w-full">
@@ -2448,6 +2459,10 @@ export default function CotizacionForm() {
                 ) : (
                   <Button 
                     type="button" 
+                    disabled={
+                      (currentTab === "client" && !isClientTabValid) || 
+                      (currentTab === "project" && !isProjectTabValid)
+                    }
                     onClick={() => {
                       if (currentTab === "client") {
                         form.trigger(["clientName", "clientEmail", "clientPhone", "clientAddress"])
