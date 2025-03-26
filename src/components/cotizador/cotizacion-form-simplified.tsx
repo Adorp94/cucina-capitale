@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -25,7 +25,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -33,6 +32,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Command,
@@ -42,6 +44,8 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
+import { DayPicker } from "react-day-picker";
+import Image from 'next/image';
 
 // Component to highlight search matches in text
 const HighlightedText = ({ text, query }: { text: string; query: string }) => {
@@ -1458,7 +1462,7 @@ export default function CotizacionForm() {
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
+                              <DayPicker
                                 mode="single"
                                 selected={field.value}
                                 onSelect={(date) => {
@@ -1469,17 +1473,10 @@ export default function CotizacionForm() {
                                   }
                                   setIsCotizacionDateOpen(false);
                                 }}
-                                disabled={(date) =>
-                                  date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                                className="rounded-md border shadow-lg"
-                                classNames={{
-                                  day: "hover:bg-primary hover:text-primary-foreground transition-colors",
-                                  head_cell: "text-gray-500 font-normal",
-                                  caption: "font-medium text-gray-800",
-                                  nav_button: "hover:bg-gray-100 rounded-full p-1"
-                                }}
+                                disabled={[{ before: new Date("1900-01-01") }]}
+                                locale={es}
+                                showOutsideDays
+                                className="p-3"
                               />
                             </PopoverContent>
                           </Popover>
@@ -1515,24 +1512,17 @@ export default function CotizacionForm() {
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0 rounded-lg shadow-md border border-gray-200" align="start">
-                              <Calendar
+                              <DayPicker
                                 mode="single"
                                 selected={field.value}
                                 onSelect={(date) => {
                                   field.onChange(date);
                                   setIsValidUntilOpen(false);
                                 }}
-                                disabled={(date) =>
-                                  date < new Date()
-                                }
-                                initialFocus
-                                className="rounded-md"
-                                classNames={{
-                                  day: "hover:bg-primary hover:text-primary-foreground transition-colors",
-                                  head_cell: "text-gray-500 font-normal",
-                                  caption: "font-medium text-gray-800",
-                                  nav_button: "hover:bg-gray-100 rounded-full p-1"
-                                }}
+                                disabled={[{ before: new Date() }]}
+                                locale={es}
+                                showOutsideDays
+                                className="p-3"
                               />
                             </PopoverContent>
                           </Popover>
