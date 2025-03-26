@@ -70,6 +70,10 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@clerk/nextjs'],
     optimizeCss: false, // Disable CSS optimization to prevent build issues
   },
+  // Disable static generation of certain pages
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  skipMiddlewareUrlNormalize: true, // Prevent middleware URL normalization
+  skipTrailingSlashRedirect: true, // Prevent redirects for trailing slashes
 };
 
 module.exports = nextConfig; 
