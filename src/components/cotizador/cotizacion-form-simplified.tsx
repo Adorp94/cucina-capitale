@@ -1145,121 +1145,143 @@ export default function CotizacionForm() {
                 </TabsList>
                 
                 <TabsContent value="client" className="space-y-4 mt-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Información del Cliente</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-800">Información del Cliente</h3>
                     <Button 
                       type="button" 
                       onClick={() => setShowClientModal(true)} 
                       variant="outline" 
                       size="sm"
+                      className="bg-white hover:bg-gray-50"
                     >
-                      <Plus className="h-4 w-4 mr-2" /> Agregar Cliente
+                      <Plus className="h-4 w-4 mr-2 text-gray-600" /> Agregar Cliente
                     </Button>
                   </div>
-                  <Separator />
                   
-                  <div className="space-y-4">
-                    <div className="flex flex-col space-y-1.5">
-                      <Label htmlFor="client-select">Seleccionar Cliente</Label>
+                  <div className="p-6 bg-white rounded-lg border border-gray-100 shadow-sm">
+                    <div className="mb-5">
+                      <Label className="text-sm font-medium text-gray-700">Seleccionar Cliente</Label>
                       <Popover open={openClientCombobox} onOpenChange={setOpenClientCombobox}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             role="combobox"
                             aria-expanded={openClientCombobox}
-                            className="w-full justify-between"
+                            className="w-full justify-between mt-1.5 font-normal text-gray-700"
                           >
                             {form.watch('clientName') || "Seleccionar cliente..."}
                             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-full p-0">
+                        <PopoverContent className="w-[400px] p-0" align="start">
                           <Command>
-                            <CommandInput placeholder="Buscar cliente..." className="h-9" />
-                            <CommandEmpty>
-                              {isLoadingClients ? (
-                                <div className="flex items-center justify-center p-4">
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  <span>Cargando clientes...</span>
-                                </div>
-                              ) : (
-                                "No se encontraron clientes"
-                              )}
-                            </CommandEmpty>
-                            <CommandGroup>
-                              {clients.map((client) => (
-                                <CommandItem
-                                  key={client.id}
-                                  value={client.id.toString()}
-                                  onSelect={handleClientSelect}
-                                >
-                                  <span>{client.name}</span>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
+                            <CommandInput placeholder="Buscar cliente..." />
+                            <div className="max-h-[300px] overflow-y-auto">
+                              <CommandEmpty>No se encontraron clientes</CommandEmpty>
+                              <CommandGroup>
+                                {clients.map(client => (
+                                  <CommandItem
+                                    key={client.id}
+                                    value={client.id.toString()}
+                                    onSelect={handleClientSelect}
+                                  >
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{client.name}</span>
+                                      {client.email && (
+                                        <span className="text-xs text-muted-foreground">{client.email}</span>
+                                      )}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </div>
                           </Command>
                         </PopoverContent>
                       </Popover>
                     </div>
-                    
-                    <FormField
-                      control={form.control}
-                      name="clientName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nombre del Cliente</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Nombre del cliente" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                      <div>
+                        <FormField
+                          control={form.control}
+                          name="clientName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">Nombre</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Nombre del cliente" 
+                                  className="mt-1"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div>
+                        <FormField
+                          control={form.control}
+                          name="clientEmail"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">Correo electrónico</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="correo@ejemplo.com" 
+                                  className="mt-1"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div>
+                        <FormField
+                          control={form.control}
+                          name="clientPhone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">Teléfono</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="(123) 456-7890" 
+                                  className="mt-1"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div>
+                        <FormField
+                          control={form.control}
+                          name="clientAddress"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">Dirección</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Dirección del cliente" 
+                                  className="mt-1"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="clientEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="email@ejemplo.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="clientPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Teléfono</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Teléfono" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="clientAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Dirección</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Dirección del cliente" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </TabsContent>
                 
                 <TabsContent value="project" className="space-y-4 mt-4">
