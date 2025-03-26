@@ -22,27 +22,28 @@ const nextConfig = {
   // Environment variables
   env: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_AUTH0_DOMAIN: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
+    NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
   },
   // Output standalone for Vercel
   output: 'standalone',
-  // Disable SWC minifier
-  swcMinify: false,
-  // Force app to be completely dynamic
+  // External packages configuration moved from experimental
+  serverExternalPackages: ['@auth0/auth0-react'],
+  // Simplified experimental options
   experimental: {
-    serverComponentsExternalPackages: ['@clerk/nextjs'],
-    disableStaticGeneration: true,
-    appDir: true
+    optimizeCss: true,
   },
-  // Skip static generation for not-found and error pages
-  skipDefaultLibCheck: true,
   images: {
-    domains: ['images.clerk.dev'],
+    domains: ['s.gravatar.com', 'lh3.googleusercontent.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.auth0.com',
+      },
+    ],
   },
   // Avoid prerendering issues
   reactStrictMode: false,
-  // Force dynamic flag everywhere
-  runtime: 'nodejs'
 };
 
 module.exports = nextConfig; 
