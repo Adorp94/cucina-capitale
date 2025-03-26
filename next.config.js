@@ -27,35 +27,17 @@ const nextConfig = {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   },
-  // Disable static optimization for pages that depend on Clerk authentication
+  // Disable static optimization for any pages
   output: 'standalone',
-  // Disable SWC minifier to avoid minification issues with dynamic imports
+  // Disable SWC minifier to avoid minification issues
   swcMinify: false,
-  // Disable static page generation for any route that's protected
-  staticPageGenerationTimeout: 120,
+  // Completely disable static page generation
+  staticPageGenerationTimeout: 0,
   // Configure specific routes as dynamic
   async headers() {
     return [
       {
-        source: '/cotizador/:path*',
-        headers: [
-          {
-            key: 'x-nextjs-data',
-            value: 'dynamic',
-          },
-        ],
-      },
-      {
-        source: '/cotizaciones/:path*',
-        headers: [
-          {
-            key: 'x-nextjs-data',
-            value: 'dynamic',
-          },
-        ],
-      },
-      {
-        source: '/dashboard/:path*',
+        source: '/:path*',
         headers: [
           {
             key: 'x-nextjs-data',
@@ -65,15 +47,21 @@ const nextConfig = {
       },
     ];
   },
-  // Enable App Router
+  // Enable App Router with advanced options
   experimental: {
     serverComponentsExternalPackages: ['@clerk/nextjs'],
-    optimizeCss: false, // Disable CSS optimization to prevent build issues
+    optimizeCss: false, // Disable CSS optimization
+    disableStaticGeneration: true, // Disable static generation completely
   },
-  // Disable static generation of certain pages
+  // Configure page extensions
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   skipMiddlewareUrlNormalize: true, // Prevent middleware URL normalization
   skipTrailingSlashRedirect: true, // Prevent redirects for trailing slashes
+  // Disable static export completely
+  distDir: '.next',
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  }
 };
 
 module.exports = nextConfig; 
