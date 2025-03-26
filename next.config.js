@@ -68,6 +68,7 @@ const nextConfig = {
   // Enable App Router
   experimental: {
     serverComponentsExternalPackages: ['@clerk/nextjs'],
+    optimizeCss: false, // Disable CSS optimization to prevent build issues
   },
 };
 
