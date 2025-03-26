@@ -28,9 +28,11 @@ const nextConfig = {
   output: 'standalone',
   // Disable SWC minifier
   swcMinify: false,
-  // Set up a specific Clerk configuration with needed packages
+  // Force app to be completely dynamic
   experimental: {
     serverComponentsExternalPackages: ['@clerk/nextjs'],
+    disableStaticGeneration: true,
+    appDir: true
   },
   // Skip static generation for not-found and error pages
   skipDefaultLibCheck: true,
@@ -38,7 +40,9 @@ const nextConfig = {
     domains: ['images.clerk.dev'],
   },
   // Avoid prerendering issues
-  reactStrictMode: false
+  reactStrictMode: false,
+  // Force dynamic flag everywhere
+  runtime: 'nodejs'
 };
 
 module.exports = nextConfig; 
