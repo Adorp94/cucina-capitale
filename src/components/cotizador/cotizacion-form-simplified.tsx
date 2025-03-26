@@ -43,6 +43,27 @@ import {
 } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
 
+// Component to highlight search matches in text
+const HighlightedText = ({ text, query }: { text: string; query: string }) => {
+  if (!query || query.length < 1) return <span>{text}</span>;
+  
+  try {
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return (
+      <span>
+        {parts.map((part, i) => 
+          part.toLowerCase() === query.toLowerCase() ? 
+            <span key={i} className="bg-yellow-100 dark:bg-yellow-800 font-medium">{part}</span> : 
+            <span key={i}>{part}</span>
+        )}
+      </span>
+    );
+  } catch (e) {
+    // In case of regex failure
+    return <span>{text}</span>;
+  }
+};
+
 // Updated schema with materials and inventory data
 const cotizacionFormSchema = z.object({
   // Client Information
@@ -1141,7 +1162,9 @@ export default function CotizacionForm() {
                                       value={matHuacalSearch}
                                       onValueChange={setMatHuacalSearch}
                                     />
-                                    <CommandEmpty>No se encontraron materiales</CommandEmpty>
+                                    {matHuacalSearch.length > 0 && filteredTabletos.length === 0 && (
+                                      <CommandEmpty>No se encontraron materiales para "{matHuacalSearch}"</CommandEmpty>
+                                    )}
                                     <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
@@ -1161,7 +1184,10 @@ export default function CotizacionForm() {
                                             setOpenMatHuacalCombobox(false);
                                           }}
                                         >
-                                          <span>{material.nombre} - ${material.costo}</span>
+                                          <HighlightedText 
+                                            text={`${material.nombre} - $${material.costo}`} 
+                                            query={matHuacalSearch} 
+                                          />
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1205,7 +1231,9 @@ export default function CotizacionForm() {
                                       value={matVistaSearch}
                                       onValueChange={setMatVistaSearch}
                                     />
-                                    <CommandEmpty>No se encontraron materiales</CommandEmpty>
+                                    {matVistaSearch.length > 0 && filteredTabletos.length === 0 && (
+                                      <CommandEmpty>No se encontraron materiales para "{matVistaSearch}"</CommandEmpty>
+                                    )}
                                     <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
@@ -1225,7 +1253,10 @@ export default function CotizacionForm() {
                                             setOpenMatVistaCombobox(false);
                                           }}
                                         >
-                                          <span>{material.nombre} - ${material.costo}</span>
+                                          <HighlightedText 
+                                            text={`${material.nombre} - $${material.costo}`} 
+                                            query={matVistaSearch} 
+                                          />
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1271,7 +1302,9 @@ export default function CotizacionForm() {
                                       value={chapHuacalSearch}
                                       onValueChange={setChapHuacalSearch}
                                     />
-                                    <CommandEmpty>No se encontraron chapacinta</CommandEmpty>
+                                    {chapHuacalSearch.length > 0 && filteredChapacinta.length === 0 && (
+                                      <CommandEmpty>No se encontraron chapacinta para "{chapHuacalSearch}"</CommandEmpty>
+                                    )}
                                     <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
@@ -1291,7 +1324,10 @@ export default function CotizacionForm() {
                                             setOpenChapHuacalCombobox(false);
                                           }}
                                         >
-                                          <span>{material.nombre} - ${material.costo}</span>
+                                          <HighlightedText 
+                                            text={`${material.nombre} - $${material.costo}`} 
+                                            query={chapHuacalSearch} 
+                                          />
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1335,7 +1371,9 @@ export default function CotizacionForm() {
                                       value={chapVistaSearch}
                                       onValueChange={setChapVistaSearch}
                                     />
-                                    <CommandEmpty>No se encontraron chapacinta</CommandEmpty>
+                                    {chapVistaSearch.length > 0 && filteredChapacinta.length === 0 && (
+                                      <CommandEmpty>No se encontraron chapacinta para "{chapVistaSearch}"</CommandEmpty>
+                                    )}
                                     <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
@@ -1355,7 +1393,10 @@ export default function CotizacionForm() {
                                             setOpenChapVistaCombobox(false);
                                           }}
                                         >
-                                          <span>{material.nombre} - ${material.costo}</span>
+                                          <HighlightedText 
+                                            text={`${material.nombre} - $${material.costo}`} 
+                                            query={chapVistaSearch} 
+                                          />
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1401,7 +1442,9 @@ export default function CotizacionForm() {
                                       value={jaladeraSearch}
                                       onValueChange={setJaladeraSearch}
                                     />
-                                    <CommandEmpty>No se encontraron jaladeras</CommandEmpty>
+                                    {jaladeraSearch.length > 0 && filteredJaladera.length === 0 && (
+                                      <CommandEmpty>No se encontraron jaladeras para "{jaladeraSearch}"</CommandEmpty>
+                                    )}
                                     <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
@@ -1421,7 +1464,10 @@ export default function CotizacionForm() {
                                             setOpenJaladeraCombobox(false);
                                           }}
                                         >
-                                          <span>{material.nombre} - ${material.costo}</span>
+                                          <HighlightedText 
+                                            text={`${material.nombre} - $${material.costo}`} 
+                                            query={jaladeraSearch} 
+                                          />
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1465,7 +1511,9 @@ export default function CotizacionForm() {
                                       value={correderasSearch}
                                       onValueChange={setCorrederasSearch}
                                     />
-                                    <CommandEmpty>No se encontraron correderas</CommandEmpty>
+                                    {correderasSearch.length > 0 && filteredCorrederas.length === 0 && (
+                                      <CommandEmpty>No se encontraron correderas para "{correderasSearch}"</CommandEmpty>
+                                    )}
                                     <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
@@ -1485,7 +1533,10 @@ export default function CotizacionForm() {
                                             setOpenCorrederasCombobox(false);
                                           }}
                                         >
-                                          <span>{material.nombre} - ${material.costo}</span>
+                                          <HighlightedText 
+                                            text={`${material.nombre} - $${material.costo}`} 
+                                            query={correderasSearch} 
+                                          />
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1529,7 +1580,9 @@ export default function CotizacionForm() {
                                       value={bisagrasSearch}
                                       onValueChange={setBisagrasSearch}
                                     />
-                                    <CommandEmpty>No se encontraron bisagras</CommandEmpty>
+                                    {bisagrasSearch.length > 0 && filteredBisagras.length === 0 && (
+                                      <CommandEmpty>No se encontraron bisagras para "{bisagrasSearch}"</CommandEmpty>
+                                    )}
                                     <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
@@ -1549,7 +1602,10 @@ export default function CotizacionForm() {
                                             setOpenBisagrasCombobox(false);
                                           }}
                                         >
-                                          <span>{material.nombre} - ${material.costo}</span>
+                                          <HighlightedText 
+                                            text={`${material.nombre} - $${material.costo}`} 
+                                            query={bisagrasSearch} 
+                                          />
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
