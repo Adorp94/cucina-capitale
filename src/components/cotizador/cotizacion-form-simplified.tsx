@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, CalendarIcon, Plus, Trash2, Loader2, Search, ChevronDown, Calculator, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { createBrowserClient } from '@supabase/ssr';
+import { useToast } from "@/components/ui/use-toast"
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,7 +67,7 @@ const HighlightedText = ({ text, query }: { text: string; query: string }) => {
 // Updated schema with materials and inventory data
 const cotizacionFormSchema = z.object({
   // Client Information
-  clientId: z.number().optional(),
+  clientId: z.number().min(1, { message: "Cliente requerido" }),
   clientName: z.string().min(1, { message: "Nombre del cliente requerido" }),
   clientEmail: z.string().email({ message: "Email inválido" }).optional().or(z.literal("")),
   clientPhone: z.string().optional(),
@@ -76,6 +77,7 @@ const cotizacionFormSchema = z.object({
   projectName: z.string().min(1, { message: "Nombre del proyecto requerido" }),
   projectType: z.string().min(1, { message: "Tipo de proyecto requerido" }),
   cotizacionDate: z.date(),
+  validUntil: z.date(),
   
   // Team Information
   vendedor: z.string().min(1, { message: "Vendedor requerido" }),
@@ -314,7 +316,9 @@ const NewClientModal = ({
 
 export default function CotizacionForm() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isPdfLoading, setIsPdfLoading] = useState<boolean>(false);
   const [currentTab, setCurrentTab] = useState("client");
   
   // Material states
@@ -388,6 +392,7 @@ export default function CotizacionForm() {
       projectName: "",
       projectType: "Residencial",
       cotizacionDate: new Date(),
+      validUntil: addDays(new Date(), 15), // Set default to 15 days from today
       vendedor: "",
       fabricante: "",
       instalador: "",
@@ -948,7 +953,7 @@ export default function CotizacionForm() {
       );
       
       // Calculate totals for database
-      const subtotal = data.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity * (1 - item.discount / 100)), 0);
+      const subtotal = data.items.reduce((sum, item) => sum + (parseFloat(item.unitPrice.toString()) * parseFloat(item.quantity.toString()) * (1 - parseFloat(item.discount.toString()) / 100)), 0);
       const taxRate = 0.16; // 16% IVA
       const taxes = subtotal * taxRate;
       const total = subtotal + taxes;
@@ -958,33 +963,121 @@ export default function CotizacionForm() {
         id_cliente: data.clientId || null,
         project_name: data.projectName,
         project_type: data.projectType,
-        cotizacion_fecha: data.cotizacionDate.toISOString(),
         subtotal,
         tax_rate: taxRate,
         taxes,
         total,
+        valid_until: data.validUntil.toISOString(),
         delivery_time: data.deliveryTime,
-        payment_terms: data.paymentTerms,
-        notes: data.notes || null
+        notes: data.notes || null,
+        // Remove fields that don't exist in the database schema
+        // vendedor, fabricante, instalador are not in the cotizaciones table
       };
       
-      // For demo purposes, just log the data
-      console.log("Would save quotation data:", quotationData);
-      console.log("Would save items:", data.items);
+      console.log("Saving quotation data:", quotationData);
       
-      // Simulate API call delay 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Insert quotation into database
+      const { data: quotation, error: quotationError } = await supabase
+        .from('cotizaciones')
+        .insert([quotationData])
+        .select()
+        .single();
+
+      if (quotationError) {
+        console.error("Error inserting quotation:", quotationError);
+        throw new Error(`No se pudo crear la cotización: ${quotationError.message}`);
+      }
+
+      console.log("Quotation saved:", quotation);
+      console.log("Saving items:", data.items);
       
-      // Show success message
-      alert("Cotización creada con éxito (simulado)");
+      // Insert quotation items
+      const quotationItems = data.items.map((item, index) => ({
+        id_cotizacion: quotation.id_cotizacion,
+        mueble_id: item.furnitureData?.mueble_id || null,
+        position: index,
+        description: item.description,
+        quantity: parseFloat(item.quantity.toString()),
+        unit_price: parseFloat(item.unitPrice.toString()),
+        // Discount is applied in the total_price calculation but is not stored as a separate field
+        total_price: parseFloat(item.unitPrice.toString()) * parseFloat(item.quantity.toString()) * (1 - parseFloat(item.discount.toString()) / 100)
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('cotizacion_items')
+        .insert(quotationItems);
+
+      if (itemsError) {
+        throw new Error(`Error al guardar los items: ${itemsError.message}`);
+      }
+      
+      // Show success message using toast
+      toast({
+        title: "Éxito",
+        description: "Cotización generada correctamente",
+      });
+      
+      // Ask user if they want to download the PDF
+      const shouldDownloadPdf = window.confirm('¿Desea descargar la cotización en PDF?');
+      if (shouldDownloadPdf) {
+        await downloadPdf(quotation.id_cotizacion);
+      }
       
       // Navigate back to quotations list
       router.push("/cotizaciones");
     } catch (error) {
       console.error("Error creating quotation:", error);
-      alert("Error al crear la cotización: " + (error instanceof Error ? error.message : String(error)));
+      toast({
+        title: "Error",
+        description: "Error al crear la cotización: " + (error instanceof Error ? error.message : String(error)),
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Add this new function for PDF download
+  const downloadPdf = async (cotizacionId: number) => {
+    try {
+      setIsPdfLoading(true);
+      const response = await fetch(`/api/cotizacion/${cotizacionId}/pdf`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al generar el PDF');
+      }
+      
+      // Create a blob from the PDF Stream
+      const blob = await response.blob();
+      
+      // Create a link element to download the blob
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cotizacion-${cotizacionId}.pdf`;
+      
+      // Append to the document body, click it, then remove it
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL created
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "PDF generado correctamente",
+        description: "La cotización ha sido descargada como PDF.",
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "Error al generar PDF",
+        description: error instanceof Error ? error.message : 'Ha ocurrido un error al generar el PDF.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsPdfLoading(false);
     }
   };
   
@@ -1363,7 +1456,13 @@ export default function CotizacionForm() {
                               <Calendar
                                 mode="single"
                                 selected={field.value}
-                                onSelect={field.onChange}
+                                onSelect={(date) => {
+                                  field.onChange(date);
+                                  // Set validUntil to 15 days after the selected date
+                                  if (date) {
+                                    form.setValue("validUntil", addDays(date, 15));
+                                  }
+                                }}
                                 disabled={(date) =>
                                   date < new Date("1900-01-01")
                                 }
@@ -1394,6 +1493,48 @@ export default function CotizacionForm() {
                       )}
                     />
                   </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="validUntil"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Válido Hasta</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP", { locale: es })
+                                ) : (
+                                  <span>Seleccionar fecha</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < new Date()
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   
                   <FormField
                     control={form.control}
@@ -2229,201 +2370,44 @@ export default function CotizacionForm() {
                     </div>
                   )}
                   
-                  <div className="flex flex-col items-end mt-4 space-y-2">
-                    <div className="flex justify-between w-48">
-                      <span className="text-sm">Subtotal:</span>
-                      <span>{formatCurrency(totals.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between w-48">
-                      <span className="text-sm">IVA (16%):</span>
-                      <span>{formatCurrency(totals.tax)}</span>
-                    </div>
-                    <div className="flex justify-between w-48 font-semibold">
-                      <span>Total:</span>
-                      <span>{formatCurrency(totals.total)}</span>
+                  {/* Display the calculated totals */}
+                  <div className="rounded-md border mt-8 p-4">
+                    <h3 className="text-lg font-medium mb-4">Totales</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm text-gray-500">Subtotal</div>
+                        <div className="text-xl font-medium">${formatCurrency(totals.subtotal)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">IVA (16%)</div>
+                        <div className="text-xl font-medium">${formatCurrency(totals.tax)}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-sm text-gray-500">Total</div>
+                        <div className="text-2xl font-bold">${formatCurrency(totals.total)}</div>
+                      </div>
                     </div>
                   </div>
                   
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notas</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Notas adicionales o comentarios" 
-                            className="min-h-[100px]" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Debugging section to show formula details */}
-                  <div className="mt-8 border border-gray-200 rounded-md p-4 text-sm">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-medium text-gray-700">Detalles de Cálculo de Precios (Debugging)</h4>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => document.getElementById('formula-details')?.classList.toggle('hidden')}
-                      >
-                        Mostrar/Ocultar
-                      </Button>
-                    </div>
-                    
-                    <div id="formula-details" className="mt-2 space-y-4 hidden">
-                      {fields.map((field, index) => {
-                        const item = form.getValues(`items.${index}`);
-                        const fd = item?.furnitureData;
-                        if (!fd) return <div key={field.id}>No hay datos para este elemento</div>;
-                        
-                        // Get selected materials
-                        const matHuacalId = form.getValues('matHuacal');
-                        const matVistaId = form.getValues('matVista');
-                        const chapHuacalId = form.getValues('chapHuacal');
-                        const chapVistaId = form.getValues('chapVista');
-                        const jaladeraId = form.getValues('jaladera');
-                        const correderaId = form.getValues('corredera');
-                        const bisagrasId = form.getValues('bisagras');
-                        
-                        // Get material objects
-                        const matHuacalMaterial = matHuacalId && matHuacalId !== "none" ? 
-                          tabletosMaterials.find(m => m.id_material.toString() === matHuacalId) : null;
-                        const matVistaMaterial = matVistaId && matVistaId !== "none" ? 
-                          tabletosMaterials.find(m => m.id_material.toString() === matVistaId) : null;
-                        const chapHuacalMaterial = chapHuacalId && chapHuacalId !== "none" ? 
-                          chapacintaMaterials.find(m => m.id_material.toString() === chapHuacalId) : null;
-                        const chapVistaMaterial = chapVistaId && chapVistaId !== "none" ? 
-                          chapacintaMaterials.find(m => m.id_material.toString() === chapVistaId) : null;
-                        const jaladeraMaterial = jaladeraId && jaladeraId !== "none" ? 
-                          jaladeraMaterials.find(m => m.id_material.toString() === jaladeraId) : null;
-                        const correderaMaterial = correderaId && correderaId !== "none" ? 
-                          correderasMaterials.find(m => m.id_material.toString() === correderaId) : null;
-                        const bisagrasMaterial = bisagrasId && bisagrasId !== "none" ? 
-                          bisagrasMaterials.find(m => m.id_material.toString() === bisagrasId) : null;
-                          
-                        // Default costs for fixed materials
-                        const DEFAULT_PATAS_COST = 10;
-                        const DEFAULT_CLIP_PATAS_COST = 2;
-                        const DEFAULT_MENSULAS_COST = 0.9;
-                        const DEFAULT_KIT_TORNILLO_COST = 30;
-                        const DEFAULT_CIF_COST = 100;
-                        
-                        // Calculate multiplier
-                        const projectType = form.getValues('projectType');
-                        let multiplier = 1;
-                        if (projectType === "Residencial") {
-                          multiplier = 1.8;
-                        } else if (projectType === "Desarrollo") {
-                          multiplier = 1.5;
-                        }
-                        
-                        return (
-                          <div key={field.id} className="border-t pt-4">
-                            <h5 className="font-semibold mb-2">{item.description} (Item {index + 1})</h5>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                              <div className="col-span-2 mb-1">
-                                <div className="font-medium">Multiplicador por tipo de proyecto: {multiplier}x ({projectType})</div>
-                              </div>
-                              
-                              {fd.mat_huacal && matHuacalMaterial && (
-                                <div>
-                                  <div className="font-medium">Material Huacal:</div>
-                                  <div>{fd.mat_huacal} × ${matHuacalMaterial.costo} × {multiplier} = ${(fd.mat_huacal * matHuacalMaterial.costo * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.mat_vista && matVistaMaterial && (
-                                <div>
-                                  <div className="font-medium">Material Vista:</div>
-                                  <div>{fd.mat_vista} × ${matVistaMaterial.costo} × {multiplier} = ${(fd.mat_vista * matVistaMaterial.costo * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.chap_huacal && chapHuacalMaterial && (
-                                <div>
-                                  <div className="font-medium">Chapacinta Huacal:</div>
-                                  <div>{fd.chap_huacal} × ${chapHuacalMaterial.costo} × {multiplier} = ${(fd.chap_huacal * chapHuacalMaterial.costo * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.chap_vista && chapVistaMaterial && (
-                                <div>
-                                  <div className="font-medium">Chapacinta Vista:</div>
-                                  <div>{fd.chap_vista} × ${chapVistaMaterial.costo} × {multiplier} = ${(fd.chap_vista * chapVistaMaterial.costo * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.jaladera && jaladeraMaterial && (
-                                <div>
-                                  <div className="font-medium">Jaladera:</div>
-                                  <div>{fd.jaladera} × ${jaladeraMaterial.costo} × {multiplier} = ${(fd.jaladera * jaladeraMaterial.costo * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.corredera && correderaMaterial && (
-                                <div>
-                                  <div className="font-medium">Corredera:</div>
-                                  <div>{fd.corredera} × ${correderaMaterial.costo} × {multiplier} = ${(fd.corredera * correderaMaterial.costo * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.bisagras && bisagrasMaterial && (
-                                <div>
-                                  <div className="font-medium">Bisagras:</div>
-                                  <div>{fd.bisagras} × ${bisagrasMaterial.costo} × {multiplier} = ${(fd.bisagras * bisagrasMaterial.costo * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.patas && fd.patas > 0 && (
-                                <div>
-                                  <div className="font-medium">Patas:</div>
-                                  <div>{fd.patas} × ${DEFAULT_PATAS_COST} × {multiplier} = ${(fd.patas * DEFAULT_PATAS_COST * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.clip_patas && fd.clip_patas > 0 && (
-                                <div>
-                                  <div className="font-medium">Clip Patas:</div>
-                                  <div>{fd.clip_patas} × ${DEFAULT_CLIP_PATAS_COST} × {multiplier} = ${(fd.clip_patas * DEFAULT_CLIP_PATAS_COST * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.mensulas && fd.mensulas > 0 && (
-                                <div>
-                                  <div className="font-medium">Ménsulas:</div>
-                                  <div>{fd.mensulas} × ${DEFAULT_MENSULAS_COST} × {multiplier} = ${(fd.mensulas * DEFAULT_MENSULAS_COST * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.kit_tornillo && fd.kit_tornillo > 0 && (
-                                <div>
-                                  <div className="font-medium">Kit Tornillo:</div>
-                                  <div>{fd.kit_tornillo} × ${DEFAULT_KIT_TORNILLO_COST} × {multiplier} = ${(fd.kit_tornillo * DEFAULT_KIT_TORNILLO_COST * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              {fd.cif && fd.cif > 0 && (
-                                <div>
-                                  <div className="font-medium">CIF:</div>
-                                  <div>{fd.cif} × ${DEFAULT_CIF_COST} × {multiplier} = ${(fd.cif * DEFAULT_CIF_COST * multiplier).toFixed(2)}</div>
-                                </div>
-                              )}
-                              
-                              <div className="col-span-2 mt-2 font-semibold">
-                                <div>Precio Total: ${item.unitPrice.toFixed(2)}</div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  {/* Add notes field */}
+                  <div className="mt-6">
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notas adicionales</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Observaciones, comentarios o detalles adicionales para esta cotización" 
+                              className="min-h-[100px]" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </TabsContent>
               </Tabs>
