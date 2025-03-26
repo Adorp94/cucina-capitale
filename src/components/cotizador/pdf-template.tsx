@@ -7,22 +7,22 @@ const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
     backgroundColor: '#fff',
-    padding: 40,
+    padding: 30,
     fontFamily: 'Helvetica',
     color: '#1a1a1a',
     fontSize: 10,
   },
   header: {
-    marginBottom: 25,
+    marginBottom: 20,
     borderBottom: '1px solid #f0f0f0',
-    paddingBottom: 15,
+    paddingBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   logoContainer: {
-    width: 130,
-    height: 50,
+    width: 120,
+    height: 45,
     marginBottom: 0,
   },
   logoPlaceholder: {
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   title: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
     color: '#000',
@@ -65,12 +65,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 6,
     color: '#6b7280',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -94,40 +94,46 @@ const styles = StyleSheet.create({
   },
   summarySectionTop: {
     flexDirection: 'row',
-    marginTop: 15,
-    paddingTop: 10,
+    marginTop: 5,
+    paddingTop: 5,
     borderTop: '1px solid #f0f0f0',
+    justifyContent: 'flex-end',
   },
   summarySection: {
     flexDirection: 'row',
-    marginTop: 8,
+    marginTop: 3,
+    justifyContent: 'flex-end',
   },
   summaryLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#6b7280',
-    width: 80,
+    width: 70,
   },
   summaryValue: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#1a1a1a',
+    width: 80,
+    textAlign: 'right',
   },
   totalLabel: {
-    fontSize: 12,
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#000',
+    width: 70,
+  },
+  totalValue: {
+    fontSize: 10,
     fontWeight: 'bold',
     color: '#000',
     width: 80,
-  },
-  totalValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000',
+    textAlign: 'right',
   },
   footer: {
     position: 'absolute',
-    bottom: 25,
-    left: 40,
-    right: 40,
+    bottom: 20,
+    left: 30,
+    right: 30,
     fontSize: 8,
     color: '#9ca3af',
     textAlign: 'center',
@@ -143,10 +149,12 @@ const styles = StyleSheet.create({
   },
   highlightBox: {
     backgroundColor: '#f9fafb',
-    padding: 12,
+    padding: 8,
     borderRadius: 6,
-    marginBottom: 16,
+    marginBottom: 12,
     borderLeft: '3px solid #4f46e5',
+    alignSelf: 'flex-end',
+    width: '40%',
   },
   tableHeader: {
     flexDirection: 'row',
@@ -182,9 +190,9 @@ const styles = StyleSheet.create({
   colDiscount: { width: '10%', textAlign: 'right' },
   colSubtotal: { width: '15%', textAlign: 'right' },
   notesSection: {
-    marginTop: 16,
-    marginBottom: 16,
-    padding: 10,
+    marginTop: 12,
+    marginBottom: 12,
+    padding: 8,
     backgroundColor: '#f9fafb',
     borderRadius: 6,
   },
@@ -214,30 +222,30 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   termsSection: {
-    marginTop: 16,
-    marginBottom: 60,
+    marginTop: 12,
+    marginBottom: 40,
   },
   termsList: {
-    fontSize: 9,
+    fontSize: 7,
     color: '#4b5563',
     lineHeight: 1.3,
   },
   paymentInfo: {
-    marginTop: 16,
-    padding: 10,
+    marginTop: 12,
+    padding: 8,
     backgroundColor: '#f9fafb',
     borderRadius: 6,
   },
   paymentInfoTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 3,
     color: '#4b5563',
   },
   paymentInfoText: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#4b5563',
-    lineHeight: 1.3,
+    lineHeight: 1.2,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -278,7 +286,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   materialSection: {
-    marginBottom: 15,
+    marginBottom: 12,
     padding: 10,
     backgroundColor: '#f9fafb',
     borderRadius: 6,
@@ -289,17 +297,24 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     color: '#4b5563',
   },
+  materialsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  materialColumn: {
+    width: '50%',
+  },
   materialRow: {
     flexDirection: 'row',
     marginBottom: 3,
   },
   materialLabel: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#6b7280',
-    width: 80,
+    width: 70,
   },
   materialValue: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#1f2937',
     flex: 1,
   },
@@ -315,6 +330,10 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 8,
     color: '#4b5563',
+  },
+  compactTwoColumnContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
   },
 });
 
@@ -461,7 +480,7 @@ const CotizacionPDF = ({
   };
 
   // Optional logo URL - replace with your hosted logo URL when available
-  const logoUrl = undefined; // Example: "https://example.com/your-logo.png"
+  const logoUrl = "https://raw.githubusercontent.com/Adorp94/clientes/refs/heads/main/logo-completo.png";
 
   // Get status style
   const getStatusStyle = (status: string) => {
@@ -495,7 +514,7 @@ const CotizacionPDF = ({
     bisagra: 'Bisagra'
   };
   
-  // Function to find material pairs (material and its value)
+  // Function to create material pairs with two-column layout
   const getMaterialPairs = () => {
     if (!hasMaterials) return [];
     
@@ -535,8 +554,6 @@ const CotizacionPDF = ({
         // Get corresponding label, with failsafe to original key
         const label = materialLabels[key] || key;
         
-        console.log(`Material key "${key}" mapped to label "${label}" with value "${materialValue}"`);
-        
         pairs.push({
           label,
           value: formatMaterialName(materialValue)
@@ -544,7 +561,6 @@ const CotizacionPDF = ({
       }
     }
     
-    console.log('PDF Template - Material pairs count:', pairs.length);
     return pairs;
   };
   
@@ -555,7 +571,9 @@ const CotizacionPDF = ({
       <Page size="A4" style={styles.page}>
         {/* Header with Logo, Title and Date */}
         <View style={styles.header}>
-          <LogoComponent logoUrl={logoUrl} />
+          <View style={styles.logoContainer}>
+            <Image src={logoUrl} style={styles.logo} />
+          </View>
           <View style={styles.headerContent}>
             <Text style={styles.title}>COTIZACIÓN</Text>
             <Text style={styles.idNumber}>#{safeQuotation.id_cotizacion}</Text>
@@ -584,7 +602,7 @@ const CotizacionPDF = ({
         </View>
 
         {/* Two-column layout for client and project information */}
-        <View style={styles.twoColumnContainer}>
+        <View style={styles.compactTwoColumnContainer}>
           {/* Client Information */}
           <View style={styles.column}>
             <Text style={styles.sectionTitle}>Información del cliente</Text>
@@ -626,26 +644,37 @@ const CotizacionPDF = ({
             {safeQuotation.delivery_time && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Entrega:</Text>
-                <Text style={styles.infoValue}>{safeQuotation.delivery_time} días</Text>
+                <Text style={styles.infoValue}>{safeQuotation.delivery_time}</Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* Materials Section */}
+        {/* Materials Section with two columns */}
         {materialPairs.length > 0 && (
           <View style={styles.materialSection}>
             <Text style={styles.materialTitle}>Materiales seleccionados</Text>
-            {materialPairs.map((pair, index) => (
-              <View key={index} style={styles.materialRow}>
-                <Text style={styles.materialLabel}>{pair.label}:</Text>
-                <Text style={styles.materialValue}>{pair.value}</Text>
-              </View>
-            ))}
+            <View style={styles.materialsContainer}>
+              {materialPairs.map((pair, index) => (
+                <View 
+                  key={index} 
+                  style={[
+                    styles.materialColumn, 
+                    // Add marginRight only to the first column items
+                    index % 2 === 0 ? { paddingRight: 5 } : { paddingLeft: 5 }
+                  ]}
+                >
+                  <View style={styles.materialRow}>
+                    <Text style={styles.materialLabel}>{pair.label}:</Text>
+                    <Text style={styles.materialValue}>{pair.value}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
-        {/* Items Table - Debug empty items */}
+        {/* Items Table */}
         {safeQuotation.items.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Productos y servicios</Text>
@@ -660,16 +689,8 @@ const CotizacionPDF = ({
               <Text style={[styles.tableHeaderText, styles.colSubtotal]}>Subtotal</Text>
             </View>
             
-            {/* Table Rows - limit to 12 rows max to fit on page */}
-            {safeQuotation.items.slice(0, 12).map((item, index) => {
-              console.log('PDF Template - Rendering item:', { 
-                index, 
-                description: item.description,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice instanceof Decimal ? item.unitPrice.toString() : item.unitPrice,
-                subtotal: item.subtotal instanceof Decimal ? item.subtotal.toString() : item.subtotal
-              });
-              
+            {/* Table Rows - limit to 6 rows max to fit on page */}
+            {safeQuotation.items.slice(0, 6).map((item, index) => {
               // Convert to Decimal if not already
               const unitPrice = item.unitPrice instanceof Decimal ? 
                 item.unitPrice : new Decimal(String(item.unitPrice || 0));
@@ -696,7 +717,7 @@ const CotizacionPDF = ({
           </View>
         )}
 
-        {/* Summary Section */}
+        {/* Summary Section - aligned to the right */}
         <View style={styles.highlightBox}>
           <View style={styles.summarySectionTop}>
             <Text style={styles.summaryLabel}>Subtotal:</Text>
@@ -712,7 +733,7 @@ const CotizacionPDF = ({
           </View>
         </View>
 
-        <View style={styles.twoColumnContainer}>
+        <View style={styles.compactTwoColumnContainer}>
           {/* Left column for Notes */}
           <View style={styles.column}>
             {safeQuotation.notes && (
@@ -728,20 +749,24 @@ const CotizacionPDF = ({
             <View style={styles.paymentInfo}>
               <Text style={styles.paymentInfoTitle}>Información de pago</Text>
               <Text style={styles.paymentInfoText}>
-                Banco: BBVA{'\n'}
-                Cuenta: 0123456789{'\n'}
-                CLABE: 012 345 6789 0123 45{'\n'}
-                A nombre de: {safeCompanyInfo.name}
+                Para transferencia o Cheque: Grupo UCMV SA de CV{'\n'}
+                Banco: BBVA | Cuenta: 0123022455{'\n'}
+                CLABE: 0121 8000 1230 2245 50
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Terms and Conditions - Condensed */}
+        {/* Terms and Conditions - Updated */}
         <View style={styles.termsSection}>
           <Text style={styles.sectionTitle}>Términos y condiciones</Text>
           <Text style={styles.termsList}>
-            1. Los precios están sujetos a cambios sin previo aviso. 2. Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. 3. Los tiempos de entrega se confirmarán al momento de la orden. 4. Se requiere un anticipo del 70% para iniciar el proyecto. 5. El precio no incluye instalación, a menos que se indique expresamente.
+            Observaciones generales:{'\n'}
+            *En cubiertas y equipos: se liquida el 100%{'\n'}
+            *No se realizan trabajos eléctricos, de fontanería o albañilería.{'\n'}
+            *En sótanos o plantas altas, se realiza un cargo extra por servicio.{'\n'} 
+            *Los precios USD o Euros estarán sujetos al tipo de cambio publicados en el DOF el día de la transacción.{'\n'}
+            *No nos hacemos responsables de equipos y/o cubiertas no adquiridas en GRUPO UCMV
           </Text>
         </View>
 
