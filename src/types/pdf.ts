@@ -21,33 +21,32 @@ export interface ClientInfo {
   rfc?: string;
 }
 
-// Quotation Item schema for PDF
-export interface QuotationItemPDF {
-  id_item: number;
+// QuotationItem for PDF display
+export interface QuotationItem {
+  id: string | number;
   description: string;
   quantity: number;
-  unitPrice: number | Decimal;
+  unitPrice: Decimal;
   discount: number;
-  subtotal: number | Decimal;
-  area?: string;
-  position?: number;
+  subtotal: Decimal;
 }
 
 // Full Quotation schema for PDF
 export interface QuotationPDF {
   id_cotizacion: number;
-  created_at: string;
   project_name: string;
   project_type: string;
-  subtotal: number | Decimal;
+  subtotal: Decimal;
   tax_rate: number;
-  taxes: number | Decimal;
-  total: number | Decimal;
-  valid_until?: string;
-  delivery_time?: string;
-  notes?: string;
+  taxes: Decimal;
+  total: Decimal;
+  created_at: string;
+  delivery_time: string;
   status: string;
-  items: QuotationItemPDF[];
+  valid_until: string;
+  notes: string;
+  items: QuotationItem[];
+  materials?: Record<string, string>;
 }
 
 // Full PDF content schema

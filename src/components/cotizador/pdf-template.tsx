@@ -277,6 +277,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
+  materialSection: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#f9fafb',
+    borderRadius: 6,
+  },
+  materialTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 6,
+    color: '#4b5563',
+  },
+  materialRow: {
+    flexDirection: 'row',
+    marginBottom: 3,
+  },
+  materialLabel: {
+    fontSize: 9,
+    color: '#6b7280',
+    width: 80,
+  },
+  materialValue: {
+    fontSize: 9,
+    color: '#1f2937',
+    flex: 1,
+  },
+  tag: {
+    backgroundColor: '#e5e7eb',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 4,
+    marginBottom: 4,
+    display: 'inline-block',
+  },
+  tagText: {
+    fontSize: 8,
+    color: '#4b5563',
+  },
 });
 
 // Format currency helper
@@ -336,12 +375,44 @@ const LogoComponent = ({ logoUrl }: { logoUrl?: string }) => {
   );
 };
 
+// Format material name
+const formatMaterialName = (materialName: string) => {
+  if (!materialName) return '';
+  
+  // Remove technical codes often found in material names
+  const cleanName = materialName.replace(/^\d+(-|_|\s)?/, '');
+  
+  // Capitalize first letter of each word
+  return cleanName
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 // PDF Document component with full quotation data
 const CotizacionPDF = ({ 
   quotation, 
   client,
   companyInfo
 }: PDFContent) => {
+  console.log('PDF Template - Received quotation:', {
+    id: quotation.id_cotizacion,
+    items_count: (quotation.items || []).length,
+    has_materials: !!quotation.materials,
+    materials_type: quotation.materials ? typeof quotation.materials : 'undefined'
+  });
+  
+  if (quotation.items && quotation.items.length > 0) {
+    console.log('PDF Template - Sample item:', {
+      description: quotation.items[0].description,
+      quantity: quotation.items[0].quantity,
+      unitPrice: typeof quotation.items[0].unitPrice === 'object' ? 'Decimal object' : typeof quotation.items[0].unitPrice
+    });
+  }
+  
+  // Debug materials
+  console.log('PDF Template - Materials raw:', quotation.materials);
+  
   // Safeguards against null values
   const safeQuotation = {
     ...quotation,
@@ -357,8 +428,20 @@ const CotizacionPDF = ({
     status: quotation.status || 'draft',
     valid_until: quotation.valid_until || '',
     notes: quotation.notes || '',
-    items: Array.isArray(quotation.items) ? quotation.items : []
+    items: Array.isArray(quotation.items) ? quotation.items : [],
+    materials: quotation.materials || {}
   };
+  
+  // Ensure materials is an object
+  if (typeof safeQuotation.materials === 'string') {
+    try {
+      safeQuotation.materials = JSON.parse(safeQuotation.materials);
+      console.log('PDF Template - Parsed materials from string:', safeQuotation.materials);
+    } catch (e) {
+      console.error('Error parsing materials string in PDF component:', e);
+      safeQuotation.materials = {};
+    }
+  }
   
   const safeClient = {
     ...client,
@@ -387,6 +470,85 @@ const CotizacionPDF = ({
     }
     return {};
   };
+
+  // Check if materials exist and extract them
+  const hasMaterials = safeQuotation.materials && 
+                      typeof safeQuotation.materials === 'object' && 
+                      Object.keys(safeQuotation.materials).length > 0;
+  
+  console.log('PDF Template - Has materials:', hasMaterials);
+  console.log('PDF Template - Materials keys:', 
+    hasMaterials ? Object.keys(safeQuotation.materials) : 'none');
+  
+  // Material name mapping for display in PDF (Spanish translations)
+  const materialLabels: Record<string, string> = {
+    matHuacal: 'Material Huacal',
+    mat_huacal: 'Material Huacal',
+    chapHuacal: 'Chapa Huacal',
+    chap_huacal: 'Chapa Huacal',
+    matVista: 'Material Vista',
+    mat_vista: 'Material Vista',
+    chapVista: 'Chapa Vista',
+    chap_vista: 'Chapa Vista',
+    jaladera: 'Jaladera',
+    corredera: 'Corredera',
+    bisagra: 'Bisagra'
+  };
+  
+  // Function to find material pairs (material and its value)
+  const getMaterialPairs = () => {
+    if (!hasMaterials) return [];
+    
+    const pairs = [];
+    const materials = safeQuotation.materials as Record<string, string>;
+    
+    // Create an array to sort the materials in a logical order
+    const materialOrder = [
+      'matHuacal', 'mat_huacal', 
+      'chapHuacal', 'chap_huacal', 
+      'matVista', 'mat_vista', 
+      'chapVista', 'chap_vista', 
+      'jaladera', 'corredera', 'bisagra'
+    ];
+    
+    // Get all keys and sort them according to the preferred order
+    const materialKeys = Object.keys(materials).sort((a, b) => {
+      const indexA = materialOrder.indexOf(a);
+      const indexB = materialOrder.indexOf(b);
+      
+      // If both exist in the order array, sort by that order
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      
+      // If only one exists, prefer the one in the order array
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      
+      // Otherwise, sort alphabetically
+      return a.localeCompare(b);
+    });
+    
+    for (const key of materialKeys) {
+      const materialValue = String(materials[key] || '').trim();
+      if (materialValue) {
+        // Get corresponding label, with failsafe to original key
+        const label = materialLabels[key] || key;
+        
+        console.log(`Material key "${key}" mapped to label "${label}" with value "${materialValue}"`);
+        
+        pairs.push({
+          label,
+          value: formatMaterialName(materialValue)
+        });
+      }
+    }
+    
+    console.log('PDF Template - Material pairs count:', pairs.length);
+    return pairs;
+  };
+  
+  const materialPairs = getMaterialPairs();
 
   return (
     <Document>
@@ -464,14 +626,27 @@ const CotizacionPDF = ({
             {safeQuotation.delivery_time && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Entrega:</Text>
-                <Text style={styles.infoValue}>{safeQuotation.delivery_time}</Text>
+                <Text style={styles.infoValue}>{safeQuotation.delivery_time} días</Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* Items Table */}
-        {safeQuotation.items.length > 0 && (
+        {/* Materials Section */}
+        {materialPairs.length > 0 && (
+          <View style={styles.materialSection}>
+            <Text style={styles.materialTitle}>Materiales seleccionados</Text>
+            {materialPairs.map((pair, index) => (
+              <View key={index} style={styles.materialRow}>
+                <Text style={styles.materialLabel}>{pair.label}:</Text>
+                <Text style={styles.materialValue}>{pair.value}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Items Table - Debug empty items */}
+        {safeQuotation.items.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Productos y servicios</Text>
             
@@ -486,16 +661,38 @@ const CotizacionPDF = ({
             </View>
             
             {/* Table Rows - limit to 12 rows max to fit on page */}
-            {safeQuotation.items.slice(0, 12).map((item, index) => (
-              <View key={index} style={styles.tableRow}>
-                <Text style={[styles.tableCell, styles.colNumber]}>{index + 1}</Text>
-                <Text style={[styles.tableCell, styles.colDescription]}>{item.description}</Text>
-                <Text style={[styles.tableCell, styles.colQuantity]}>{item.quantity}</Text>
-                <Text style={[styles.tableCell, styles.colPrice]}>{formatCurrency(item.unitPrice)}</Text>
-                <Text style={[styles.tableCell, styles.colDiscount]}>{item.discount}%</Text>
-                <Text style={[styles.tableCell, styles.colSubtotal]}>{formatCurrency(item.subtotal)}</Text>
-              </View>
-            ))}
+            {safeQuotation.items.slice(0, 12).map((item, index) => {
+              console.log('PDF Template - Rendering item:', { 
+                index, 
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice instanceof Decimal ? item.unitPrice.toString() : item.unitPrice,
+                subtotal: item.subtotal instanceof Decimal ? item.subtotal.toString() : item.subtotal
+              });
+              
+              // Convert to Decimal if not already
+              const unitPrice = item.unitPrice instanceof Decimal ? 
+                item.unitPrice : new Decimal(String(item.unitPrice || 0));
+              
+              const subtotal = item.subtotal instanceof Decimal ? 
+                item.subtotal : new Decimal(String(item.subtotal || 0));
+              
+              return (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, styles.colNumber]}>{index + 1}</Text>
+                  <Text style={[styles.tableCell, styles.colDescription]}>{item.description || `Item ${index + 1}`}</Text>
+                  <Text style={[styles.tableCell, styles.colQuantity]}>{item.quantity || 0}</Text>
+                  <Text style={[styles.tableCell, styles.colPrice]}>{formatCurrency(unitPrice)}</Text>
+                  <Text style={[styles.tableCell, styles.colDiscount]}>{item.discount || 0}%</Text>
+                  <Text style={[styles.tableCell, styles.colSubtotal]}>{formatCurrency(subtotal)}</Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Productos y servicios</Text>
+            <Text style={styles.infoValue}>No hay productos o servicios en esta cotización.</Text>
           </View>
         )}
 

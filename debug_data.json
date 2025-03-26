@@ -1,0 +1,98 @@
+{
+  "rawData": {
+    "id_cotizacion": 1,
+    "created_at": "2025-03-25T14:34:18.96453+00:00",
+    "updated_at": "2025-03-25T14:34:18.96453+00:00",
+    "id_cliente": 3,
+    "project_name": "Test",
+    "project_type": "3",
+    "status": "draft",
+    "subtotal": 8474.61,
+    "tax_rate": 0.16,
+    "taxes": 1355.9376000000002,
+    "total": 9830.547600000002,
+    "valid_until": "2025-04-09T14:33:42.092+00:00",
+    "delivery_time": "30",
+    "notes": null,
+    "items": [
+      {
+        "id_item": 1,
+        "position": 0,
+        "quantity": 3,
+        "mueble_id": 3169,
+        "unit_price": 2824.87,
+        "description": "Alacena 100x100x20, 0-Ent, 2P, No-Jalad",
+        "total_price": 8474.61,
+        "id_cotizacion": 1
+      }
+    ],
+    "cotizacion_materiales": [
+      {
+        "tipo": "matHuacal",
+        "costo_usado": 577.5,
+        "id_material": 3,
+        "id_cotizacion": 1
+      },
+      {
+        "tipo": "matVista",
+        "costo_usado": 622.5,
+        "id_material": 8,
+        "id_cotizacion": 1
+      },
+      {
+        "tipo": "chapHuacal",
+        "costo_usado": 15.89,
+        "id_material": 1207,
+        "id_cotizacion": 1
+      },
+      {
+        "tipo": "chapVista",
+        "costo_usado": 15.89,
+        "id_material": 1212,
+        "id_cotizacion": 1
+      },
+      {
+        "tipo": "jaladera",
+        "costo_usado": 60,
+        "id_material": 1308,
+        "id_cotizacion": 1
+      },
+      {
+        "tipo": "corredera",
+        "costo_usado": 60,
+        "id_material": 1309,
+        "id_cotizacion": 1
+      },
+      {
+        "tipo": "bisagra",
+        "costo_usado": 20,
+        "id_material": 1318,
+        "id_cotizacion": 1
+      }
+    ]
+  },
+  "keys": [
+    "id_cotizacion",
+    "created_at",
+    "updated_at",
+    "id_cliente",
+    "project_name",
+    "project_type",
+    "status",
+    "subtotal",
+    "tax_rate",
+    "taxes",
+    "total",
+    "valid_until",
+    "delivery_time",
+    "notes",
+    "items",
+    "cotizacion_materiales"
+  ],
+  "materialKeys": [
+    "tipo",
+    "costo_usado",
+    "id_material",
+    "id_cotizacion"
+  ]
+}
