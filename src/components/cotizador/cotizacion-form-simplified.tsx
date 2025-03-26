@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, CalendarIcon, Plus, Trash2, Loader2, Search, ChevronDown, Calculator } from 'lucide-react';
+import { ChevronLeft, CalendarIcon, Plus, Trash2, Loader2, Search, ChevronDown, Calculator, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
@@ -796,7 +796,7 @@ export default function CotizacionForm() {
     if (furnitureData.mensulas && furnitureData.mensulas > 0) {
       const componentPrice = furnitureData.mensulas * DEFAULT_MENSULAS_COST * multiplier;
       price += componentPrice;
-      console.log(`Mensulas: ${furnitureData.mensulas} * ${DEFAULT_MENSULAS_COST} * ${multiplier} = ${componentPrice}`);
+      console.log(`Ménsulas: ${furnitureData.mensulas} * ${DEFAULT_MENSULAS_COST} * ${multiplier} = ${componentPrice}`);
     }
     
     if (furnitureData.kit_tornillo && furnitureData.kit_tornillo > 0) {
@@ -1218,11 +1218,9 @@ export default function CotizacionForm() {
                             <FormItem>
                               <FormLabel className="text-sm font-medium text-gray-700">Nombre</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="Nombre del cliente" 
-                                  className="mt-1"
-                                  {...field} 
-                                />
+                                <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                  {field.value || 'No seleccionado'}
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1238,11 +1236,9 @@ export default function CotizacionForm() {
                             <FormItem>
                               <FormLabel className="text-sm font-medium text-gray-700">Correo electrónico</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="correo@ejemplo.com" 
-                                  className="mt-1"
-                                  {...field} 
-                                />
+                                <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                  {field.value || 'No disponible'}
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1258,11 +1254,9 @@ export default function CotizacionForm() {
                             <FormItem>
                               <FormLabel className="text-sm font-medium text-gray-700">Teléfono</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="(123) 456-7890" 
-                                  className="mt-1"
-                                  {...field} 
-                                />
+                                <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                  {field.value || 'No disponible'}
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1278,11 +1272,9 @@ export default function CotizacionForm() {
                             <FormItem>
                               <FormLabel className="text-sm font-medium text-gray-700">Dirección</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="Dirección del cliente" 
-                                  className="mt-1"
-                                  {...field} 
-                                />
+                                <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                  {field.value || 'No disponible'}
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -2440,9 +2432,42 @@ export default function CotizacionForm() {
                 <Button type="button" variant="outline" asChild>
                   <Link href="/cotizaciones">Cancelar</Link>
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Guardando..." : "Guardar Cotización"}
-                </Button>
+                {currentTab === "items" ? (
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="bg-primary hover:bg-primary/90 text-white"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      "Generar Cotización"
+                    )}
+                  </Button>
+                ) : (
+                  <Button 
+                    type="button" 
+                    onClick={() => {
+                      if (currentTab === "client") {
+                        form.trigger(["clientName", "clientEmail", "clientPhone", "clientAddress"])
+                          .then(isValid => {
+                            if (isValid) setCurrentTab("project");
+                          });
+                      } else if (currentTab === "project") {
+                        form.trigger(["projectName", "projectType", "vendedor", "fabricante", "instalador"])
+                          .then(isValid => {
+                            if (isValid) setCurrentTab("items");
+                          });
+                      }
+                    }}
+                    className="bg-primary hover:bg-primary/90 text-white"
+                  >
+                    Continuar
+                  </Button>
+                )}
               </div>
             </form>
           </Form>
