@@ -27,40 +27,15 @@ const nextConfig = {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   },
-  // Disable static optimization for any pages
+  // Output standalone build
   output: 'standalone',
-  // Disable SWC minifier to avoid minification issues
+  // Disable SWC minifier
   swcMinify: false,
-  // Completely disable static page generation
-  staticPageGenerationTimeout: 0,
-  // Configure specific routes as dynamic
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'x-nextjs-data',
-            value: 'dynamic',
-          },
-        ],
-      },
-    ];
-  },
-  // Enable App Router with advanced options
+  // Experiment flags for Next.js
   experimental: {
+    // These settings help with Clerk server components
+    serverActions: true,
     serverComponentsExternalPackages: ['@clerk/nextjs'],
-    optimizeCss: false, // Disable CSS optimization
-    disableStaticGeneration: true, // Disable static generation completely
-  },
-  // Configure page extensions
-  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
-  skipMiddlewareUrlNormalize: true, // Prevent middleware URL normalization
-  skipTrailingSlashRedirect: true, // Prevent redirects for trailing slashes
-  // Disable static export completely
-  distDir: '.next',
-  generateBuildId: async () => {
-    return `build-${Date.now()}`;
   }
 };
 
