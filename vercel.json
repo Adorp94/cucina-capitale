@@ -7,8 +7,5 @@
       "main": true
     }
   },
-  "framework": "nextjs",
-  "buildEnvironment": {
-    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}"
-  }
+  "framework": "nextjs"
 } 
