@@ -1,9 +1,18 @@
-"use client";
-
 import type { Metadata, Viewport } from "next";
-
-export const dynamic = "force-dynamic";
 import ClientLayout from "@/app/client-layout";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import "react-day-picker/dist/style.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "Cucina Capitale",
@@ -23,5 +32,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <ClientLayout>{children}</ClientLayout>;
+  return (
+    <html lang="es">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
+        <ClientLayout>{children}</ClientLayout>
+      </body>
+    </html>
+  );
 }
