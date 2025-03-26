@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import dynamic from 'next/dynamic';
 
 // Force dynamic rendering to avoid prerendering issues with Clerk
-export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
 
 // Completely disable SSR for this entire page
 const DynamicCotizacionesPage = dynamic(() => Promise.resolve(() => {

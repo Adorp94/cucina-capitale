@@ -22,12 +22,13 @@ const nextConfig = {
     // Ignore TypeScript errors during build
     ignoreBuildErrors: true,
   },
+  // Configure environment variables for security
+  env: {
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+  },
   // Disable static optimization for pages that depend on Clerk authentication
   output: 'standalone',
-  experimental: {
-    // This makes sure Clerk authentication works properly with Vercel deployment
-    appDir: true,
-  },
   // Disable SWC minifier to avoid minification issues with dynamic imports
   swcMinify: false,
   // Disable static page generation for any route that's protected
@@ -63,6 +64,10 @@ const nextConfig = {
         ],
       },
     ];
+  },
+  // Enable App Router
+  experimental: {
+    serverComponentsExternalPackages: ['@clerk/nextjs'],
   },
 };
 
