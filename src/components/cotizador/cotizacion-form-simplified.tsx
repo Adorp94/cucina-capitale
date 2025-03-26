@@ -381,6 +381,10 @@ export default function CotizacionForm() {
   const [correderasSearch, setCorrederasSearch] = useState("");
   const [bisagrasSearch, setBisagrasSearch] = useState("");
   
+  // Add state variables for date pickers
+  const [isCotizacionDateOpen, setIsCotizacionDateOpen] = useState(false);
+  const [isValidUntilOpen, setIsValidUntilOpen] = useState(false);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(cotizacionFormSchema),
     defaultValues: {
@@ -1433,14 +1437,15 @@ export default function CotizacionForm() {
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
                           <FormLabel>Fecha</FormLabel>
-                          <Popover>
+                          <Popover open={isCotizacionDateOpen} onOpenChange={setIsCotizacionDateOpen}>
                             <PopoverTrigger asChild>
                               <FormControl>
                                 <Button
                                   variant={"outline"}
                                   className={cn(
                                     "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
+                                    !field.value && "text-muted-foreground",
+                                    "border-gray-300 hover:border-gray-400 transition-colors rounded-md"
                                   )}
                                 >
                                   {field.value ? (
@@ -1462,11 +1467,19 @@ export default function CotizacionForm() {
                                   if (date) {
                                     form.setValue("validUntil", addDays(date, 15));
                                   }
+                                  setIsCotizacionDateOpen(false);
                                 }}
                                 disabled={(date) =>
                                   date < new Date("1900-01-01")
                                 }
                                 initialFocus
+                                className="rounded-md border shadow-lg"
+                                classNames={{
+                                  day: "hover:bg-primary hover:text-primary-foreground transition-colors",
+                                  head_cell: "text-gray-500 font-normal",
+                                  caption: "font-medium text-gray-800",
+                                  nav_button: "hover:bg-gray-100 rounded-full p-1"
+                                }}
                               />
                             </PopoverContent>
                           </Popover>
@@ -1477,17 +1490,52 @@ export default function CotizacionForm() {
                     
                     <FormField
                       control={form.control}
-                      name="deliveryTime"
+                      name="validUntil"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tiempo de Entrega (días)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              {...field} 
-                              onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
-                            />
-                          </FormControl>
+                          <FormLabel>Válido Hasta</FormLabel>
+                          <Popover open={isValidUntilOpen} onOpenChange={setIsValidUntilOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground",
+                                    "border-gray-300 hover:border-gray-400 transition-colors rounded-md"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP", { locale: es })
+                                  ) : (
+                                    <span>Seleccionar fecha</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 rounded-lg shadow-md border border-gray-200" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={(date) => {
+                                  field.onChange(date);
+                                  setIsValidUntilOpen(false);
+                                }}
+                                disabled={(date) =>
+                                  date < new Date()
+                                }
+                                initialFocus
+                                className="rounded-md"
+                                classNames={{
+                                  day: "hover:bg-primary hover:text-primary-foreground transition-colors",
+                                  head_cell: "text-gray-500 font-normal",
+                                  caption: "font-medium text-gray-800",
+                                  nav_button: "hover:bg-gray-100 rounded-full p-1"
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1496,41 +1544,17 @@ export default function CotizacionForm() {
                   
                   <FormField
                     control={form.control}
-                    name="validUntil"
+                    name="deliveryTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Válido Hasta</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP", { locale: es })
-                                ) : (
-                                  <span>Seleccionar fecha</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date()
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormLabel>Tiempo de Entrega (días)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
