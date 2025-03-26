@@ -1,11 +1,14 @@
 {
   "installCommand": "npm install",
-  "buildCommand": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY} npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "git": {
     "deploymentEnabled": {
       "main": true
     }
   },
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "buildEnvironment": {
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}"
+  }
 } 
