@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useEffect, useState, useCallback } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,20 +54,15 @@ export default function ViewQuotationPage() {
   const { toast } = useToast();
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClientComponentClient();
 
-  useEffect(() => {
-    // If the ID is "nueva", redirect to the new quotation page
-    if (params.id === 'nueva') {
-      router.push('/cotizador/nueva');
-      return;
-    }
-
-    fetchQuotation();
-  }, [params.id, router]);
-
-  const fetchQuotation = async () => {
+  const fetchQuotation = useCallback(async () => {
+    setLoading(true);
     try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
       const { data, error } = await supabase
         .from('cotizaciones')
         .select(`
@@ -100,10 +95,25 @@ export default function ViewQuotationPage() {
       setQuotation(data);
     } catch (error) {
       console.error('Error fetching quotation:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la cotización",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id, toast]);
+
+  useEffect(() => {
+    // If the ID is "nueva", redirect to the new quotation page
+    if (params.id === 'nueva') {
+      router.push('/cotizador/nueva');
+      return;
+    }
+
+    fetchQuotation();
+  }, [params.id, router, fetchQuotation]);
 
   const handleEdit = () => {
     router.push(`/cotizador/${params.id}/editar`);

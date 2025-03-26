@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useEffect, useState, useCallback } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -38,15 +38,16 @@ export default function CotizacionesPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [pdfLoading, setPdfLoading] = useState<number | null>(null);
-  const supabase = createClientComponentClient();
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchQuotations();
-  }, []);
-
-  const fetchQuotations = async () => {
+  const fetchQuotations = useCallback(async () => {
+    setLoading(true);
     try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
       const { data, error } = await supabase
         .from('cotizaciones')
         .select(`
@@ -63,10 +64,19 @@ export default function CotizacionesPage() {
       setQuotations(data || []);
     } catch (error) {
       console.error('Error fetching quotations:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las cotizaciones",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchQuotations();
+  }, [fetchQuotations]);
 
   const downloadPdf = async (id: number) => {
     try {

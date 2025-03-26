@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { renderToBuffer } from '@react-pdf/renderer';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import CotizacionPDF from '@/components/cotizador/pdf-template';
 import { DEFAULT_COTIZADOR_CONFIG } from '@/lib/cotizador/constants';
@@ -148,7 +148,24 @@ export async function GET(
     
     const id = params.id;
     const cookieStore = cookies();
-    const supabase = createServerComponentClient({ cookies: () => cookieStore });
+    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+          set(name: string, value: string, options: any) {
+            cookieStore.set({ name, value, ...options });
+          },
+          remove(name: string, options: any) {
+            cookieStore.set({ name, value: '', ...options });
+          },
+        },
+      }
+    );
 
     // Fetch quotation data with joined materials using Spanish table names
     const { data: quotationRaw, error: quotationError } = await supabase

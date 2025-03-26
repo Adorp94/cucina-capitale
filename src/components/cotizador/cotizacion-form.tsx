@@ -15,7 +15,7 @@ import {
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { z } from 'zod';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { useToast } from "@/components/ui/use-toast";
 
 import { Button } from '@/components/ui/button';
@@ -222,7 +222,10 @@ function NuevoClienteModal({
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
       
       // Insert the new client
       const { data: newClient, error } = await supabase
@@ -449,15 +452,31 @@ export default function CotizacionForm() {
     name: "items"
   });
 
-  // Fetch materials, clients, and other data on component mount
-  useEffect(() => {
-    fetchMaterials();
-    fetchClients();
-    fetchFurnitureTypes();
-    fetchInventory('', '', null, 1, false); // Load initial set of inventory items
-    fetchAccesorios(); // Load accessories from new table
+  // Make fetchMaterials and fetchAccesorios into useCallback functions
+  const fetchMaterials = useCallback(async () => {
+    setIsLoadingMaterials(true);
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data, error } = await supabase
+        .from('materiales')
+        .select('*')
+        .order('tipo', { ascending: true });
+        
+      if (error) {
+        throw error;
+      }
+      
+      setMaterials(data || []);
+    } catch (error) {
+      console.error('Error fetching materials:', error);
+    } finally {
+      setIsLoadingMaterials(false);
+    }
   }, []);
-  
+
   // Fetch clients from Supabase on mount
   useEffect(() => {
     fetchClients();
@@ -467,7 +486,10 @@ export default function CotizacionForm() {
   const fetchClients = async () => {
     setIsLoadingClients(true);
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
       const { data, error } = await supabase
         .from('clientes')
         .select('id_cliente, nombre, correo, celular, direccion')
@@ -521,221 +543,6 @@ export default function CotizacionForm() {
     form.setValue("clientAddress", newClient.address || "");
   };
 
-  // Fetch materials from Supabase on mount
-  useEffect(() => {
-    fetchMaterials();
-  }, []);
-
-  // Fetch materials from database
-  const fetchMaterials = async () => {
-    setIsLoadingMaterials(true);
-    try {
-      const supabase = createClientComponentClient();
-      const { data, error } = await supabase
-        .from('materiales')
-        .select('*')
-        .order('tipo', { ascending: true });
-        
-      if (error) {
-        throw error;
-      }
-      
-      setMaterials(data || []);
-    } catch (error) {
-      console.error('Error fetching materials:', error);
-    } finally {
-      setIsLoadingMaterials(false);
-    }
-  };
-
-  // Add debounce utility function at the top of the component
-  const debounce = (func: Function, wait: number) => {
-    let timeout: NodeJS.Timeout;
-    return function executedFunction(...args: any[]) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
-
-  // Fetch inventory items with optimized PostgreSQL search
-  const fetchInventory = async (
-    searchQuery = '', 
-    selectedType = '', 
-    rowIndex: number | null = null,
-    page = 1,
-    append = false
-  ) => {
-    // Prevent unnecessary fetches
-    if (rowIndex !== null && rowInventory[rowIndex]?.searchQuery === searchQuery && 
-        rowInventory[rowIndex]?.selectedType === selectedType && 
-        rowInventory[rowIndex]?.page === page && 
-        !append) {
-      return;
-    }
-
-    setIsLoadingInventory(true);
-    try {
-      const PAGE_SIZE = 20;
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-      
-      const supabase = createClientComponentClient();
-      
-      // Build the base query
-      let query = supabase
-        .from('inventario')
-        .select('*', { count: 'exact' });
-
-      // Add type filter if specified
-      if (selectedType) {
-        query = query.eq('tipo', selectedType);
-      }
-
-      // Implement optimized search using PostgreSQL full-text search
-      if (searchQuery && searchQuery.length >= 2) {
-        // Clean and prepare the search query
-        const cleanQuery = searchQuery
-          .trim()
-          .toLowerCase()
-          .replace(/[%_]/g, ' ') // Remove SQL wildcards
-          .split(/\s+/)
-          .filter(word => word.length >= 2)
-          .join(' & '); // PostgreSQL full-text search operator
-
-        // Use ILIKE for partial matches
-        query = query.ilike('nombre_mueble', `%${searchQuery}%`);
-      }
-
-      // Add pagination
-      query = query.range(from, to);
-      
-      // Order results by name
-      query = query.order('nombre_mueble');
-      
-      const { data, error, count } = await query;
-      
-      if (error) {
-        console.error('Error fetching inventory items:', error);
-        throw error;
-      }
-      
-      // Determine if there are more items to load
-      const hasMore = count ? from + data.length < count : false;
-      
-      // Store the results in row-specific state or global state
-      if (rowIndex !== null) {
-        const newRowInventory = { ...rowInventory };
-        
-        if (!newRowInventory[rowIndex] || !append) {
-          newRowInventory[rowIndex] = {
-            items: data || [],
-            hasMore,
-            page,
-            searchQuery,
-            selectedType
-          };
-        } else {
-          newRowInventory[rowIndex] = {
-            items: [...newRowInventory[rowIndex].items, ...(data || [])],
-            hasMore,
-            page,
-            searchQuery,
-            selectedType
-          };
-        }
-        
-        setRowInventory(newRowInventory);
-      } else {
-        if (append) {
-          setInventoryItems(prev => [...prev, ...(data || [])]);
-        } else {
-          setInventoryItems(data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Error in fetchInventory:', error);
-      if (rowIndex !== null) {
-        if (!append) {
-          const newRowInventory = { ...rowInventory };
-          newRowInventory[rowIndex] = {
-            items: [],
-            hasMore: false,
-            page: 1,
-            searchQuery,
-            selectedType
-          };
-          setRowInventory(newRowInventory);
-        }
-      } else if (!append) {
-        setInventoryItems([]);
-      }
-    } finally {
-      setIsLoadingInventory(false);
-    }
-  };
-
-  // Create debounced version of searchInventoryItems with increased delay
-  const debouncedSearchInventoryItems = debounce((searchQuery: string, selectedType: string = '', rowIndex: number | null = null) => {
-    // Skip if we're already loading
-    if (isLoadingInventory) return;
-
-    // If this is for a specific row, handle it that way
-    if (rowIndex !== null) {
-      const typeFilter = selectedType || (form.watch(`items.${rowIndex}.type`) || '');
-      fetchInventory(searchQuery, typeFilter, rowIndex, 1, false);
-    } else {
-      if (!selectedType && currentTypeFilter) {
-        selectedType = currentTypeFilter;
-      }
-      setCurrentTypeFilter(selectedType);
-      fetchInventory(searchQuery, selectedType, null, 1, false);
-    }
-  }, 800); // Increased delay to 800ms for better performance
-
-  // Function to handle searching inventory items
-  const searchInventoryItems = (searchQuery: string, selectedType: string = '', rowIndex: number | null = null) => {
-    // Skip if we're already loading
-    if (isLoadingInventory) return;
-
-    // If search query is less than 2 characters, don't search
-    if (searchQuery && searchQuery.length < 2) {
-      if (rowIndex !== null) {
-        const newRowInventory = { ...rowInventory };
-        newRowInventory[rowIndex] = {
-          items: [],
-          hasMore: false,
-          page: 1,
-          searchQuery: '',
-          selectedType
-        };
-        setRowInventory(newRowInventory);
-      } else {
-        setInventoryItems([]);
-      }
-      return;
-    }
-
-    // Use debounced search
-    debouncedSearchInventoryItems(searchQuery, selectedType, rowIndex);
-  };
-  
-  // Function to load more items
-  const loadMoreInventoryItems = (rowIndex: number | null = null) => {
-    if (rowIndex !== null && rowInventory[rowIndex]) {
-      const { page, searchQuery, selectedType } = rowInventory[rowIndex];
-      fetchInventory(searchQuery, selectedType, rowIndex, page + 1, true);
-    } else {
-      // Global load more (legacy behavior)
-      // Implementation would depend on how we track global pagination
-      // For simplicity, we'll just fetch the next page of current results
-      fetchInventory('', currentTypeFilter, null, 2, true);
-    }
-  };
-  
   // Fetch furniture types using the database RPC function
   const fetchFurnitureTypes = async () => {
     setIsLoadingFurnitureTypes(true);
@@ -748,7 +555,10 @@ export default function CotizacionForm() {
     ];
     
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
       
       // Call the RPC function 
       const { data, error } = await supabase
@@ -781,10 +591,105 @@ export default function CotizacionForm() {
     return materials.filter(material => material.tipo === tipo);
   };
 
+  // Add function to fetch inventory items 
+  const fetchInventory = useCallback(async (
+    searchQuery = '', 
+    selectedType = '', 
+    rowIndex: number | null = null,
+    page = 1,
+    append = false
+  ) => {
+    try {
+      const PAGE_SIZE = 20;
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      // Build the base query
+      let query = supabase
+        .from('inventario')
+        .select('*', { count: 'exact' });
+
+      // Add type filter if specified
+      if (selectedType) {
+        query = query.eq('tipo', selectedType);
+      }
+
+      // Add search filter
+      if (searchQuery && searchQuery.length >= 2) {
+        query = query.ilike('nombre_mueble', `%${searchQuery}%`);
+      }
+
+      // Add pagination and ordering
+      query = query.range(from, to).order('nombre_mueble');
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching inventory items:', error);
+        return;
+      }
+      
+      // Update row inventory if specified
+      if (rowIndex !== null) {
+        const newRowInventory = { ...rowInventory };
+        if (!append) {
+          newRowInventory[rowIndex] = {
+            items: data || [],
+            hasMore: data?.length === PAGE_SIZE,
+            page,
+            searchQuery,
+            selectedType
+          };
+        } else {
+          // Append items for infinite scrolling
+          if (newRowInventory[rowIndex]) {
+            newRowInventory[rowIndex] = {
+              ...newRowInventory[rowIndex],
+              items: [...newRowInventory[rowIndex].items, ...(data || [])],
+              hasMore: data?.length === PAGE_SIZE,
+              page
+            };
+          }
+        }
+        setRowInventory(newRowInventory);
+      } else {
+        if (append) {
+          setInventoryItems(prev => [...prev, ...(data || [])]);
+        } else {
+          setInventoryItems(data || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error in fetchInventory:', error);
+    }
+  }, [rowInventory]);
+
+  // Create simple functions for searching and loading more
+  const searchInventoryItems = (searchQuery: string, selectedType: string = '', rowIndex: number | null = null) => {
+    fetchInventory(searchQuery, selectedType, rowIndex, 1, false);
+  };
+  
+  const loadMoreInventoryItems = (rowIndex: number | null = null) => {
+    if (rowIndex !== null && rowInventory[rowIndex]) {
+      const { page, searchQuery, selectedType } = rowInventory[rowIndex];
+      fetchInventory(searchQuery, selectedType, rowIndex, page + 1, true);
+    } else {
+      fetchInventory('', currentTypeFilter, null, 2, true);
+    }
+  };
+
   // Add function to fetch materials by type directly from the database
   const fetchMaterialsByType = async (tipo: string) => {
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
       
       // Direct database query is more efficient than client-side filtering
       const { data, error } = await supabase
@@ -803,6 +708,38 @@ export default function CotizacionForm() {
       return [];
     }
   };
+
+  // Fetch accessories from database
+  const fetchAccesorios = useCallback(async () => {
+    setIsLoadingAccesorios(true);
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data, error } = await supabase
+        .from('accesorios')
+        .select('id_accesorios, accesorios, costo, categoria, comentario')
+        .order('categoria', { ascending: true });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        setAccesoriosList(data);
+      }
+    } catch (error) {
+      console.error('Error fetching accessories:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los accesorios",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingAccesorios(false);
+    }
+  }, [toast]);
 
   // Fetch all material types on mount
   useEffect(() => {
@@ -844,7 +781,7 @@ export default function CotizacionForm() {
     };
     
     fetchAllMaterialTypes();
-  }, []);
+  }, [fetchMaterials, fetchMaterialsByType, fetchAccesorios, fetchInventory, fetchFurnitureTypes]);
 
   // Recalculate totals whenever form items change
   useEffect(() => {
@@ -1055,7 +992,10 @@ export default function CotizacionForm() {
       console.log("Preparing to insert quotation data:", quotationData);
 
       // Initialize supabase client
-      const supabase = createClientComponentClient();
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
       
       // Insert quotation
       const { data: quotation, error: quotationError } = await supabase
@@ -1466,42 +1406,6 @@ export default function CotizacionForm() {
     }
   };
 
-  // Fetch accessories from database
-  const fetchAccesorios = async () => {
-    setIsLoadingAccesorios(true);
-    try {
-      const supabase = createClientComponentClient();
-      const { data, error } = await supabase
-        .from('accesorios')
-        .select('id_accesorios, accesorios, costo, categoria, comentario')
-        .order('categoria', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching accessories:', error);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los accesorios"
-        });
-        return;
-      }
-      
-      if (data) {
-        setAccesoriosList(data);
-        console.log("Loaded accessories from accesorios table:", data.map(acc => 
-          `${acc.accesorios} (${acc.categoria}): $${acc.costo}`
-        ));
-      }
-    } catch (error) {
-      console.error('Error fetching accessories:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los accesorios"
-      });
-    } finally {
-      setIsLoadingAccesorios(false);
-    }
-  };
-
   // Helper function to find an accessory by name or category
   const findAccessory = (criteria: { name?: string, category?: string }) => {
     if (!accesoriosList || accesoriosList.length === 0) {
@@ -1672,1782 +1576,4 @@ export default function CotizacionForm() {
       });
     }
   };
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <Button asChild variant="ghost">
-            <Link href="/cotizaciones">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver a Cotizaciones
-            </Link>
-          </Button>
-        </div>
-
-        {/* Client information section card */}
-        <Card className="shadow-sm rounded-lg">
-          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle className="text-lg">Información de Cliente</CardTitle>
-            <Badge variant="outline" className="text-sm font-normal">Sección 1 de 5</Badge>
-          </CardHeader>
-          <CardContent className="p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="cliente" className="text-base font-medium">Cliente</Label>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm"
-                className="h-9"
-                onClick={() => setShowClientModal(true)}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Nuevo Cliente
-              </Button>
-            </div>
-            
-            {/* Client selection field */}
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem className="w-full">
-                  <FormControl>
-                    <CustomCombobox
-                      options={clients.map(client => ({
-                        label: client.name,
-                        value: client.id.toString(),
-                        data: client
-                      }))}
-                      value={field.value ? field.value.toString() : ""}
-                      onChange={(selectedValue) => {
-                        if (!selectedValue) {
-                          field.onChange(null);
-                          form.setValue("clientName", "");
-                          form.setValue("clientEmail", "");
-                          form.setValue("clientPhone", "");
-                          form.setValue("clientAddress", "");
-                          return;
-                        }
-                        
-                        const numericValue = Number(selectedValue);
-                        if (!isNaN(numericValue)) {
-                          const selectedClient = clients.find(client => client.id === numericValue);
-                          field.onChange(numericValue);
-                          
-                          if (selectedClient) {
-                            form.setValue("clientName", selectedClient.name);
-                            form.setValue("clientEmail", selectedClient.email || "");
-                            form.setValue("clientPhone", selectedClient.phone || "");
-                            form.setValue("clientAddress", selectedClient.address || "");
-                          }
-                        }
-                      }}
-                      placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"}
-                      disabled={isLoadingClients}
-                      popoverWidth={320}
-                      className="h-11"
-                    />
-                  </FormControl>
-                  {form.formState.errors.clientId && (
-                    <FormMessage>{form.formState.errors.clientId.message}</FormMessage>
-                  )}
-                </FormItem>
-              )}
-            />
-
-            {/* Client details grid */}
-            {form.watch("clientId") && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-1">
-                <FormField
-                  control={form.control}
-                  name="clientName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-2">Nombre</FormLabel>
-                      <FormControl>
-                        <Input {...field} className="h-11 w-full px-3" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="clientPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-2">Teléfono</FormLabel>
-                      <FormControl>
-                        <Input {...field} className="h-11 w-full px-3" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="clientEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-2">Email</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" className="h-11 w-full px-3" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="clientAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-2">Dirección</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field}
-                          className="min-h-[80px] resize-none"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* Project information card */}
-        <Card className="shadow-sm rounded-lg">
-          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle className="text-lg">Información del Proyecto</CardTitle>
-            <Badge variant="outline" className="text-sm font-normal">Sección 2 de 5</Badge>
-          </CardHeader>
-          <CardContent className="p-6">
-            {/* Project information fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 mb-6">
-              {/* Número de Cotización */}
-              <FormField
-                control={form.control}
-                name="number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Número de Cotización</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="h-11 w-full px-3" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Nombre del Proyecto */}
-              <FormField
-                control={form.control}
-                name="projectName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Nombre del Proyecto</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="h-11 w-full px-3" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Tipo de Proyecto */}
-              <FormField
-                control={form.control}
-                name="projectType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Tipo de Proyecto</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 w-full px-3">
-                          <SelectValue placeholder="Seleccionar tipo de proyecto" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TIPOS_PROYECTO.map(tipo => (
-                          <SelectItem key={tipo.id} value={tipo.id}>
-                            {tipo.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Vendedor */}
-              <FormField
-                control={form.control}
-                name="vendedor"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Vendedor</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 w-full px-3">
-                          <SelectValue placeholder="Seleccionar vendedor" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {VENDEDORES.map(vendedor => (
-                          <SelectItem key={vendedor.id} value={vendedor.id}>
-                            {vendedor.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Fabricante */}
-              <FormField
-                control={form.control}
-                name="fabricante"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Fabricante</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 w-full px-3">
-                          <SelectValue placeholder="Seleccionar fabricante" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {FABRICANTES.map(fabricante => (
-                          <SelectItem key={fabricante.id} value={fabricante.id}>
-                            {fabricante.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Instalador */}
-              <FormField
-                control={form.control}
-                name="instalador"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Instalador</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 w-full px-3">
-                          <SelectValue placeholder="Seleccionar instalador" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {INSTALADORES.map(instalador => (
-                          <SelectItem key={instalador.id} value={instalador.id}>
-                            {instalador.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Fecha de Cotización */}
-              <FormField
-                control={form.control}
-                name="cotizacionDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel className="mb-2">Fecha de Cotización</FormLabel>
-                    <Popover open={isCotizacionDateOpen} onOpenChange={setIsCotizacionDateOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "h-11 w-full px-3 text-left font-normal justify-between",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP", { locale: es })
-                            ) : (
-                              <span>Seleccionar fecha</span>
-                            )}
-                            <CalendarIcon className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={(date) => {
-                            field.onChange(date);
-                            // Set validUntil to 15 days after the selected date
-                            if (date) {
-                              form.setValue("validUntil", addDays(date, 15));
-                            }
-                            setIsCotizacionDateOpen(false);
-                          }}
-                          disabled={(date) =>
-                            date < new Date("1900-01-01")
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Válida Hasta */}
-              <FormField
-                control={form.control}
-                name="validUntil"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel className="mb-2">Válida Hasta</FormLabel>
-                    <Popover open={isValidUntilOpen} onOpenChange={setIsValidUntilOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "h-11 w-full px-3 text-left font-normal justify-between",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP", { locale: es })
-                            ) : (
-                              <span>Seleccionar fecha</span>
-                            )}
-                            <CalendarIcon className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={(date) => {
-                            field.onChange(date);
-                            setIsValidUntilOpen(false);
-                          }}
-                          disabled={(date) =>
-                            date < new Date()
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Products and Materials section card */}
-        <Card className="shadow-sm rounded-lg">
-          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle className="text-lg">Especificaciones de materiales</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs h-8"
-                onClick={() => {
-                  const debugSection = document.getElementById('debug-section');
-                  if (debugSection) {
-                    const isVisible = debugSection.style.display !== 'none';
-                    debugSection.style.display = isVisible ? 'none' : 'block';
-                    // Update button text
-                    const btn = document.getElementById('toggle-debug-btn');
-                    if (btn) {
-                      btn.textContent = isVisible ? 'Mostrar Debug' : 'Ocultar Debug';
-                    }
-                  }
-                }}
-                id="toggle-debug-btn"
-              >
-                Mostrar Debug
-              </Button>
-              <Badge variant="outline" className="text-sm font-normal">Sección 3 de 5</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-8">
-              {/* Materials Selection */}
-              <div>
-                <h3 className="text-base font-medium mb-4">Especificaciones de materiales</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
-                  {/* Material Huacal */}
-                  <FormField
-                    control={form.control}
-                    name="materials.matHuacal"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="mb-2">Material Huacal</FormLabel>
-                        <FormControl>
-                          <CustomCombobox
-                            options={tabletosMaterials.map(material => ({
-                              label: material.nombre,
-                              value: material.nombre,
-                              data: material
-                            }))}
-                            value={field.value || ''}
-                            onChange={(value) => {
-                              field.onChange(value);
-                              // Store the selected material's data including the cost
-                              const selectedMaterial = tabletosMaterials.find(m => m.nombre === value);
-                              if (selectedMaterial) {
-                                form.setValue('materialsData.matHuacal', {
-                                  id_material: selectedMaterial.id_material,
-                                  nombre: selectedMaterial.nombre,
-                                  costo: selectedMaterial.costo,
-                                  tipo: selectedMaterial.tipo,
-                                  categoria: selectedMaterial.categoria,
-                                  comentario: selectedMaterial.comentario
-                                });
-                                console.log(`Selected Material Huacal: ${value}, Cost: ${selectedMaterial.costo}`);
-                                
-                                // Explicitly recalculate all prices
-                                recalculateAllPrices();
-                              } else {
-                                form.setValue('materialsData.matHuacal', undefined);
-                              }
-                            }}
-                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
-                            disabled={isLoadingMaterials}
-                            popoverWidth={320}
-                            className="h-11 w-full"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Chapacinta Huacal */}
-                  <FormField
-                    control={form.control}
-                    name="materials.chapHuacal"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="mb-2">Chapacinta Huacal</FormLabel>
-                        <FormControl>
-                          <CustomCombobox
-                            options={chapacintaMaterials.map(material => ({
-                              label: material.nombre,
-                              value: material.nombre,
-                              data: material
-                            }))}
-                            value={field.value || ''}
-                            onChange={(value) => {
-                              field.onChange(value);
-                              // Store the selected material's data including the cost
-                              const selectedMaterial = chapacintaMaterials.find(m => m.nombre === value);
-                              if (selectedMaterial) {
-                                form.setValue('materialsData.chapHuacal', {
-                                  id_material: selectedMaterial.id_material,
-                                  nombre: selectedMaterial.nombre,
-                                  costo: selectedMaterial.costo,
-                                  tipo: selectedMaterial.tipo,
-                                  categoria: selectedMaterial.categoria,
-                                  comentario: selectedMaterial.comentario
-                                });
-                                console.log(`Selected Chapacinta Huacal: ${value}, Cost: ${selectedMaterial.costo}`);
-                                
-                                // Explicitly recalculate all prices
-                                recalculateAllPrices();
-                              } else {
-                                form.setValue('materialsData.chapHuacal', undefined);
-                              }
-                            }}
-                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
-                            disabled={isLoadingMaterials}
-                            popoverWidth={320}
-                            className="h-11 w-full"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Jaladera */}
-                  <FormField
-                    control={form.control}
-                    name="materials.jaladera"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="mb-2">Jaladera</FormLabel>
-                        <FormControl>
-                          <CustomCombobox
-                            options={jaladeraMaterials.map(material => ({
-                              label: material.nombre,
-                              value: material.nombre,
-                              data: material
-                            }))}
-                            value={field.value || ''}
-                            onChange={(value) => {
-                              field.onChange(value);
-                              // Store the selected material's data including the cost
-                              const selectedMaterial = jaladeraMaterials.find(m => m.nombre === value);
-                              if (selectedMaterial) {
-                                form.setValue('materialsData.jaladera', {
-                                  id_material: selectedMaterial.id_material,
-                                  nombre: selectedMaterial.nombre,
-                                  costo: selectedMaterial.costo,
-                                  tipo: selectedMaterial.tipo,
-                                  categoria: selectedMaterial.categoria,
-                                  comentario: selectedMaterial.comentario
-                                });
-                                console.log(`Selected Jaladera: ${value}, Cost: ${selectedMaterial.costo}`);
-                                
-                                // Explicitly recalculate all prices
-                                recalculateAllPrices();
-                              } else {
-                                form.setValue('materialsData.jaladera', undefined);
-                              }
-                            }}
-                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar jaladera"}
-                            disabled={isLoadingMaterials}
-                            popoverWidth={320}
-                            className="h-11 w-full"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Material Vista */}
-                  <FormField
-                    control={form.control}
-                    name="materials.matVista"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="mb-2">Material Vista</FormLabel>
-                        <FormControl>
-                          <CustomCombobox
-                            options={tabletosMaterials.map(material => ({
-                              label: material.nombre,
-                              value: material.nombre,
-                              data: material
-                            }))}
-                            value={field.value || ''}
-                            onChange={(value) => {
-                              field.onChange(value);
-                              // Store the selected material's data including the cost
-                              const selectedMaterial = tabletosMaterials.find(m => m.nombre === value);
-                              if (selectedMaterial) {
-                                form.setValue('materialsData.matVista', {
-                                  id_material: selectedMaterial.id_material,
-                                  nombre: selectedMaterial.nombre,
-                                  costo: selectedMaterial.costo,
-                                  tipo: selectedMaterial.tipo,
-                                  categoria: selectedMaterial.categoria,
-                                  comentario: selectedMaterial.comentario
-                                });
-                                console.log(`Selected Material Vista: ${value}, Cost: ${selectedMaterial.costo}`);
-                                
-                                // Explicitly recalculate all prices
-                                recalculateAllPrices();
-                              } else {
-                                form.setValue('materialsData.matVista', undefined);
-                              }
-                            }}
-                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar material"}
-                            disabled={isLoadingMaterials}
-                            popoverWidth={320}
-                            className="h-11 w-full"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Chapacinta Vista */}
-                  <FormField
-                    control={form.control}
-                    name="materials.chapVista"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="mb-2">Chapacinta Vista</FormLabel>
-                        <FormControl>
-                          <CustomCombobox
-                            options={chapacintaMaterials.map(material => ({
-                              label: material.nombre,
-                              value: material.nombre,
-                              data: material
-                            }))}
-                            value={field.value || ''}
-                            onChange={(value) => {
-                              field.onChange(value);
-                              // Store the selected material's data including the cost
-                              const selectedMaterial = chapacintaMaterials.find(m => m.nombre === value);
-                              if (selectedMaterial) {
-                                form.setValue('materialsData.chapVista', {
-                                  id_material: selectedMaterial.id_material,
-                                  nombre: selectedMaterial.nombre,
-                                  costo: selectedMaterial.costo,
-                                  tipo: selectedMaterial.tipo,
-                                  categoria: selectedMaterial.categoria,
-                                  comentario: selectedMaterial.comentario
-                                });
-                                console.log(`Selected Chapacinta Vista: ${value}, Cost: ${selectedMaterial.costo}`);
-                                
-                                // Explicitly recalculate all prices
-                                recalculateAllPrices();
-                              } else {
-                                form.setValue('materialsData.chapVista', undefined);
-                              }
-                            }}
-                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar chapacinta"}
-                            disabled={isLoadingMaterials}
-                            popoverWidth={320}
-                            className="h-11 w-full"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Corredera */}
-                  <FormField
-                    control={form.control}
-                    name="materials.corredera"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="mb-2">Corredera</FormLabel>
-                        <FormControl>
-                          <CustomCombobox
-                            options={correderasMaterials.map(material => ({
-                              label: material.nombre,
-                              value: material.nombre,
-                              data: material
-                            }))}
-                            value={field.value || ''}
-                            onChange={(value) => {
-                              field.onChange(value);
-                              // Store the selected material's data including the cost
-                              const selectedMaterial = correderasMaterials.find(m => m.nombre === value);
-                              if (selectedMaterial) {
-                                form.setValue('materialsData.corredera', {
-                                  id_material: selectedMaterial.id_material,
-                                  nombre: selectedMaterial.nombre,
-                                  costo: selectedMaterial.costo,
-                                  tipo: selectedMaterial.tipo,
-                                  categoria: selectedMaterial.categoria,
-                                  comentario: selectedMaterial.comentario
-                                });
-                                console.log(`Selected Corredera: ${value}, Cost: ${selectedMaterial.costo}`);
-                                
-                                // Explicitly recalculate all prices
-                                recalculateAllPrices();
-                              } else {
-                                form.setValue('materialsData.corredera', undefined);
-                              }
-                            }}
-                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar corredera"}
-                            disabled={isLoadingMaterials}
-                            popoverWidth={320}
-                            className="h-11 w-full"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Bisagra */}
-                  <FormField
-                    control={form.control}
-                    name="materials.bisagra"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="mb-2">Bisagra</FormLabel>
-                        <FormControl>
-                          <CustomCombobox
-                            options={bisagrasMaterials.map(material => ({
-                              label: material.nombre,
-                              value: material.nombre,
-                              data: material
-                            }))}
-                            value={field.value || ''}
-                            onChange={(value) => {
-                              field.onChange(value);
-                              // Store the selected material's data including the cost
-                              const selectedMaterial = bisagrasMaterials.find(m => m.nombre === value);
-                              if (selectedMaterial) {
-                                form.setValue('materialsData.bisagra', {
-                                  id_material: selectedMaterial.id_material,
-                                  nombre: selectedMaterial.nombre,
-                                  costo: selectedMaterial.costo,
-                                  tipo: selectedMaterial.tipo,
-                                  categoria: selectedMaterial.categoria,
-                                  comentario: selectedMaterial.comentario
-                                });
-                                console.log(`Selected Bisagra: ${value}, Cost: ${selectedMaterial.costo}`);
-                                
-                                // Explicitly recalculate all prices
-                                recalculateAllPrices();
-                              } else {
-                                form.setValue('materialsData.bisagra', undefined);
-                              }
-                            }}
-                            placeholder={isLoadingMaterials ? "Cargando..." : "Seleccionar bisagra"}
-                            disabled={isLoadingMaterials}
-                            popoverWidth={320}
-                            className="h-11 w-full"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              {/* Debug Information Section */}
-              <div id="debug-section" className="mt-6 mb-8 p-4 border border-amber-200 bg-amber-50 rounded-md" style={{ display: 'none' }}>
-                <h3 className="text-base font-semibold mb-3 flex items-center">
-                  <span>Información de Debug (Cálculos)</span>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    className="ml-auto h-8"
-                    onClick={() => {
-                      const debugSection = document.getElementById('debug-section');
-                      if (debugSection) {
-                        debugSection.style.display = 'none';
-                      }
-                    }}
-                  >
-                    Ocultar Debug
-                  </Button>
-                </h3>
-                
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <p className="font-semibold mb-1">Tipo de Proyecto:</p>
-                    {(() => {
-                      const projectType = form.watch("projectType");
-                      const projectName = TIPOS_PROYECTO.find(t => t.id === projectType)?.name || "No seleccionado";
-                      let multiplier = 1;
-                      if (projectType === "1") multiplier = 1.8;
-                      else if (projectType === "3") multiplier = 1.5;
-                      
-                      return (
-                        <p>
-                          {projectName} (ID: {projectType || "N/A"}) - 
-                          Multiplicador: <span className="text-blue-600 font-bold">{multiplier}x</span>
-                        </p>
-                      );
-                    })()}
-                  </div>
-                  
-                  <div>
-                    <p className="font-semibold mb-1">Costos de Materiales:</p>
-                    <ul className="pl-4 space-y-1 list-disc">
-                      {(() => {
-                        const materialsData = form.watch("materialsData") || {};
-                        return (
-                          <>
-                            <li>Material Huacal: {materialsData.matHuacal ? 
-                              `${materialsData.matHuacal.nombre} - $${materialsData.matHuacal.costo}` : 
-                              "No seleccionado"}</li>
-                            <li>Material Vista: {materialsData.matVista ? 
-                              `${materialsData.matVista.nombre} - $${materialsData.matVista.costo}` : 
-                              "No seleccionado"}</li>
-                            <li>Chapacinta Huacal: {materialsData.chapHuacal ? 
-                              `${materialsData.chapHuacal.nombre} - $${materialsData.chapHuacal.costo}` : 
-                              "No seleccionado"}</li>
-                            <li>Chapacinta Vista: {materialsData.chapVista ? 
-                              `${materialsData.chapVista.nombre} - $${materialsData.chapVista.costo}` : 
-                              "No seleccionado"}</li>
-                            <li>Jaladera: {materialsData.jaladera ? 
-                              `${materialsData.jaladera.nombre} - $${materialsData.jaladera.costo}` : 
-                              "No seleccionado"}</li>
-                            <li>Corredera: {materialsData.corredera ? 
-                              `${materialsData.corredera.nombre} - $${materialsData.corredera.costo}` : 
-                              "No seleccionado"}</li>
-                            <li>Bisagra: {materialsData.bisagra ? 
-                              `${materialsData.bisagra.nombre} - $${materialsData.bisagra.costo}` : 
-                              "No seleccionado"}</li>
-                          </>
-                        );
-                      })()}
-                    </ul>
-                  </div>
-
-                  {form.watch("items")?.length > 0 && (
-                    <div>
-                      <p className="font-semibold mb-1">Cálculos por Mueble:</p>
-                      {form.watch("items").map((item, index) => {
-                        const projectType = form.watch("projectType");
-                        const materialsData = form.watch("materialsData") || {};
-                        let multiplier = 1;
-                        if (projectType === "1") multiplier = 1.8;
-                        else if (projectType === "3") multiplier = 1.5;
-                        
-                        if (!item.furnitureData) return <p key={index}>Mueble {index + 1}: Sin datos</p>;
-                        
-                        const fd = item.furnitureData;
-                        const calculations = [];
-                        
-                        if (fd.mat_huacal && materialsData.matHuacal) {
-                          const cost = new Decimal(fd.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier);
-                          calculations.push(
-                            <li key={`mat_huacal-${index}`}>
-                              Material Huacal: {fd.mat_huacal} × ${materialsData.matHuacal.costo} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        if (fd.mat_vista && materialsData.matVista) {
-                          const cost = new Decimal(fd.mat_vista).times(materialsData.matVista.costo).times(multiplier);
-                          calculations.push(
-                            <li key={`mat_vista-${index}`}>
-                              Material Vista: {fd.mat_vista} × ${materialsData.matVista.costo} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        if (fd.chap_huacal && materialsData.chapHuacal) {
-                          const cost = new Decimal(fd.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier);
-                          calculations.push(
-                            <li key={`chap_huacal-${index}`}>
-                              Chapacinta Huacal: {fd.chap_huacal} × ${materialsData.chapHuacal.costo} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        if (fd.chap_vista && materialsData.chapVista) {
-                          const cost = new Decimal(fd.chap_vista).times(materialsData.chapVista.costo).times(multiplier);
-                          calculations.push(
-                            <li key={`chap_vista-${index}`}>
-                              Chapacinta Vista: {fd.chap_vista} × ${materialsData.chapVista.costo} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        if (fd.jaladera && materialsData.jaladera) {
-                          const cost = new Decimal(fd.jaladera).times(materialsData.jaladera.costo).times(multiplier);
-                          calculations.push(
-                            <li key={`jaladera-${index}`}>
-                              Jaladera: {fd.jaladera} × ${materialsData.jaladera.costo} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        if (fd.corredera && materialsData.corredera) {
-                          const cost = new Decimal(fd.corredera).times(materialsData.corredera.costo).times(multiplier);
-                          calculations.push(
-                            <li key={`corredera-${index}`}>
-                              Corredera: {fd.corredera} × ${materialsData.corredera.costo} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        if (fd.bisagras && materialsData.bisagra) {
-                          const cost = new Decimal(fd.bisagras).times(materialsData.bisagra.costo).times(multiplier);
-                          calculations.push(
-                            <li key={`bisagras-${index}`}>
-                              Bisagras: {fd.bisagras} × ${materialsData.bisagra.costo} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        // Show accessories calculations
-                        if (fd.patas && fd.patas > 0) {
-                          const patasMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('pata') || 
-                            acc.categoria.toLowerCase().includes('pata')
-                          );
-                          const cost = new Decimal(fd.patas || 0).times(patasMaterial?.costo || 15).times(multiplier);
-                          calculations.push(
-                            <li key={`patas-${index}`}>
-                              Patas: {fd.patas} × ${patasMaterial?.costo || 15} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        if (fd.clip_patas && fd.clip_patas > 0) {
-                          const clipMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('clip') || 
-                            acc.categoria.toLowerCase().includes('clip')
-                          );
-                          const cost = new Decimal(fd.clip_patas || 0).times(clipMaterial?.costo || 5).times(multiplier);
-                          calculations.push(
-                            <li key={`clip_patas-${index}`}>
-                              Clip Patas: {fd.clip_patas} × ${clipMaterial?.costo || 5} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        if (fd.mensulas && fd.mensulas > 0) {
-                          const mensulasMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('mensul') || 
-                            acc.categoria.toLowerCase().includes('mensul')
-                          );
-                          const cost = new Decimal(fd.mensulas || 0).times(mensulasMaterial?.costo || 8).times(multiplier);
-                          calculations.push(
-                            <li key={`mensulas-${index}`}>
-                              Ménsulas: {fd.mensulas} × ${mensulasMaterial?.costo || 8} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        // Add kit_tornillo
-                        if (fd.kit_tornillo && fd.kit_tornillo > 0) {
-                          const kitTornilloMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('tornillo') || 
-                            acc.categoria.toLowerCase().includes('tornillo')
-                          );
-                          const cost = new Decimal(fd.kit_tornillo || 0).times(kitTornilloMaterial?.costo || 10).times(multiplier);
-                          calculations.push(
-                            <li key={`kit_tornillo-${index}`}>
-                              Kit Tornillo: {fd.kit_tornillo} × ${kitTornilloMaterial?.costo || 10} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        // Add CIF
-                        if (fd.cif && fd.cif > 0) {
-                          const cifMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('cif') || 
-                            acc.categoria.toLowerCase().includes('cif')
-                          );
-                          const cost = new Decimal(fd.cif || 0).times(cifMaterial?.costo || 12).times(multiplier);
-                          calculations.push(
-                            <li key={`cif-${index}`}>
-                              CIF: {fd.cif} × ${cifMaterial?.costo || 12} × {multiplier} = ${cost.toFixed(2)}
-                            </li>
-                          );
-                        }
-                        
-                        // Calculate component values for detailed breakdown
-                        let componentTotals = [];
-                        let runningTotal = new Decimal(0);
-                        
-                        if (fd.mat_huacal && materialsData.matHuacal) {
-                          const cost = new Decimal(fd.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier);
-                          componentTotals.push({ name: "Material Huacal", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.mat_vista && materialsData.matVista) {
-                          const cost = new Decimal(fd.mat_vista).times(materialsData.matVista.costo).times(multiplier);
-                          componentTotals.push({ name: "Material Vista", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.chap_huacal && materialsData.chapHuacal) {
-                          const cost = new Decimal(fd.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier);
-                          componentTotals.push({ name: "Chapacinta Huacal", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.chap_vista && materialsData.chapVista) {
-                          const cost = new Decimal(fd.chap_vista).times(materialsData.chapVista.costo).times(multiplier);
-                          componentTotals.push({ name: "Chapacinta Vista", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.jaladera && materialsData.jaladera) {
-                          const cost = new Decimal(fd.jaladera).times(materialsData.jaladera.costo).times(multiplier);
-                          componentTotals.push({ name: "Jaladera", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.corredera && materialsData.corredera) {
-                          const cost = new Decimal(fd.corredera).times(materialsData.corredera.costo).times(multiplier);
-                          componentTotals.push({ name: "Corredera", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.bisagras && materialsData.bisagra) {
-                          const cost = new Decimal(fd.bisagras).times(materialsData.bisagra.costo).times(multiplier);
-                          componentTotals.push({ name: "Bisagras", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.patas && fd.patas > 0) {
-                          const patasMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('pata') || 
-                            acc.categoria.toLowerCase().includes('pata')
-                          );
-                          const cost = new Decimal(fd.patas || 0).times(patasMaterial?.costo || 15).times(multiplier);
-                          componentTotals.push({ name: "Patas", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.clip_patas && fd.clip_patas > 0) {
-                          const clipMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('clip') || 
-                            acc.categoria.toLowerCase().includes('clip')
-                          );
-                          const cost = new Decimal(fd.clip_patas || 0).times(clipMaterial?.costo || 5).times(multiplier);
-                          componentTotals.push({ name: "Clip Patas", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.mensulas && fd.mensulas > 0) {
-                          const mensulasMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('mensul') || 
-                            acc.categoria.toLowerCase().includes('mensul')
-                          );
-                          const cost = new Decimal(fd.mensulas || 0).times(mensulasMaterial?.costo || 8).times(multiplier);
-                          componentTotals.push({ name: "Ménsulas", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.kit_tornillo && fd.kit_tornillo > 0) {
-                          const kitTornilloMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('tornillo') || 
-                            acc.categoria.toLowerCase().includes('tornillo')
-                          );
-                          const cost = new Decimal(fd.kit_tornillo || 0).times(kitTornilloMaterial?.costo || 10).times(multiplier);
-                          componentTotals.push({ name: "Kit Tornillo", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        if (fd.cif && fd.cif > 0) {
-                          const cifMaterial = accesoriosList.find(acc => 
-                            acc.accesorios.toLowerCase().includes('cif') || 
-                            acc.categoria.toLowerCase().includes('cif')
-                          );
-                          const cost = new Decimal(fd.cif || 0).times(cifMaterial?.costo || 12).times(multiplier);
-                          componentTotals.push({ name: "CIF", value: cost });
-                          runningTotal = runningTotal.plus(cost);
-                        }
-                        
-                        return (
-                          <div key={index} className="mb-3 p-2 bg-white rounded border border-gray-200">
-                            <p className="font-semibold">
-                              Mueble {index + 1}: {item.description || "Sin nombre"} (Área: {item.area || "N/A"})
-                            </p>
-                            <p className="text-xs text-gray-500 mb-1">Datos del mueble: Puertas: {fd.puertas || 0}, Cajones: {fd.cajones || 0}, Entrepaños: {fd.entrepaños || 0}</p>
-                            {calculations.length > 0 ? (
-                              <>
-                                <ul className="pl-4 space-y-1 list-disc mt-1">
-                                  {calculations}
-                                </ul>
-                                
-                                {/* Detailed sum breakdown */}
-                                <div className="mt-4 p-2 bg-gray-50 rounded border border-gray-200">
-                                  <p className="font-semibold text-xs mb-2">Suma detallada de componentes:</p>
-                                  <table className="w-full text-xs">
-                                    <thead>
-                                      <tr className="border-b border-gray-300">
-                                        <th className="text-left pb-1">Componente</th>
-                                        <th className="text-right pb-1">Valor</th>
-                                        <th className="text-right pb-1">Suma Acumulada</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {componentTotals.map((component, i) => {
-                                        const cumulativeSum = componentTotals
-                                          .slice(0, i + 1)
-                                          .reduce((sum, curr) => sum.plus(curr.value), new Decimal(0));
-                                          
-                                        return (
-                                          <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                            <td className="py-1">{component.name}</td>
-                                            <td className="text-right py-1">${component.value.toFixed(2)}</td>
-                                            <td className="text-right py-1 font-semibold">${cumulativeSum.toFixed(2)}</td>
-                                          </tr>
-                                        );
-                                      })}
-                                      <tr className="border-t border-gray-300 font-bold">
-                                        <td className="pt-1">TOTAL</td>
-                                        <td className="text-right pt-1" colSpan={2}>${runningTotal.toFixed(2)}</td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                                
-                                <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-200">
-                                  <div>
-                                    <p className="font-bold text-blue-700">
-                                      Precio Unitario: ${item.unitPrice}
-                                    </p>
-                                    <p className="font-bold text-blue-700">
-                                      Subtotal: {item.quantity} × ${item.unitPrice} = ${new Decimal(item.quantity || 0).times(item.unitPrice || 0).toFixed(2)}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    {item.unitPrice !== runningTotal.toDecimalPlaces(2).toNumber() && (
-                                      <div className="text-red-500 font-bold text-sm bg-red-50 p-1 rounded">
-                                        ¡Diferencia detectada!
-                                        <br />
-                                        Calculado: ${runningTotal.toFixed(2)}
-                                        <br />
-                                        Guardado: ${item.unitPrice}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              <p className="italic text-gray-500">No hay materiales asignados a este mueble</p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  
-                  <p className="text-xs text-gray-500 mt-2">
-                    * Esta sección solo muestra información para debugging y no afecta los cálculos reales.
-                  </p>
-                </div>
-              </div>
-
-              {/* Products Table */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-base font-medium">Productos y servicios</h3>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="gap-1 h-10"
-                    onClick={() => {
-                      const newIndex = fields.length;
-                      append({
-                        id: "",
-                        description: "",
-                        area: "",
-                        quantity: 1,
-                        unitPrice: 0,
-                        discount: 0,
-                        drawers: 0,
-                        doors: 0,
-                        shelves: 0,
-                        position: newIndex,
-                        type: "",
-                        furnitureData: undefined,
-                      });
-                      // Clear the row inventory for this new index
-                      const newRowInventory = { ...rowInventory };
-                      newRowInventory[newIndex] = {
-                        items: [],
-                        hasMore: false,
-                        page: 1,
-                        searchQuery: '',
-                        selectedType: ''
-                      };
-                      setRowInventory(newRowInventory);
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Agregar Producto
-                  </Button>
-                </div>
-                <div className="border rounded-lg overflow-hidden overflow-x-auto">
-                  <Table className="min-w-full">
-                    <TableHeader>
-                      <tr>
-                        <TableHead className="w-[90px] bg-muted/30 py-2 px-2 text-xs">Área</TableHead>
-                        <TableHead className="w-[130px] bg-muted/30 py-2 px-2 text-xs">Tipo mueble</TableHead>
-                        <TableHead className="w-[220px] bg-muted/30 py-2 px-2 text-xs">Mueble</TableHead>
-                        <TableHead className="w-[60px] text-center bg-muted/30 py-2 px-2 text-xs">Cant.</TableHead>
-                        <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Cajones</TableHead>
-                        <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Puertas</TableHead>
-                        <TableHead className="w-[70px] text-center bg-muted/30 py-2 px-2 text-xs">Entre.</TableHead>
-                        <TableHead className="w-[90px] text-right bg-muted/30 py-2 px-2 text-xs">Precio (auto)</TableHead>
-                        <TableHead className="w-[90px] text-right bg-muted/30 py-2 px-2 text-xs">Total</TableHead>
-                        <TableHead className="w-[40px] bg-muted/30 py-2 px-2 text-xs"></TableHead>
-                      </tr>
-                    </TableHeader>
-                    <tbody>
-                      {fields.length === 0 ? (
-                        <tr>
-                          <td colSpan={10} className="h-24 text-center text-muted-foreground">
-                            No hay productos agregados aún
-                          </td>
-                        </tr>
-                      ) : (
-                        fields.map((field, index) => (
-                          <tr key={field.id} className={index % 2 === 0 ? "bg-white" : "bg-muted/10"}>
-                            <td className="py-2 px-2">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.area`}
-                                render={({ field }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <Input
-                                        {...field}
-                                        placeholder="Área"
-                                        className="h-8 px-2 text-sm"
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.type`}
-                                render={({ field }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <CustomCombobox
-                                        options={furnitureTypes.map(type => ({
-                                          label: type,
-                                          value: type,
-                                          data: type
-                                        }))}
-                                        value={field.value || ''}
-                                        onChange={(value) => {
-                                          field.onChange(value);
-                                          // When the type changes, filter the inventory
-                                          searchInventoryItems('', value, index);
-                                          // Clear the current furniture selection
-                                          form.setValue(`items.${index}.description`, '');
-                                          // Reset the furniture-related fields
-                                          form.setValue(`items.${index}.drawers`, 0);
-                                          form.setValue(`items.${index}.doors`, 0);
-                                          form.setValue(`items.${index}.shelves`, 0);
-                                          form.setValue(`items.${index}.unitPrice`, 0);
-                                          form.setValue(`items.${index}.furnitureData`, undefined);
-                                        }}
-                                        placeholder={isLoadingFurnitureTypes ? "Cargando..." : "Seleccionar tipo"}
-                                        disabled={isLoadingFurnitureTypes}
-                                        popoverWidth={200}
-                                        className="h-8 w-full text-sm"
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.description`}
-                                render={({ field }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <CustomCombobox
-                                        options={(rowInventory[index]?.items || []).map((item) => ({
-                                          label: item.nombre_mueble,
-                                          value: item.nombre_mueble,
-                                          data: item
-                                        }))}
-                                        value={field.value || ''}
-                                        onChange={(value) => {
-                                          field.onChange(value);
-                                          
-                                          if (!value) {
-                                            // Reset furniture data if no selection
-                                            form.setValue(`items.${index}.furnitureData`, undefined);
-                                            return;
-                                          }
-                                          
-                                          // Find the selected inventory item
-                                          const selectedItem = (rowInventory[index]?.items || []).find(item => 
-                                            item.nombre_mueble === value
-                                          );
-                                          
-                                          if (selectedItem) {
-                                            // Store furniture data for price calculation
-                                            form.setValue(`items.${index}.furnitureData`, {
-                                              mueble_id: selectedItem.mueble_id,
-                                              cajones: selectedItem.cajones,
-                                              puertas: selectedItem.puertas,
-                                              entrepaños: selectedItem.entrepaños,
-                                              mat_huacal: selectedItem.mat_huacal,
-                                              mat_vista: selectedItem.mat_vista,
-                                              chap_huacal: selectedItem.chap_huacal,
-                                              chap_vista: selectedItem.chap_vista,
-                                              jaladera: selectedItem.jaladera,
-                                              corredera: selectedItem.corredera,
-                                              bisagras: selectedItem.bisagras,
-                                              patas: selectedItem.patas,
-                                              clip_patas: selectedItem.clip_patas,
-                                              mensulas: selectedItem.mensulas,
-                                              kit_tornillo: selectedItem.kit_tornillo,
-                                              cif: selectedItem.cif
-                                            });
-                                            console.log(`Stored furniture data for item ${index}:`, selectedItem);
-                                            
-                                            // Update form details from the selected item
-                                            form.setValue(`items.${index}.description`, selectedItem.nombre_mueble);
-                                            
-                                            // Set default quantity to 1 if it's not set
-                                            if (!form.getValues(`items.${index}.quantity`)) {
-                                              form.setValue(`items.${index}.quantity`, 1);
-                                            }
-                                            
-                                            // Auto-calculate the price based on materials and project type
-                                            console.log(`Calculating price for item ${index} after furniture selection`);
-                                            // We no longer call calculateItemPrice, already calculating directly
-                                            // calculateItemPrice(index, furnitureData);
-                                            
-                                            setTimeout(() => {
-                                              // Use the debug function to calculate the correct price
-                                              const items = form.getValues('items');
-                                              const projectType = form.getValues('projectType');
-                                              const materialsData = form.getValues('materialsData') || {};
-                                              
-                                              let multiplier = 1;
-                                              if (projectType === "1") multiplier = 1.8;
-                                              else if (projectType === "3") multiplier = 1.5;
-                                              
-                                              // Initialize total price
-                                              let totalPrice = new Decimal(0);
-                                              
-                                              // Calculate component costs for this specific item
-                                              const item = items[index];
-                                              const fd = item.furnitureData;
-                                              
-                                              if (!fd) return;
-                                              
-                                              // Use the same calculation logic across all functions
-                                              if (fd.mat_huacal && materialsData.matHuacal) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.mat_vista && materialsData.matVista) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.mat_vista).times(materialsData.matVista.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.chap_huacal && materialsData.chapHuacal) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.chap_vista && materialsData.chapVista) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.chap_vista).times(materialsData.chapVista.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.jaladera && materialsData.jaladera) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.jaladera).times(materialsData.jaladera.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.corredera && materialsData.corredera) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.corredera).times(materialsData.corredera.costo).times(multiplier));
-                                              }
-                                              
-                                              if (fd.bisagras && materialsData.bisagra) {
-                                                totalPrice = totalPrice.plus(new Decimal(fd.bisagras).times(materialsData.bisagra.costo).times(multiplier));
-                                              }
-                                              
-                                              // Handle accessories directly
-                                              if (fd.patas && fd.patas > 0) {
-                                                const patasMaterial = findAccessory({ name: 'patas', category: 'patas' });
-                                                const cost = patasMaterial ? patasMaterial.costo : 15;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.patas).times(cost).times(multiplier));
-                                              }
-                                              
-                                              if (fd.clip_patas && fd.clip_patas > 0) {
-                                                const clipMaterial = findAccessory({ name: 'clip_patas', category: 'clip patas' });
-                                                const cost = clipMaterial ? clipMaterial.costo : 5;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.clip_patas).times(cost).times(multiplier));
-                                              }
-                                              
-                                              if (fd.mensulas && fd.mensulas > 0) {
-                                                const mensulasMaterial = findAccessory({ name: 'mensulas', category: 'mensulas' });
-                                                const cost = mensulasMaterial ? mensulasMaterial.costo : 8;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.mensulas).times(cost).times(multiplier));
-                                              }
-                                              
-                                              if (fd.kit_tornillo && fd.kit_tornillo > 0) {
-                                                const kitMaterial = findAccessory({ name: 'kit_tornillo', category: 'kit tornillo' });
-                                                const cost = kitMaterial ? kitMaterial.costo : 10;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.kit_tornillo).times(cost).times(multiplier));
-                                              }
-                                              
-                                              if (fd.cif && fd.cif > 0) {
-                                                const cifMaterial = findAccessory({ name: 'cif', category: 'cif' });
-                                                const cost = cifMaterial ? cifMaterial.costo : 12;
-                                                totalPrice = totalPrice.plus(new Decimal(fd.cif).times(cost).times(multiplier));
-                                              }
-                                              
-                                              // Round price to 2 decimal places
-                                              const finalPrice = totalPrice.toDecimalPlaces(2).toNumber();
-                                              console.log(`Directly calculated price for item ${index}: ${finalPrice}`);
-                                              
-                                              // Directly update the form state with the calculated price
-                                              form.setValue(`items.${index}.unitPrice`, finalPrice);
-                                              
-                                              // Debug to verify price calculation consistency
-                                              setTimeout(() => debugCalculationMismatch(), 200);
-                                            }, 0);
-                                          }
-                                        }}
-                                        onSearch={(searchText) => {
-                                          // Pass the current type filter along with the search text
-                                          const typeFilter = form.watch(`items.${index}.type`);
-                                          searchInventoryItems(searchText, typeFilter, index);
-                                        }}
-                                        onLoadMore={() => loadMoreInventoryItems(index)}
-                                        hasMore={rowInventory[index]?.hasMore || false}
-                                        placeholder={isLoadingInventory ? "Cargando..." : "Seleccionar mueble"}
-                                        disabled={isLoadingInventory || !form.watch(`items.${index}.type`)}
-                                        popoverWidth={320}
-                                        className="h-8 w-full text-sm"
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.quantity`}
-                                render={({ field }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <Input
-                                        {...field}
-                                        type="number"
-                                        placeholder="Cant."
-                                        min={1}
-                                        className="h-8 text-center px-2 text-sm"
-                                        onChange={e => {
-                                          const value = parseFloat(e.target.value) || 1;
-                                          field.onChange(value);
-                                          // Force a recalculation of totals by updating the form state
-                                          const currentItems = form.getValues("items");
-                                          const updatedItems = [...currentItems];
-                                          updatedItems[index] = {
-                                            ...updatedItems[index],
-                                            quantity: value
-                                          };
-                                          form.setValue("items", updatedItems, { shouldDirty: true, shouldValidate: true });
-                                        }}
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.drawers`}
-                                render={({ field }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <Input
-                                        {...field}
-                                        type="number"
-                                        placeholder="0"
-                                        min={0}
-                                        className="h-8 text-center px-2 text-sm bg-muted/10"
-                                        readOnly
-                                        disabled
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.doors`}
-                                render={({ field }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <Input
-                                        {...field}
-                                        type="number"
-                                        placeholder="0"
-                                        min={0}
-                                        className="h-8 text-center px-2 text-sm bg-muted/10"
-                                        readOnly
-                                        disabled
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.shelves`}
-                                render={({ field }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <Input
-                                        {...field}
-                                        type="number"
-                                        placeholder="0"
-                                        min={0}
-                                        className="h-8 text-center px-2 text-sm bg-muted/10"
-                                        readOnly
-                                        disabled
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </td>
-                            <td className="py-2 px-2 text-right">
-                              <div className="text-sm font-medium">
-                                {formatCurrencyDisplay(new Decimal(form.watch(`items.${index}.unitPrice`) || 0))}
-                              </div>
-                            </td>
-                            <td className="py-2 px-2 text-right font-medium text-sm">
-                              {(() => {
-                                const quantity = new Decimal(form.watch(`items.${index}.quantity`) || 0);
-                                const unitPrice = new Decimal(form.watch(`items.${index}.unitPrice`) || 0);
-                                const subtotal = quantity.mul(unitPrice);
-                                
-                                return formatCurrencyDisplay(subtotal);
-                              })()}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0"
-                                onClick={() => {
-                                  // Remove the row from the form
-                                  remove(index);
-                                  
-                                  // Clean up the row inventory
-                                  const newRowInventory = { ...rowInventory };
-                                  delete newRowInventory[index];
-                                  setRowInventory(newRowInventory);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
-                
-                {/* Totals area */}
-                <div className="pt-5 border-t mt-6">
-                  <div className="ml-auto md:w-72">
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal:</span>
-                        <span>{formatCurrencyDisplay(totals.subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">IVA ({DEFAULT_COTIZADOR_CONFIG.taxRate}%):</span>
-                        <span>{formatCurrencyDisplay(totals.taxes)}</span>
-                      </div>
-                      <div className="flex justify-between font-medium text-lg pt-3 border-t">
-                        <span>Total:</span>
-                        <span>{formatCurrencyDisplay(totals.total)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Additional information section card */}
-        <Card className="shadow-sm rounded-lg">
-          <CardHeader className="py-4 px-6 border-b bg-muted/30 flex flex-row justify-between items-center">
-            <CardTitle className="text-lg">Información Adicional</CardTitle>
-            <Badge variant="outline" className="text-sm font-normal">Sección 5 de 5</Badge>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-6">
-              {/* Delivery time */}
-              <FormField
-                control={form.control}
-                name="deliveryTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Tiempo de Entrega (días hábiles)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        className="h-11 px-3"
-                        min={1}
-                        onChange={e => field.onChange(parseInt(e.target.value) || 1)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Payment terms */}
-              <FormField
-                control={form.control}
-                name="paymentTerms"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Condiciones de Pago</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        className="min-h-[80px] resize-none px-3 py-2"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            {/* Notes */}
-            <div>
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="mb-2">Notas Adicionales</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        value={field.value || ''}
-                        className="min-h-[120px] resize-none px-3 py-2"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Back to top button */}
-        {showBackToTop && (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="fixed bottom-24 right-4 h-10 w-10 rounded-full shadow-md"
-            onClick={scrollToTop}
-          >
-            <ArrowUp className="h-4 w-4" />
-          </Button>
-        )}
-        
-        {/* Fixed bottom panel - UPDATED WITH PDF BUTTON */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md py-5 px-6 z-10">
-          <div className="container mx-auto max-w-7xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-72 bg-gray-200 rounded-full h-3">
-                <div 
-                  className="bg-black h-3 rounded-full" 
-                  style={{ width: `${calculateProgress()}%` }}
-                ></div>
-              </div>
-              <span className="text-sm font-medium text-gray-600">
-                {Math.round(calculateProgress())}% completado
-              </span>
-            </div>
-            
-            <div className="flex justify-end gap-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="h-11 px-5 font-medium"
-                onClick={() => router.push('/cotizaciones')}
-              >
-                Cancelar
-              </Button>
-              
-              {/* PDF download button - only show if cotizacion has been saved (has ID) */}
-              {searchParams.get('id') && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="h-11 px-5 font-medium"
-                  onClick={() => downloadPdf(Number(searchParams.get('id')))}
-                  disabled={isPdfLoading}
-                >
-                  {isPdfLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generando PDF...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="mr-2 h-4 w-4" />
-                      Descargar PDF
-                    </>
-                  )}
-                </Button>
-              )}
-              
-              <Button 
-                type="submit" 
-                disabled={isSubmitting}
-                className="shadow-sm"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generando...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Generar Cotización
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </form>
-      
-      {/* Cliente Modal */}
-      <NuevoClienteModal
-        isOpen={showClientModal}
-        onClose={() => setShowClientModal(false)}
-        onSave={handleNewClient}
-      />
-    </Form>
-  );
 }
