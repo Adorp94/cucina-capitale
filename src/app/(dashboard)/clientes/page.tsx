@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default function ClientesPage() {
   return (
     <div className="container px-4 md:px-6 py-8 md:py-10 max-w-7xl mx-auto">
