@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
+// Force dynamic rendering to avoid prerendering issues with Clerk
+export const dynamic = 'force-dynamic';
+
 // Dynamically import the enhanced CotizacionForm component with no SSR
 // This is the Phase 2 version with more features gradually being added
 const CotizacionForm = dynamic(

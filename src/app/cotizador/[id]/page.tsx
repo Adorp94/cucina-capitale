@@ -12,6 +12,9 @@ import { ArrowLeft, Printer, Mail, Edit } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
+// Force dynamic rendering to avoid prerendering issues with Clerk
+export const dynamic = 'force-dynamic';
+
 type Quotation = {
   id_cotizacion: number;
   created_at: string;
