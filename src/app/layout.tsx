@@ -3,15 +3,31 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "react-day-picker/dist/style.css";
 import { Toaster } from "@/components/ui/toaster";
-import {
-  ClerkProvider,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from '@clerk/nextjs';
 import Image from "next/image";
 import Link from "next/link";
 import { Menu } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Dynamically load Clerk components to avoid SSR issues
+const ClerkProvider = dynamic(() => import('@clerk/nextjs').then((mod) => mod.ClerkProvider), {
+  ssr: false,
+  loading: () => <div>Loading authentication...</div>
+});
+
+const SignedIn = dynamic(() => import('@clerk/nextjs').then((mod) => mod.SignedIn), {
+  ssr: false,
+  loading: () => null,
+});
+
+const SignedOut = dynamic(() => import('@clerk/nextjs').then((mod) => mod.SignedOut), {
+  ssr: false,
+  loading: () => null,
+});
+
+const UserButton = dynamic(() => import('@clerk/nextjs').then((mod) => mod.UserButton), {
+  ssr: false,
+  loading: () => <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>,
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
