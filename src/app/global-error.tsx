@@ -1,9 +1,4 @@
-import { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Error - Cucina Capitale',
-  description: 'Ocurrió un error inesperado'
-};
+'use client';
 
 export default function GlobalError({
   error,
@@ -14,6 +9,10 @@ export default function GlobalError({
 }) {
   return (
     <html lang="es">
+      <head>
+        <title>Error - Cucina Capitale</title>
+        <meta name="description" content="Ocurrió un error inesperado" />
+      </head>
       <body>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center p-6">
