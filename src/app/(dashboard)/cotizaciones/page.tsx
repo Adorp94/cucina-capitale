@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileText } from "lucide-react";
+import { Eye, FileText, Download, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/calculator";
+import { useToast } from "@/components/ui/use-toast";
 
 type Quotation = {
   id_cotizacion: number;
@@ -36,7 +37,9 @@ type Quotation = {
 export default function CotizacionesPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pdfLoading, setPdfLoading] = useState<number | null>(null);
   const supabase = createClientComponentClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchQuotations();
@@ -62,6 +65,68 @@ export default function CotizacionesPage() {
       console.error('Error fetching quotations:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const downloadPdf = async (id: number) => {
+    try {
+      setPdfLoading(id);
+      const response = await fetch(`/api/cotizacion/${id}/pdf`);
+      
+      if (!response.ok) {
+        let errorMessage = 'Error al generar el PDF';
+        try {
+          const errorData = await response.json();
+          console.error('PDF generation error response:', errorData);
+          
+          if (errorData && errorData.error) {
+            errorMessage = errorData.error;
+            if (errorData.details && errorData.details.message) {
+              errorMessage += `: ${errorData.details.message}`;
+            }
+          }
+        } catch (jsonError) {
+          console.error('Error parsing error response:', jsonError);
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      // Create a blob from the PDF Stream
+      const blob = await response.blob();
+      
+      // Check if the blob is valid
+      if (blob.size === 0) {
+        throw new Error('El PDF generado está vacío');
+      }
+      
+      // Create a link element to download the blob
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cotizacion-${id}.pdf`;
+      
+      // Append to the document body, click it, then remove it
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL created
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "PDF generado correctamente",
+        description: "La cotización ha sido descargada como PDF.",
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "Error al generar PDF",
+        description: error instanceof Error ? error.message : 'Ha ocurrido un error al generar el PDF.',
+        variant: "destructive",
+      });
+    } finally {
+      setPdfLoading(null);
     }
   };
 
@@ -131,6 +196,19 @@ export default function CotizacionesPage() {
                   </TableCell>
                   <TableCell className="text-right py-3">
                     <div className="flex justify-end gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="shadow-sm"
+                        onClick={() => downloadPdf(quotation.id_cotizacion)}
+                        disabled={pdfLoading === quotation.id_cotizacion}
+                      >
+                        {pdfLoading === quotation.id_cotizacion ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                      </Button>
                       <Button 
                         asChild 
                         size="sm" 

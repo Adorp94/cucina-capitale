@@ -9,10 +9,11 @@ import { Decimal } from 'decimal.js';
 import { 
   Plus, X, ChevronRight, Edit2, PenTool, Trash2, 
   ChevronDown, ChevronUp, CalendarIcon, ArrowUp, Check, 
-  Loader2, Search, Calculator, FileText, ArrowLeft 
+  Loader2, Search, Calculator, FileText, ArrowLeft,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { z } from 'zod';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useToast } from "@/components/ui/use-toast";
@@ -358,6 +359,7 @@ function NuevoClienteModal({
 // Main component
 export default function CotizacionForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   // State for form and UI
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -411,7 +413,10 @@ export default function CotizacionForm() {
   
   // Toast notifications
   const { toast } = useToast();
-
+  
+  // Add this new state for PDF download
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
+  
   // Initialize form with default values
   const form = useForm<FormValues>({
     resolver: zodResolver(cotizacionFormSchema),
@@ -1115,7 +1120,14 @@ export default function CotizacionForm() {
         description: "Cotización generada correctamente",
       });
       
-      form.reset();
+      // Ask user if they want to download the PDF
+      const shouldDownloadPdf = window.confirm('¿Desea descargar la cotización en PDF?');
+      if (shouldDownloadPdf) {
+        await downloadPdf(quotation.id_cotizacion);
+      }
+      
+      // Navigate to the edit page for this quotation
+      router.push(`/cotizador/${quotation.id_cotizacion}`);
     } catch (error) {
       console.error("Error in form submission:", error);
       toast({
@@ -1125,223 +1137,6 @@ export default function CotizacionForm() {
       });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // Helper function to find an accessory by name or category
-  const findAccessory = (criteria: { name?: string, category?: string }) => {
-    if (!accesoriosList || accesoriosList.length === 0) {
-      console.log("No accessories loaded yet");
-      return null;
-    }
-    
-    let result = null;
-    
-    // Try to find by exact name match first
-    if (criteria.name && criteria.name.length > 0) {
-      result = accesoriosList.find(acc => 
-        acc.accesorios?.toLowerCase().includes(criteria.name?.toLowerCase())
-      );
-    }
-    
-    // If not found by name, try category
-    if (!result && criteria.category && criteria.category.length > 0) {
-      result = accesoriosList.find(acc => 
-        acc.categoria?.toLowerCase().includes(criteria.category?.toLowerCase())
-      );
-    }
-    
-    // Log for debugging
-    if (result) {
-      console.log(`Found accessory for ${criteria.name || criteria.category}: ${result.accesorios} - $${result.costo}`);
-    } else {
-      console.log(`No accessory found for ${criteria.name || criteria.category}`);
-    }
-    
-    return result;
-  };
-
-  // Calculate the price based on the furniture data and selected materials
-  const calculateItemPrice = (index: number, furnitureData: any) => {
-    try {
-      /* 
-       * PRICE CALCULATION PROCESS:
-       * 1. The BASE PRICE is calculated from all individual components (materials, accessories)
-       * 2. This base price is shown as the UNIT PRICE (not editable)
-       * 3. The SUBTOTAL is calculated as: UNIT PRICE × QUANTITY
-       * 4. Price calculations take into account the PROJECT TYPE (Residencial, Desarrollo, etc.)
-       *    which applies different multipliers to the costs.
-       */
-      
-      // Get all the required values
-      const projectType = form.getValues('projectType');
-      const materialsData = form.getValues('materialsData') || {};
-      
-      // Check if project type is selected
-      if (!projectType) {
-        console.error("Project type not selected. Please select a project type first.");
-        toast({
-          title: "Error de cálculo",
-          description: "Por favor seleccione un tipo de proyecto primero."
-        });
-        return;
-      }
-      
-      // Determine multiplier (identical code across all functions)
-      let multiplier = 1;
-      if (projectType === "1") { // Residencial
-        multiplier = 1.8; // 180%
-        console.log("Using Residencial multiplier: 1.8 (180%)");
-      } else if (projectType === "3") { // Desarrollo
-        multiplier = 1.5; // 150%
-        console.log("Using Desarrollo multiplier: 1.5 (150%)");
-      } else {
-        console.log(`Using default multiplier: 1.0 (100%) for project type: ${projectType}`);
-      }
-      
-      console.log(`Project type: ${projectType}, Multiplier: ${multiplier}`);
-      
-      // Initialize total price with Decimal for better precision
-      let totalPrice = new Decimal(0);
-      
-      // Calculate all component costs with detailed logging
-      let componentLog = [];
-      
-      // Calculations for base materials - identical to debug function and recalculateAllPrices
-      if (furnitureData.mat_huacal && materialsData.matHuacal) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier));
-        componentLog.push(`mat_huacal: ${furnitureData.mat_huacal} * ${materialsData.matHuacal.costo} * ${multiplier} = ${new Decimal(furnitureData.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier)}`);
-      }
-      
-      if (furnitureData.mat_vista && materialsData.matVista) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.mat_vista).times(materialsData.matVista.costo).times(multiplier));
-        componentLog.push(`mat_vista: ${furnitureData.mat_vista} * ${materialsData.matVista.costo} * ${multiplier} = ${new Decimal(furnitureData.mat_vista).times(materialsData.matVista.costo).times(multiplier)}`);
-      }
-      
-      if (furnitureData.chap_huacal && materialsData.chapHuacal) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier));
-        componentLog.push(`chap_huacal: ${furnitureData.chap_huacal} * ${materialsData.chapHuacal.costo} * ${multiplier} = ${new Decimal(furnitureData.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier)}`);
-      }
-      
-      if (furnitureData.chap_vista && materialsData.chapVista) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.chap_vista).times(materialsData.chapVista.costo).times(multiplier));
-        componentLog.push(`chap_vista: ${furnitureData.chap_vista} * ${materialsData.chapVista.costo} * ${multiplier} = ${new Decimal(furnitureData.chap_vista).times(materialsData.chapVista.costo).times(multiplier)}`);
-      }
-      
-      if (furnitureData.jaladera && materialsData.jaladera) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.jaladera).times(materialsData.jaladera.costo).times(multiplier));
-        componentLog.push(`jaladera: ${furnitureData.jaladera} * ${materialsData.jaladera.costo} * ${multiplier} = ${new Decimal(furnitureData.jaladera).times(materialsData.jaladera.costo).times(multiplier)}`);
-      }
-      
-      if (furnitureData.corredera && materialsData.corredera) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.corredera).times(materialsData.corredera.costo).times(multiplier));
-        componentLog.push(`corredera: ${furnitureData.corredera} * ${materialsData.corredera.costo} * ${multiplier} = ${new Decimal(furnitureData.corredera).times(materialsData.corredera.costo).times(multiplier)}`);
-      }
-      
-      if (furnitureData.bisagras && materialsData.bisagra) {
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.bisagras).times(materialsData.bisagra.costo).times(multiplier));
-        componentLog.push(`bisagras: ${furnitureData.bisagras} * ${materialsData.bisagra.costo} * ${multiplier} = ${new Decimal(furnitureData.bisagras).times(materialsData.bisagra.costo).times(multiplier)}`);
-      }
-      
-      // Direct accessory calculations - identical to debug function and recalculateAllPrices
-      if (furnitureData.patas && furnitureData.patas > 0) {
-        const patasMaterial = findAccessory({ name: 'patas', category: 'patas' });
-        const cost = patasMaterial ? patasMaterial.costo : 15;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.patas).times(cost).times(multiplier));
-        componentLog.push(`patas: ${furnitureData.patas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.patas).times(cost).times(multiplier)}`);
-      }
-      
-      if (furnitureData.clip_patas && furnitureData.clip_patas > 0) {
-        const clipMaterial = findAccessory({ name: 'clip_patas', category: 'clip patas' });
-        const cost = clipMaterial ? clipMaterial.costo : 5;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.clip_patas).times(cost).times(multiplier));
-        componentLog.push(`clip_patas: ${furnitureData.clip_patas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.clip_patas).times(cost).times(multiplier)}`);
-      }
-      
-      if (furnitureData.mensulas && furnitureData.mensulas > 0) {
-        const mensulasMaterial = findAccessory({ name: 'mensulas', category: 'mensulas' });
-        const cost = mensulasMaterial ? mensulasMaterial.costo : 8;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.mensulas).times(cost).times(multiplier));
-        componentLog.push(`mensulas: ${furnitureData.mensulas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.mensulas).times(cost).times(multiplier)}`);
-      }
-      
-      if (furnitureData.kit_tornillo && furnitureData.kit_tornillo > 0) {
-        const kitMaterial = findAccessory({ name: 'kit_tornillo', category: 'kit tornillo' });
-        const cost = kitMaterial ? kitMaterial.costo : 10;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.kit_tornillo).times(cost).times(multiplier));
-        componentLog.push(`kit_tornillo: ${furnitureData.kit_tornillo} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.kit_tornillo).times(cost).times(multiplier)}`);
-      }
-      
-      if (furnitureData.cif && furnitureData.cif > 0) {
-        const cifMaterial = findAccessory({ name: 'cif', category: 'cif' });
-        const cost = cifMaterial ? cifMaterial.costo : 12;
-        totalPrice = totalPrice.plus(new Decimal(furnitureData.cif).times(cost).times(multiplier));
-        componentLog.push(`cif: ${furnitureData.cif} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.cif).times(cost).times(multiplier)}`);
-      }
-      
-      // Generate a summary of all component costs for debugging
-      console.log("Price components:");
-      componentLog.forEach(log => console.log(`- ${log}`));
-      console.log("Total calculated price before rounding:", totalPrice.toString());
-      
-      // Convert to number with precise decimal places - identical to recalculateAllPrices
-      const finalPrice = totalPrice.toDecimalPlaces(2).toNumber();
-      console.log(`Final rounded price for item ${index}: ${finalPrice}`);
-      
-      // Directly update the unitPrice field
-      form.setValue(`items.${index}.unitPrice`, finalPrice);
-    } catch (error) {
-      console.error('Error calculating item price:', error);
-      toast({
-        title: "Error de cálculo",
-        description: "Ocurrió un error al calcular el precio. Revise los datos e intente nuevamente."
-      });
-    }
-  };
-
-  // Fetch accessories from database
-  const fetchAccesorios = async () => {
-    setIsLoadingAccesorios(true);
-    try {
-      const supabase = createClientComponentClient();
-      const { data, error } = await supabase
-        .from('accesorios')
-        .select('id_accesorios, accesorios, costo, categoria, comentario')
-        .order('categoria', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching accessories:', error);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los accesorios"
-        });
-        return;
-      }
-      
-      if (data) {
-        setAccesoriosList(data);
-        console.log("Loaded accessories from accesorios table:", data.map(acc => 
-          `${acc.accesorios} (${acc.categoria}): $${acc.costo}`
-        ));
-        
-        // Test lookups for common accessory types
-        setTimeout(() => {
-          console.log("Testing accessory lookups:");
-          findAccessory({ name: 'patas' });
-          findAccessory({ name: 'clip' });
-          findAccessory({ name: 'mensula' });
-          findAccessory({ name: 'tornillo' });
-          findAccessory({ name: 'cif' });
-        }, 1000);
-      }
-    } catch (error) {
-      console.error('Error fetching accessories:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los accesorios"
-      });
-    } finally {
-      setIsLoadingAccesorios(false);
     }
   };
 
@@ -1624,6 +1419,257 @@ export default function CotizacionForm() {
       
       // Debug to verify price calculation consistency
       debugCalculationMismatch();
+    }
+  };
+
+  // Add this new function for PDF download
+  const downloadPdf = async (cotizacionId: number) => {
+    try {
+      setIsPdfLoading(true);
+      const response = await fetch(`/api/cotizacion/${cotizacionId}/pdf`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al generar el PDF');
+      }
+      
+      // Create a blob from the PDF Stream
+      const blob = await response.blob();
+      
+      // Create a link element to download the blob
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cotizacion-${cotizacionId}.pdf`;
+      
+      // Append to the document body, click it, then remove it
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL created
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "PDF generado correctamente",
+        description: "La cotización ha sido descargada como PDF.",
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "Error al generar PDF",
+        description: error instanceof Error ? error.message : 'Ha ocurrido un error al generar el PDF.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsPdfLoading(false);
+    }
+  };
+
+  // Fetch accessories from database
+  const fetchAccesorios = async () => {
+    setIsLoadingAccesorios(true);
+    try {
+      const supabase = createClientComponentClient();
+      const { data, error } = await supabase
+        .from('accesorios')
+        .select('id_accesorios, accesorios, costo, categoria, comentario')
+        .order('categoria', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching accessories:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los accesorios"
+        });
+        return;
+      }
+      
+      if (data) {
+        setAccesoriosList(data);
+        console.log("Loaded accessories from accesorios table:", data.map(acc => 
+          `${acc.accesorios} (${acc.categoria}): $${acc.costo}`
+        ));
+      }
+    } catch (error) {
+      console.error('Error fetching accessories:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los accesorios"
+      });
+    } finally {
+      setIsLoadingAccesorios(false);
+    }
+  };
+
+  // Helper function to find an accessory by name or category
+  const findAccessory = (criteria: { name?: string, category?: string }) => {
+    if (!accesoriosList || accesoriosList.length === 0) {
+      console.log("No accessories loaded yet");
+      return null;
+    }
+    
+    let result = null;
+    
+    // Try to find by exact name match first
+    if (criteria.name && criteria.name.length > 0) {
+      result = accesoriosList.find(acc => 
+        acc.accesorios?.toLowerCase().includes(criteria.name?.toLowerCase())
+      );
+    }
+    
+    // If not found by name, try category
+    if (!result && criteria.category && criteria.category.length > 0) {
+      result = accesoriosList.find(acc => 
+        acc.categoria?.toLowerCase().includes(criteria.category?.toLowerCase())
+      );
+    }
+    
+    // Log for debugging
+    if (result) {
+      console.log(`Found accessory for ${criteria.name || criteria.category}: ${result.accesorios} - $${result.costo}`);
+    } else {
+      console.log(`No accessory found for ${criteria.name || criteria.category}`);
+    }
+    
+    return result;
+  };
+
+  // Calculate the price based on the furniture data and selected materials
+  const calculateItemPrice = (index: number, furnitureData: any) => {
+    try {
+      /* 
+       * PRICE CALCULATION PROCESS:
+       * 1. The BASE PRICE is calculated from all individual components (materials, accessories)
+       * 2. This base price is shown as the UNIT PRICE (not editable)
+       * 3. The SUBTOTAL is calculated as: UNIT PRICE × QUANTITY
+       * 4. Price calculations take into account the PROJECT TYPE (Residencial, Desarrollo, etc.)
+       *    which applies different multipliers to the costs.
+       */
+      
+      // Get all the required values
+      const projectType = form.getValues('projectType');
+      const materialsData = form.getValues('materialsData') || {};
+      
+      // Check if project type is selected
+      if (!projectType) {
+        console.error("Project type not selected. Please select a project type first.");
+        toast({
+          title: "Error de cálculo",
+          description: "Por favor seleccione un tipo de proyecto primero."
+        });
+        return;
+      }
+      
+      // Determine multiplier (identical code across all functions)
+      let multiplier = 1;
+      if (projectType === "1") { // Residencial
+        multiplier = 1.8; // 180%
+        console.log("Using Residencial multiplier: 1.8 (180%)");
+      } else if (projectType === "3") { // Desarrollo
+        multiplier = 1.5; // 150%
+        console.log("Using Desarrollo multiplier: 1.5 (150%)");
+      } else {
+        console.log(`Using default multiplier: 1.0 (100%) for project type: ${projectType}`);
+      }
+      
+      console.log(`Project type: ${projectType}, Multiplier: ${multiplier}`);
+      
+      // Initialize total price with Decimal for better precision
+      let totalPrice = new Decimal(0);
+      
+      // Calculate all component costs with detailed logging
+      let componentLog = [];
+      
+      // Calculations for base materials - identical to debug function and recalculateAllPrices
+      if (furnitureData.mat_huacal && materialsData.matHuacal) {
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier));
+        componentLog.push(`mat_huacal: ${furnitureData.mat_huacal} * ${materialsData.matHuacal.costo} * ${multiplier} = ${new Decimal(furnitureData.mat_huacal).times(materialsData.matHuacal.costo).times(multiplier)}`);
+      }
+      
+      if (furnitureData.mat_vista && materialsData.matVista) {
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.mat_vista).times(materialsData.matVista.costo).times(multiplier));
+        componentLog.push(`mat_vista: ${furnitureData.mat_vista} * ${materialsData.matVista.costo} * ${multiplier} = ${new Decimal(furnitureData.mat_vista).times(materialsData.matVista.costo).times(multiplier)}`);
+      }
+      
+      if (furnitureData.chap_huacal && materialsData.chapHuacal) {
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier));
+        componentLog.push(`chap_huacal: ${furnitureData.chap_huacal} * ${materialsData.chapHuacal.costo} * ${multiplier} = ${new Decimal(furnitureData.chap_huacal).times(materialsData.chapHuacal.costo).times(multiplier)}`);
+      }
+      
+      if (furnitureData.chap_vista && materialsData.chapVista) {
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.chap_vista).times(materialsData.chapVista.costo).times(multiplier));
+        componentLog.push(`chap_vista: ${furnitureData.chap_vista} * ${materialsData.chapVista.costo} * ${multiplier} = ${new Decimal(furnitureData.chap_vista).times(materialsData.chapVista.costo).times(multiplier)}`);
+      }
+      
+      if (furnitureData.jaladera && materialsData.jaladera) {
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.jaladera).times(materialsData.jaladera.costo).times(multiplier));
+        componentLog.push(`jaladera: ${furnitureData.jaladera} * ${materialsData.jaladera.costo} * ${multiplier} = ${new Decimal(furnitureData.jaladera).times(materialsData.jaladera.costo).times(multiplier)}`);
+      }
+      
+      if (furnitureData.corredera && materialsData.corredera) {
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.corredera).times(materialsData.corredera.costo).times(multiplier));
+        componentLog.push(`corredera: ${furnitureData.corredera} * ${materialsData.corredera.costo} * ${multiplier} = ${new Decimal(furnitureData.corredera).times(materialsData.corredera.costo).times(multiplier)}`);
+      }
+      
+      if (furnitureData.bisagras && materialsData.bisagra) {
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.bisagras).times(materialsData.bisagra.costo).times(multiplier));
+        componentLog.push(`bisagras: ${furnitureData.bisagras} * ${materialsData.bisagra.costo} * ${multiplier} = ${new Decimal(furnitureData.bisagras).times(materialsData.bisagra.costo).times(multiplier)}`);
+      }
+      
+      // Direct accessory calculations - identical to debug function and recalculateAllPrices
+      if (furnitureData.patas && furnitureData.patas > 0) {
+        const patasMaterial = findAccessory({ name: 'patas', category: 'patas' });
+        const cost = patasMaterial ? patasMaterial.costo : 15;
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.patas).times(cost).times(multiplier));
+        componentLog.push(`patas: ${furnitureData.patas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.patas).times(cost).times(multiplier)}`);
+      }
+      
+      if (furnitureData.clip_patas && furnitureData.clip_patas > 0) {
+        const clipMaterial = findAccessory({ name: 'clip_patas', category: 'clip patas' });
+        const cost = clipMaterial ? clipMaterial.costo : 5;
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.clip_patas).times(cost).times(multiplier));
+        componentLog.push(`clip_patas: ${furnitureData.clip_patas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.clip_patas).times(cost).times(multiplier)}`);
+      }
+      
+      if (furnitureData.mensulas && furnitureData.mensulas > 0) {
+        const mensulasMaterial = findAccessory({ name: 'mensulas', category: 'mensulas' });
+        const cost = mensulasMaterial ? mensulasMaterial.costo : 8;
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.mensulas).times(cost).times(multiplier));
+        componentLog.push(`mensulas: ${furnitureData.mensulas} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.mensulas).times(cost).times(multiplier)}`);
+      }
+      
+      if (furnitureData.kit_tornillo && furnitureData.kit_tornillo > 0) {
+        const kitMaterial = findAccessory({ name: 'kit_tornillo', category: 'kit tornillo' });
+        const cost = kitMaterial ? kitMaterial.costo : 10;
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.kit_tornillo).times(cost).times(multiplier));
+        componentLog.push(`kit_tornillo: ${furnitureData.kit_tornillo} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.kit_tornillo).times(cost).times(multiplier)}`);
+      }
+      
+      if (furnitureData.cif && furnitureData.cif > 0) {
+        const cifMaterial = findAccessory({ name: 'cif', category: 'cif' });
+        const cost = cifMaterial ? cifMaterial.costo : 12;
+        totalPrice = totalPrice.plus(new Decimal(furnitureData.cif).times(cost).times(multiplier));
+        componentLog.push(`cif: ${furnitureData.cif} * ${cost} * ${multiplier} = ${new Decimal(furnitureData.cif).times(cost).times(multiplier)}`);
+      }
+      
+      // Generate a summary of all component costs for debugging
+      console.log("Price components:");
+      componentLog.forEach(log => console.log(`- ${log}`));
+      console.log("Total calculated price before rounding:", totalPrice.toString());
+      
+      // Convert to number with precise decimal places - identical to recalculateAllPrices
+      const finalPrice = totalPrice.toDecimalPlaces(2).toNumber();
+      console.log(`Final rounded price for item ${index}: ${finalPrice}`);
+      
+      // Directly update the unitPrice field
+      form.setValue(`items.${index}.unitPrice`, finalPrice);
+    } catch (error) {
+      console.error('Error calculating item price:', error);
+      toast({
+        title: "Error de cálculo",
+        description: "Ocurrió un error al calcular el precio. Revise los datos e intente nuevamente."
+      });
     }
   };
 
@@ -3326,7 +3372,7 @@ export default function CotizacionForm() {
           </Button>
         )}
         
-        {/* Fixed bottom panel */}
+        {/* Fixed bottom panel - UPDATED WITH PDF BUTTON */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md py-5 px-6 z-10">
           <div className="container mx-auto max-w-7xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -3350,6 +3396,30 @@ export default function CotizacionForm() {
               >
                 Cancelar
               </Button>
+              
+              {/* PDF download button - only show if cotizacion has been saved (has ID) */}
+              {searchParams.get('id') && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="h-11 px-5 font-medium"
+                  onClick={() => downloadPdf(Number(searchParams.get('id')))}
+                  disabled={isPdfLoading}
+                >
+                  {isPdfLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generando PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Descargar PDF
+                    </>
+                  )}
+                </Button>
+              )}
+              
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
