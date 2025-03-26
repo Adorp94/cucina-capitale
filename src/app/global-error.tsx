@@ -16,9 +16,9 @@ export default function GlobalError({
       <body>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center p-6">
-            <h1 className="text-3xl font-bold mb-4">Algo salió mal</h1>
+            <h1 className="text-3xl font-bold mb-4">Error del sistema</h1>
             <p className="mb-6 text-gray-600">
-              Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.
+              Ocurrió un error crítico. Por favor, inténtalo de nuevo más tarde o contacta soporte.
             </p>
             <button
               onClick={() => reset()}
