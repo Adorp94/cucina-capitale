@@ -22,6 +22,12 @@ const nextConfig = {
     // Ignore TypeScript errors during build
     ignoreBuildErrors: true,
   },
+  // Disable static optimization for pages that depend on Clerk authentication
+  output: 'standalone',
+  experimental: {
+    // This makes sure Clerk authentication works properly with Vercel deployment
+    appDir: true,
+  },
 };
 
 module.exports = nextConfig; 

@@ -13,6 +13,9 @@ import { Eye, FileText, Download, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/calculator";
 import { useToast } from "@/components/ui/use-toast";
 
+// Force dynamic rendering to avoid prerendering issues with Clerk
+export const dynamic = 'force-dynamic';
+
 type Quotation = {
   id_cotizacion: number;
   created_at: string;

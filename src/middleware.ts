@@ -1,11 +1,20 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Create a matcher that prevents middleware from running on auth routes
+// Create a matcher for public routes
 const isPublicRoute = createRouteMatcher([
   '/',
   '/login(.*)',
   '/register(.*)',
   '/sso-callback(.*)',
+]);
+
+// Create a matcher for protected routes that need dynamic rendering
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/cotizador(.*)',
+  '/cotizaciones(.*)',
+  '/clientes(.*)',
+  '/productos(.*)',
 ]);
 
 export default clerkMiddleware({
