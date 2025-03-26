@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 
-export default function ProductosPage() {
+export default function ClientesPage() {
   return (
     <div className="container px-4 md:px-6 py-8 md:py-10 max-w-7xl mx-auto">
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Productos e Inventario</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Gestión de Clientes</h1>
           <p className="text-muted-foreground">
-            Gestiona tus productos y materiales de inventario.
+            Administra la información de tus clientes.
           </p>
         </div>
         <Button asChild variant="outline" className="shadow-sm">
@@ -30,7 +30,7 @@ export default function ProductosPage() {
           <div className="flex flex-col items-center justify-center py-10">
             <h2 className="text-xl font-semibold mb-4">Esta sección se encuentra en desarrollo</h2>
             <p className="text-center text-gray-600 max-w-md mb-6">
-              La gestión de productos e inventario estará disponible próximamente. Estamos trabajando para ofrecerte la mejor experiencia.
+              La gestión de clientes estará disponible próximamente. Estamos trabajando para ofrecerte la mejor experiencia.
             </p>
             <Button asChild>
               <Link href="/dashboard">
@@ -42,4 +42,4 @@ export default function ProductosPage() {
       </Card>
     </div>
   );
-}
+} 

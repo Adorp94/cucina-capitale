@@ -2,19 +2,64 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Decimal } from 'decimal.js';
 
 export const metadata: Metadata = {
   title: 'Dashboard | Cucina Capital',
   description: 'Panel de administración de cotizaciones',
 };
 
-export default function DashboardPage() {
-  // En una aplicación real, estos datos vendrían de la base de datos
+export default async function DashboardPage() {
+  const supabase = await createServerSupabaseClient();
+  
+  // Fetch recent cotizaciones with clients in a single query
+  const { data: cotizaciones, error: cotizacionesError } = await supabase
+    .from('cotizaciones')
+    .select(`
+      *,
+      cliente:clientes (
+        id_cliente,
+        nombre,
+        correo,
+        celular
+      )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(5);
+  
+  // Calculate summary data
+  const today = new Date();
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  
+  // Fetch cotizaciones for the current month
+  const { data: cotizacionesMes } = await supabase
+    .from('cotizaciones')
+    .select('*')
+    .gte('created_at', firstDayOfMonth.toISOString());
+  
   const resumen = {
-    cotizacionesMes: 15,
-    cotizacionesPendientes: 5,
-    cotizacionesAprobadas: 8,
-    ventasMes: 250000,
+    cotizacionesMes: cotizacionesMes?.length || 0,
+    cotizacionesPendientes: cotizacionesMes?.filter(c => 
+      c.status === 'pending' || c.status === 'draft' || 
+      c.estatus === 'pendiente' || c.estatus === 'borrador'
+    ).length || 0,
+    cotizacionesAprobadas: cotizacionesMes?.filter(c => 
+      c.status === 'approved' || c.estatus === 'aprobada'
+    ).length || 0,
+    ventasMes: cotizacionesMes?.reduce((sum, c) => {
+      const precio = c.total ? new Decimal(c.total) : 
+                     c.precio_total ? new Decimal(c.precio_total) : 
+                     new Decimal(0);
+      return sum.plus(precio);
+    }, new Decimal(0)).toNumber() || 0,
+  };
+
+  // Format currency for display
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
   };
 
   return (
@@ -50,7 +95,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{resumen.cotizacionesMes}</div>
             <p className="text-xs text-muted-foreground">
-              +5% respecto al mes anterior
+              Total del mes actual
             </p>
           </CardContent>
         </Card>
@@ -128,10 +173,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${new Intl.NumberFormat('es-MX').format(resumen.ventasMes)}
+              {formatCurrency(resumen.ventasMes)}
             </div>
             <p className="text-xs text-muted-foreground">
-              +12% respecto al mes anterior
+              Total del mes actual
             </p>
           </CardContent>
         </Card>
@@ -142,33 +187,49 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Cotizaciones Recientes</CardTitle>
             <CardDescription>
-              Has creado 15 cotizaciones este mes.
+              {cotizaciones && cotizaciones.length > 0 
+                ? `Mostrando las ${cotizaciones.length} cotizaciones más recientes.`
+                : 'No hay cotizaciones recientes.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {/* Aquí irían las cotizaciones recientes desde la base de datos */}
-              <div className="flex items-center justify-between border-b pb-2">
-                <div>
-                  <p className="font-medium">COT-202503-001</p>
-                  <p className="text-sm text-muted-foreground">Cliente Ejemplo 1 - Cocina Integral</p>
-                </div>
-                <div className="text-sm">$45,000.00</div>
-              </div>
-              <div className="flex items-center justify-between border-b pb-2">
-                <div>
-                  <p className="font-medium">COT-202503-002</p>
-                  <p className="text-sm text-muted-foreground">Cliente Ejemplo 2 - Remodelación</p>
-                </div>
-                <div className="text-sm">$78,500.00</div>
-              </div>
-              <div className="flex items-center justify-between border-b pb-2">
-                <div>
-                  <p className="font-medium">COT-202503-003</p>
-                  <p className="text-sm text-muted-foreground">Cliente Ejemplo 3 - Mobiliario</p>
-                </div>
-                <div className="text-sm">$32,800.00</div>
-              </div>
+              {cotizaciones && cotizaciones.length > 0 ? (
+                cotizaciones.map((cotizacion) => (
+                  <div key={cotizacion.id || cotizacion.id_cotizacion} className="flex items-center justify-between border-b pb-2">
+                    <div>
+                      <Link href={`/cotizador/${cotizacion.id || cotizacion.id_cotizacion}`} className="font-medium hover:underline">
+                        COT-{cotizacion.id || cotizacion.id_cotizacion}
+                      </Link>
+                      <p className="text-sm text-muted-foreground">
+                        {cotizacion.cliente?.nombre || 'Cliente sin nombre'} - {cotizacion.project_name || cotizacion.proyecto || 'Sin descripción'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {cotizacion.created_at ? 
+                          format(new Date(cotizacion.created_at), 'PPP', { locale: es }) : 
+                          'Fecha desconocida'
+                        }
+                      </p>
+                    </div>
+                    <div className="text-sm font-medium">
+                      {cotizacion.total ? formatCurrency(cotizacion.total) : 
+                      cotizacion.precio_total ? formatCurrency(cotizacion.precio_total) : '-'}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="py-4 text-center text-muted-foreground">
+                    No hay cotizaciones para mostrar
+                  </div>
+                  {cotizacionesError && (
+                    <div className="py-2 text-xs text-red-500 bg-red-50 p-2 rounded-md">
+                      <div><strong>Error:</strong> {cotizacionesError.message}</div>
+                      <div><strong>Detalles:</strong> {cotizacionesError.details}</div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </CardContent>
           <CardFooter>
@@ -193,20 +254,14 @@ export default function DashboardPage() {
                 Crear Nueva Cotización
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/clientes">
-                Gestionar Clientes
-              </Link>
+            <Button disabled variant="outline" className="w-full cursor-not-allowed opacity-60" title="En desarrollo">
+              Gestionar Clientes
             </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/productos">
-                Gestionar Productos
-              </Link>
+            <Button disabled variant="outline" className="w-full cursor-not-allowed opacity-60" title="En desarrollo">
+              Gestionar Productos
             </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/reportes">
-                Ver Reportes
-              </Link>
+            <Button disabled variant="outline" className="w-full cursor-not-allowed opacity-60" title="En desarrollo">
+              Ver Reportes
             </Button>
           </CardContent>
         </Card>

@@ -60,12 +60,12 @@ export default function RootLayout({
                     <Link href="/cotizaciones" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
                       Cotizaciones
                     </Link>
-                    <Link href="/clientes" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                    <span className="text-sm font-medium text-gray-400 cursor-not-allowed" title="En desarrollo">
                       Clientes
-                    </Link>
-                    <Link href="/productos" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                    </span>
+                    <span className="text-sm font-medium text-gray-400 cursor-not-allowed" title="En desarrollo">
                       Productos
-                    </Link>
+                    </span>
                   </nav>
                   <button className="md:hidden text-gray-500 hover:text-gray-700">
                     <Menu className="h-5 w-5" />
