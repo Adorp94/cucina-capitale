@@ -224,11 +224,15 @@ export async function GET(
     const projectTypeMap: Record<string, string> = {
       '1': 'Residencial',
       '2': 'Comercial',
-      '3': 'Industrial',
-      '4': 'Otro',
+      '3': 'Desarrollo',
+      '4': 'Institucional',
     };
     
+    console.log('Raw project_type:', quotationRaw.project_type);
+    console.log('Project type (toString):', quotationRaw.project_type?.toString());
+    
     const projectTypeText = projectTypeMap[quotationRaw.project_type?.toString()] || 'No especificado';
+    console.log('Mapped project type text:', projectTypeText);
     
     // Parse items and materials
     const parsedItems = parseQuotationItems(quotationRaw);

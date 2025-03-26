@@ -398,7 +398,7 @@ export default function CotizacionForm() {
       clientPhone: "",
       clientAddress: "",
       projectName: "",
-      projectType: "Residencial",
+      projectType: "1",
       cotizacionDate: new Date(),
       validUntil: addDays(new Date(), 15), // Set default to 15 days from today
       vendedor: "",
@@ -739,9 +739,9 @@ export default function CotizacionForm() {
     let multiplier = 1;
     
     // Set multiplier based on project type
-    if (projectType === "Residencial") {
+    if (projectType === "1") { // Residencial
       multiplier = 1.8; // 180%
-    } else if (projectType === "Desarrollo") {
+    } else if (projectType === "3") { // Desarrollo
       multiplier = 1.5; // 150%
     }
     
@@ -1534,7 +1534,7 @@ export default function CotizacionForm() {
                             </FormControl>
                             <SelectContent>
                               {TIPOS_PROYECTO.map((tipo) => (
-                                <SelectItem key={tipo.id} value={tipo.name}>
+                                <SelectItem key={tipo.id} value={tipo.id}>
                                   {tipo.name}
                                 </SelectItem>
                               ))}
