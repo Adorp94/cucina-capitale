@@ -1,13 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import ClientLayout from "@/app/client-layout";
 
 export const metadata: Metadata = {
   title: "Cucina Capitale",
   description: "Sistema de gestión para carpintería residencial",
-  viewport: "width=device-width, initial-scale=1",
   icons: {
     icon: "/favicon.ico",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
