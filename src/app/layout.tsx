@@ -1,4 +1,8 @@
+"use client";
+
 import type { Metadata, Viewport } from "next";
+
+export const dynamic = "force-dynamic";
 import ClientLayout from "@/app/client-layout";
 
 export const metadata: Metadata = {
