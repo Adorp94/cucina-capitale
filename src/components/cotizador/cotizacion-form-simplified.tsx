@@ -1145,55 +1145,64 @@ export default function CotizacionForm() {
                 </TabsList>
                 
                 <TabsContent value="client" className="space-y-4 mt-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium text-gray-800">Información del Cliente</h3>
-                    <Button 
-                      type="button" 
-                      onClick={() => setShowClientModal(true)} 
-                      variant="outline" 
-                      size="sm"
-                      className="bg-white hover:bg-gray-50"
-                    >
-                      <Plus className="h-4 w-4 mr-2 text-gray-600" /> Agregar Cliente
-                    </Button>
-                  </div>
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">Información del Cliente</h3>
                   
                   <div className="p-6 bg-white rounded-lg border border-gray-100 shadow-sm">
                     <div className="mb-5">
-                      <Label className="text-sm font-medium text-gray-700">Seleccionar Cliente</Label>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <Label className="text-sm font-medium text-gray-700">Seleccionar Cliente</Label>
+                        <Button 
+                          type="button" 
+                          onClick={() => setShowClientModal(true)} 
+                          variant="outline" 
+                          size="sm"
+                          className="bg-white hover:bg-gray-50"
+                        >
+                          <Plus className="h-4 w-4 mr-2 text-gray-600" /> Agregar Cliente
+                        </Button>
+                      </div>
                       <Popover open={openClientCombobox} onOpenChange={setOpenClientCombobox}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             role="combobox"
                             aria-expanded={openClientCombobox}
-                            className="w-full justify-between mt-1.5 font-normal text-gray-700"
+                            className="w-full md:w-[calc(50%-12px)] justify-between mt-1.5 font-normal text-gray-700 border border-input"
                           >
                             {form.watch('clientName') || "Seleccionar cliente..."}
                             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[400px] p-0" align="start">
+                        <PopoverContent className="w-[350px] p-0" align="start">
                           <Command>
                             <CommandInput placeholder="Buscar cliente..." />
                             <div className="max-h-[300px] overflow-y-auto">
-                              <CommandEmpty>No se encontraron clientes</CommandEmpty>
-                              <CommandGroup>
-                                {clients.map(client => (
-                                  <CommandItem
-                                    key={client.id}
-                                    value={client.id.toString()}
-                                    onSelect={handleClientSelect}
-                                  >
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">{client.name}</span>
-                                      {client.email && (
-                                        <span className="text-xs text-muted-foreground">{client.email}</span>
-                                      )}
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
+                              {isLoadingClients ? (
+                                <div className="py-6 text-center">
+                                  <Loader2 className="h-5 w-5 mx-auto animate-spin text-gray-400" />
+                                  <p className="text-sm text-gray-500 mt-2">Cargando clientes...</p>
+                                </div>
+                              ) : clients.length === 0 ? (
+                                <CommandEmpty>No se encontraron clientes</CommandEmpty>
+                              ) : (
+                                <CommandGroup>
+                                  {clients.map(client => (
+                                    <CommandItem
+                                      key={client.id}
+                                      value={client.id.toString()}
+                                      onSelect={handleClientSelect}
+                                      className="w-full cursor-pointer"
+                                    >
+                                      <div className="flex flex-col w-full">
+                                        <span className="font-medium">{client.name}</span>
+                                        {client.email && (
+                                          <span className="text-xs text-muted-foreground">{client.email}</span>
+                                        )}
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
                             </div>
                           </Command>
                         </PopoverContent>
