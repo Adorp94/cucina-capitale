@@ -162,6 +162,156 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+// New Client Modal Component
+const NewClientModal = ({ 
+  open, 
+  onClose, 
+  onSave 
+}: { 
+  open: boolean; 
+  onClose: () => void; 
+  onSave: (client: { id: number; name: string; email?: string; phone?: string; address?: string }) => void 
+}) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Create form for new client
+  const clientForm = useForm({
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+    },
+    resolver: zodResolver(
+      z.object({
+        name: z.string().min(1, "El nombre es obligatorio"),
+        email: z.string().email("Correo electrónico inválido").optional().or(z.literal("")),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+      })
+    ),
+  });
+  
+  const onSubmit = async (data: any) => {
+    setIsSubmitting(true);
+    try {
+      // Create Supabase client
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      // Insert the new client
+      const { data: newClient, error } = await supabase
+        .from('clientes')
+        .insert([{
+          nombre: data.name,
+          correo: data.email || null,
+          celular: data.phone || null,
+          direccion: data.address || null
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Call onSave with the new client data
+      onSave({
+        id: Number(newClient.id_cliente),
+        name: newClient.nombre,
+        email: newClient.correo,
+        phone: newClient.celular,
+        address: newClient.direccion
+      });
+      
+      // Close the modal
+      onClose();
+      
+      // Reset the form
+      clientForm.reset();
+      
+    } catch (error) {
+      console.error('Error saving client:', error);
+      alert('Error al guardar el cliente. Por favor, intente de nuevo.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Nuevo Cliente</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={clientForm.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre <span className="text-red-500">*</span></Label>
+              <Input
+                id="name"
+                placeholder="Nombre del cliente"
+                {...clientForm.register("name")}
+              />
+              {clientForm.formState.errors.name && (
+                <p className="text-sm text-red-500">{clientForm.formState.errors.name.message}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo electrónico</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="correo@ejemplo.com"
+                {...clientForm.register("email")}
+              />
+              {clientForm.formState.errors.email && (
+                <p className="text-sm text-red-500">{clientForm.formState.errors.email.message}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone">Teléfono</Label>
+              <Input
+                id="phone"
+                placeholder="(123) 456-7890"
+                {...clientForm.register("phone")}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="address">Dirección</Label>
+              <Input
+                id="address"
+                placeholder="Dirección del cliente"
+                {...clientForm.register("address")}
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-4 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                'Guardar Cliente'
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default function CotizacionForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -199,6 +349,8 @@ export default function CotizacionForm() {
     address: string | null;
   }>>([]);
   const [openClientCombobox, setOpenClientCombobox] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [isClientSubmitting, setIsClientSubmitting] = useState(false);
   
   // Add states for material comboboxes
   const [openMatHuacalCombobox, setOpenMatHuacalCombobox] = useState(false);
@@ -763,6 +915,27 @@ export default function CotizacionForm() {
     setOpenClientCombobox(false);
   };
 
+  // Handle adding a new client
+  const handleNewClient = (client: { id: number; name: string; email?: string; phone?: string; address?: string }) => {
+    // Add to clients list
+    const newClient = {
+      id: client.id,
+      name: client.name,
+      email: client.email || null,
+      phone: client.phone || null,
+      address: client.address || null
+    };
+    
+    setClients(prevClients => [newClient, ...prevClients]);
+    
+    // Select the new client
+    form.setValue('clientId', newClient.id);
+    form.setValue('clientName', newClient.name);
+    form.setValue('clientEmail', newClient.email || '');
+    form.setValue('clientPhone', newClient.phone || '');
+    form.setValue('clientAddress', newClient.address || '');
+  };
+
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
@@ -972,7 +1145,17 @@ export default function CotizacionForm() {
                 </TabsList>
                 
                 <TabsContent value="client" className="space-y-4 mt-4">
-                  <h3 className="text-lg font-medium">Información del Cliente</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Información del Cliente</h3>
+                    <Button 
+                      type="button" 
+                      onClick={() => setShowClientModal(true)} 
+                      variant="outline" 
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> Agregar Cliente
+                    </Button>
+                  </div>
                   <Separator />
                   
                   <div className="space-y-4">
@@ -2304,6 +2487,13 @@ export default function CotizacionForm() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* New Client Modal */}
+      <NewClientModal
+        open={showClientModal}
+        onClose={() => setShowClientModal(false)}
+        onSave={handleNewClient}
+      />
     </>
   );
 } 
