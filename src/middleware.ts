@@ -1,4 +1,4 @@
-import { clerkMiddleware } from "@clerk/nextjs";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import { publicRoutes } from "@/lib/routes";
 
 // Export the Clerk middleware with a simplified configuration
