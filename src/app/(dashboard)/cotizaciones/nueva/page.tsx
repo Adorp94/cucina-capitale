@@ -67,13 +67,6 @@ export default function NuevaCotizacionPage() {
         </Button>
       </div>
       
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4 text-sm">
-        <p>
-          <strong>Versión mejorada:</strong> Esta versión del formulario incluye gestión básica de artículos y selección de materiales.
-          Estamos implementando gradualmente las funcionalidades completas para asegurar estabilidad.
-        </p>
-      </div>
-      
       <Suspense fallback={<div>Cargando formulario de cotización...</div>}>
         <FormErrorBoundary>
           <CotizacionForm />
