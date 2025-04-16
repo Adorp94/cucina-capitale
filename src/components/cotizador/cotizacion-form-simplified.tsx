@@ -137,9 +137,7 @@ type FormValues = z.infer<typeof cotizacionFormSchema>;
 
 const TIPOS_PROYECTO = [
   { id: "1", name: "Residencial" },
-  { id: "2", name: "Comercial" },
   { id: "3", name: "Desarrollo" },
-  { id: "4", name: "Institucional" },
 ];
 
 // Add constants for team selection
@@ -411,8 +409,8 @@ export default function CotizacionForm() {
       jaladera: "none",
       corredera: "none",
       bisagras: "none",
-      deliveryTime: 30,
-      paymentTerms: "50% anticipo, 50% contra entrega",
+      deliveryTime: 90,
+      paymentTerms: "70% anticipo, 30% contra entrega",
       items: [],
       notes: "",
     },
