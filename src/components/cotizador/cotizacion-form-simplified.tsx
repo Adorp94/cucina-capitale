@@ -1805,7 +1805,7 @@ function CotizacionForm() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[350px] p-0" align="start">
-                          <div className="max-h-[300px] overflow-y-auto">
+                          <div className="max-h-[300px] overflow-y-auto p-3">
                             {isLoadingClients ? (
                               <div className="py-6 text-center">
                                 <Loader2 className="h-5 w-5 mx-auto animate-spin text-gray-400" />
@@ -1816,23 +1816,16 @@ function CotizacionForm() {
                                 <p className="text-sm text-gray-500">No se encontraron clientes</p>
                               </div>
                             ) : (
-                              <div className="space-y-2">
+                              <div className="space-y-1">
                                 {clients.map(client => (
-                                  <div key={client.id} className="flex justify-between items-center">
-                                    <div className="flex flex-col w-full">
+                                  <div key={client.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md cursor-pointer" onClick={() => handleClientSelect(client.id.toString())}>
+                                    <div className="flex flex-col flex-1">
                                       <span className="font-medium">{client.name}</span>
                                       {client.email && (
                                         <span className="text-xs text-muted-foreground">{client.email}</span>
                                       )}
                                     </div>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      onClick={() => handleClientSelect(client.id.toString())}
-                                      className="bg-white hover:bg-gray-50"
-                                    >
-                                      Seleccionar
-                                    </Button>
+                                    <ChevronDown className="h-4 w-4 rotate-[-90deg] text-gray-400" />
                                   </div>
                                 ))}
                               </div>
