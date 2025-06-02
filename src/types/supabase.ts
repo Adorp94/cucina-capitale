@@ -6,350 +6,323 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      users: {
+      accesorios: {
         Row: {
-          id: string
-          full_name: string | null
-          role: string
-          created_at: string
-          updated_at: string
+          accesorios: string | null
+          categoria: string | null
+          comentario: string | null
+          costo: number | null
+          id_accesorios: number
         }
         Insert: {
-          id: string
-          full_name?: string | null
-          role?: string
-          created_at?: string
-          updated_at?: string
+          accesorios?: string | null
+          categoria?: string | null
+          comentario?: string | null
+          costo?: number | null
+          id_accesorios: number
         }
         Update: {
-          id?: string
-          full_name?: string | null
-          role?: string
+          accesorios?: string | null
+          categoria?: string | null
+          comentario?: string | null
+          costo?: number | null
+          id_accesorios?: number
+        }
+        Relationships: []
+      }
+      clientes: {
+        Row: {
+          celular: string | null
+          correo: string | null
+          created_at: string
+          direccion: string | null
+          id_cliente: number
+          nombre: string | null
+        }
+        Insert: {
+          celular?: string | null
+          correo?: string | null
           created_at?: string
-          updated_at?: string
+          direccion?: string | null
+          id_cliente?: number
+          nombre?: string | null
+        }
+        Update: {
+          celular?: string | null
+          correo?: string | null
+          created_at?: string
+          direccion?: string | null
+          id_cliente?: number
+          nombre?: string | null
+        }
+        Relationships: []
+      }
+      cotizacion_items: {
+        Row: {
+          description: string
+          id_cotizacion: number
+          id_item: number
+          insumo_id: number | null
+          position: number
+          quantity: number
+          t_tl: number | null
+          tip_on_largo: number | null
+          total_price: number
+          u_tl: number | null
+          unit_price: number
+        }
+        Insert: {
+          description: string
+          id_cotizacion: number
+          id_item?: number
+          insumo_id?: number | null
+          position: number
+          quantity: number
+          t_tl?: number | null
+          tip_on_largo?: number | null
+          total_price: number
+          u_tl?: number | null
+          unit_price: number
+        }
+        Update: {
+          description?: string
+          id_cotizacion?: number
+          id_item?: number
+          insumo_id?: number | null
+          position?: number
+          quantity?: number
+          t_tl?: number | null
+          tip_on_largo?: number | null
+          total_price?: number
+          u_tl?: number | null
+          unit_price?: number
         }
         Relationships: [
           {
-            foreignKeyName: "users_id_fkey"
-            columns: ["id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
+            foreignKeyName: "cotizacion_items_id_cotizacion_fkey"
+            columns: ["id_cotizacion"]
+            isOneToOne: false
+            referencedRelation: "cotizaciones"
+            referencedColumns: ["id_cotizacion"]
+          },
+          {
+            foreignKeyName: "cotizacion_items_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["insumo_id"]
+          },
         ]
       }
-      clients: {
+      cotizacion_materiales: {
         Row: {
-          id: string
-          name: string
-          email: string | null
-          phone: string | null
-          address: string | null
-          rfc: string | null
+          costo_usado: number
+          id_cotizacion: number
+          id_material: number
+          tipo: string
+        }
+        Insert: {
+          costo_usado: number
+          id_cotizacion: number
+          id_material: number
+          tipo: string
+        }
+        Update: {
+          costo_usado?: number
+          id_cotizacion?: number
+          id_material?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotizacion_materiales_id_cotizacion_fkey"
+            columns: ["id_cotizacion"]
+            isOneToOne: false
+            referencedRelation: "cotizaciones"
+            referencedColumns: ["id_cotizacion"]
+          },
+          {
+            foreignKeyName: "cotizacion_materiales_id_material_fkey"
+            columns: ["id_material"]
+            isOneToOne: false
+            referencedRelation: "materiales"
+            referencedColumns: ["id_material"]
+          },
+        ]
+      }
+      cotizaciones: {
+        Row: {
+          created_at: string
+          delivery_time: string | null
+          id_cliente: number
+          id_cotizacion: number
           notes: string | null
-          created_at: string
-          updated_at: string
-          created_by: string | null
-        }
-        Insert: {
-          id?: string
-          name: string
-          email?: string | null
-          phone?: string | null
-          address?: string | null
-          rfc?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-          created_by?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          email?: string | null
-          phone?: string | null
-          address?: string | null
-          rfc?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-          created_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clients_created_by_fkey"
-            columns: ["created_by"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      products: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          unit: string | null
-          base_price: number
-          category: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
-          created_by: string | null
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          unit?: string | null
-          base_price: number
-          category?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-          created_by?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          unit?: string | null
-          base_price?: number
-          category?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-          created_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "products_created_by_fkey"
-            columns: ["created_by"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      quotations: {
-        Row: {
-          id: string
-          client_id: string | null
-          number: string
-          title: string
-          description: string | null
+          project_name: string | null
+          project_type: string
           status: string
           subtotal: number
+          tax_rate: number
           taxes: number
           total: number
-          valid_until: string | null
-          terms: string | null
-          notes: string | null
-          created_at: string
           updated_at: string
-          created_by: string | null
-          metadata: Json | null
+          valid_until: string | null
         }
         Insert: {
-          id?: string
-          client_id?: string | null
-          number: string
-          title: string
-          description?: string | null
+          created_at?: string
+          delivery_time?: string | null
+          id_cliente: number
+          id_cotizacion?: number
+          notes?: string | null
+          project_name?: string | null
+          project_type: string
           status?: string
           subtotal: number
+          tax_rate: number
           taxes: number
           total: number
-          valid_until?: string | null
-          terms?: string | null
-          notes?: string | null
-          created_at?: string
           updated_at?: string
-          created_by?: string | null
-          metadata?: Json | null
+          valid_until?: string | null
         }
         Update: {
-          id?: string
-          client_id?: string | null
-          number?: string
-          title?: string
-          description?: string | null
+          created_at?: string
+          delivery_time?: string | null
+          id_cliente?: number
+          id_cotizacion?: number
+          notes?: string | null
+          project_name?: string | null
+          project_type?: string
           status?: string
           subtotal?: number
+          tax_rate?: number
           taxes?: number
           total?: number
-          valid_until?: string | null
-          terms?: string | null
-          notes?: string | null
-          created_at?: string
           updated_at?: string
-          created_by?: string | null
-          metadata?: Json | null
+          valid_until?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "quotations_client_id_fkey"
-            columns: ["client_id"]
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
+            foreignKeyName: "cotizaciones_id_cliente_fkey"
+            columns: ["id_cliente"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id_cliente"]
           },
-          {
-            foreignKeyName: "quotations_created_by_fkey"
-            columns: ["created_by"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
         ]
       }
-      quotation_items: {
+      insumos: {
         Row: {
-          id: string
-          quotation_id: string
-          product_id: string | null
-          description: string
-          quantity: number
-          unit_price: number
-          discount: number
-          subtotal: number
-          notes: string | null
-          position: number
-        }
-        Insert: {
-          id?: string
-          quotation_id: string
-          product_id?: string | null
-          description: string
-          quantity: number
-          unit_price: number
-          discount?: number
-          subtotal: number
-          notes?: string | null
-          position: number
-        }
-        Update: {
-          id?: string
-          quotation_id?: string
-          product_id?: string | null
-          description?: string
-          quantity?: number
-          unit_price?: number
-          discount?: number
-          subtotal?: number
-          notes?: string | null
-          position?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quotation_items_quotation_id_fkey"
-            columns: ["quotation_id"]
-            referencedRelation: "quotations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quotation_items_product_id_fkey"
-            columns: ["product_id"]
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      inventario: {
-        Row: {
-          mueble_id: number
-          nombre_mueble: string | null
+          bisagras: number | null
           cajones: number | null
-          puertas: number | null
-          entrepaños: number | null
+          categoria: string | null
+          chap_huacal: number | null
+          chap_vista: number | null
           cif: number | null
-          created_at: string | null
-          updated_at: string | null
-          precio: number | null
+          clip_patas: number | null
+          corredera: number | null
           descripcion: string | null
-          dimensiones: string | null
-          color: string | null
-          estilo: string | null
-          imagen_url: string | null
-          estado: string | null
+          empaque: string | null
+          entrepaños: number | null
+          insumo_id: number
+          jaladera: number | null
+          kit_tornillo: number | null
+          mat_huacal: number | null
+          mat_vista: number | null
+          mensulas: number | null
+          mueble: string | null
+          patas: number | null
+          puertas: number | null
+          t_tl: number | null
+          tipo: string | null
+          tipo_mueble: string | null
+          tipon_largo: number | null
+          u_tl: number | null
         }
         Insert: {
-          mueble_id?: number
-          nombre_mueble?: string | null
+          bisagras?: number | null
           cajones?: number | null
-          puertas?: number | null
-          entrepaños?: number | null
+          categoria?: string | null
+          chap_huacal?: number | null
+          chap_vista?: number | null
           cif?: number | null
-          created_at?: string | null
-          updated_at?: string | null
-          precio?: number | null
+          clip_patas?: number | null
+          corredera?: number | null
           descripcion?: string | null
-          dimensiones?: string | null
-          color?: string | null
-          estilo?: string | null
-          imagen_url?: string | null
-          estado?: string | null
+          empaque?: string | null
+          entrepaños?: number | null
+          insumo_id?: number
+          jaladera?: number | null
+          kit_tornillo?: number | null
+          mat_huacal?: number | null
+          mat_vista?: number | null
+          mensulas?: number | null
+          mueble?: string | null
+          patas?: number | null
+          puertas?: number | null
+          t_tl?: number | null
+          tipo?: string | null
+          tipo_mueble?: string | null
+          tipon_largo?: number | null
+          u_tl?: number | null
         }
         Update: {
-          mueble_id?: number
-          nombre_mueble?: string | null
+          bisagras?: number | null
           cajones?: number | null
-          puertas?: number | null
-          entrepaños?: number | null
+          categoria?: string | null
+          chap_huacal?: number | null
+          chap_vista?: number | null
           cif?: number | null
-          created_at?: string | null
-          updated_at?: string | null
-          precio?: number | null
+          clip_patas?: number | null
+          corredera?: number | null
           descripcion?: string | null
-          dimensiones?: string | null
-          color?: string | null
-          estilo?: string | null
-          imagen_url?: string | null
-          estado?: string | null
+          empaque?: string | null
+          entrepaños?: number | null
+          insumo_id?: number
+          jaladera?: number | null
+          kit_tornillo?: number | null
+          mat_huacal?: number | null
+          mat_vista?: number | null
+          mensulas?: number | null
+          mueble?: string | null
+          patas?: number | null
+          puertas?: number | null
+          t_tl?: number | null
+          tipo?: string | null
+          tipo_mueble?: string | null
+          tipon_largo?: number | null
+          u_tl?: number | null
         }
         Relationships: []
       }
       materiales: {
         Row: {
+          categoria: string | null
+          comentario: string | null
+          costo: number | null
           id_material: number
           nombre: string | null
+          subcategoria: string | null
           tipo: string | null
-          categoria: string | null
-          costo: number | null
-          comentario: string | null
-          created_at: string | null
-          updated_at: string | null
-          unidad_medida: string | null
-          stock: number | null
-          proveedor: string | null
-          imagen_url: string | null
         }
         Insert: {
-          id_material?: number
-          nombre?: string | null
-          tipo?: string | null
           categoria?: string | null
-          costo?: number | null
           comentario?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-          unidad_medida?: string | null
-          stock?: number | null
-          proveedor?: string | null
-          imagen_url?: string | null
+          costo?: number | null
+          id_material: number
+          nombre?: string | null
+          subcategoria?: string | null
+          tipo?: string | null
         }
         Update: {
+          categoria?: string | null
+          comentario?: string | null
+          costo?: number | null
           id_material?: number
           nombre?: string | null
+          subcategoria?: string | null
           tipo?: string | null
-          categoria?: string | null
-          costo?: number | null
-          comentario?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-          unidad_medida?: string | null
-          stock?: number | null
-          proveedor?: string | null
-          imagen_url?: string | null
         }
         Relationships: []
       }
@@ -358,7 +331,12 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_furniture_types: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          tipo: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -368,3 +346,114 @@ export interface Database {
     }
   }
 }
+
+type DefaultSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

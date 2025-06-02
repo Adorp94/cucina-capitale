@@ -19,8 +19,10 @@ import {
 import Link from 'next/link';
 
 type Producto = {
-  mueble_id: number;
-  nombre_mueble: string | null;
+  insumo_id: number;
+  mueble: string | null;
+  categoria: string | null;
+  descripcion: string | null;
   cajones: number | null;
   puertas: number | null;
   entrepaños: number | null;
@@ -36,15 +38,12 @@ type Producto = {
   mensulas: number | null;
   kit_tornillo: number | null;
   cif: number | null;
-  created_at: string | null;
-  updated_at: string | null;
-  precio: number | null;
-  descripcion: string | null;
-  dimensiones: string | null;
-  color: string | null;
-  estilo: string | null;
-  imagen_url: string | null;
-  estado: string | null;
+  tipo_mueble: string | null;
+  tipo: string | null;
+  tipon_largo: number | null;
+  u_tl: number | null;
+  t_tl: number | null;
+  empaque: string | null;
 };
 
 type ProductosTableProps = {
@@ -55,7 +54,7 @@ export default function ProductosTable({ productos }: ProductosTableProps) {
   const [filteredProductos, setFilteredProductos] = useState<Producto[]>(productos);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<keyof Producto>('mueble_id');
+  const [sortField, setSortField] = useState<keyof Producto>('insumo_id');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const itemsPerPage = 10;
 
@@ -74,8 +73,8 @@ export default function ProductosTable({ productos }: ProductosTableProps) {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(producto => 
-        producto.nombre_mueble?.toLowerCase().includes(query) ||
-        producto.mueble_id.toString().includes(query)
+        producto.mueble?.toLowerCase().includes(query) ||
+        producto.insumo_id.toString().includes(query)
       );
     }
     
@@ -176,8 +175,8 @@ export default function ProductosTable({ productos }: ProductosTableProps) {
               <SelectValue placeholder="Campo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mueble_id">ID</SelectItem>
-              <SelectItem value="nombre_mueble">Nombre</SelectItem>
+              <SelectItem value="insumo_id">ID</SelectItem>
+              <SelectItem value="mueble">Nombre</SelectItem>
               <SelectItem value="cajones">Cajones</SelectItem>
               <SelectItem value="puertas">Puertas</SelectItem>
               <SelectItem value="entrepaños">Entrepaños</SelectItem>
@@ -199,11 +198,11 @@ export default function ProductosTable({ productos }: ProductosTableProps) {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="cursor-pointer" onClick={() => handleSort('mueble_id')}>
-                ID {sortField === 'mueble_id' && (sortDirection === 'asc' ? '↑' : '↓')}
+              <TableHead className="cursor-pointer" onClick={() => handleSort('insumo_id')}>
+                ID {sortField === 'insumo_id' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('nombre_mueble')}>
-                Nombre {sortField === 'nombre_mueble' && (sortDirection === 'asc' ? '↑' : '↓')}
+              <TableHead className="cursor-pointer" onClick={() => handleSort('mueble')}>
+                Nombre {sortField === 'mueble' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead className="cursor-pointer text-center" onClick={() => handleSort('cajones')}>
                 Cajones {sortField === 'cajones' && (sortDirection === 'asc' ? '↑' : '↓')}
@@ -229,9 +228,9 @@ export default function ProductosTable({ productos }: ProductosTableProps) {
               </TableRow>
             ) : (
               currentItems.map((producto) => (
-                <TableRow key={producto.mueble_id} className="hover:bg-muted/50">
-                  <TableCell className="font-medium">{producto.mueble_id}</TableCell>
-                  <TableCell>{producto.nombre_mueble || '-'}</TableCell>
+                <TableRow key={producto.insumo_id} className="hover:bg-muted/50">
+                  <TableCell className="font-medium">{producto.insumo_id}</TableCell>
+                  <TableCell>{producto.mueble || '-'}</TableCell>
                   <TableCell className="text-center">{producto.cajones || '0'}</TableCell>
                   <TableCell className="text-center">{producto.puertas || '0'}</TableCell>
                   <TableCell className="text-center">{producto.entrepaños || '0'}</TableCell>
@@ -248,7 +247,7 @@ export default function ProductosTable({ productos }: ProductosTableProps) {
                         size="sm" 
                         variant="ghost"
                       >
-                        <Link href={`/productos/${producto.mueble_id}`}>
+                        <Link href={`/productos/${producto.insumo_id}`}>
                           Ver
                         </Link>
                       </Button>
@@ -257,7 +256,7 @@ export default function ProductosTable({ productos }: ProductosTableProps) {
                         size="sm" 
                         variant="outline"
                       >
-                        <Link href={`/productos/${producto.mueble_id}/editar`}>
+                        <Link href={`/productos/${producto.insumo_id}/editar`}>
                           Editar
                         </Link>
                       </Button>

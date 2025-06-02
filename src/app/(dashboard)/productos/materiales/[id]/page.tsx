@@ -44,78 +44,27 @@ export default async function MaterialDetailPage({
     
     material = materialData;
     
-    // Find products that use this material
-    const { data: productsWithHuacal, error: huacalError } = await supabase
-      .from('inventario')
-      .select('mueble_id, nombre_mueble')
-      .eq('mat_huacal', materialId);
+    // Check multiple columns in insumos where this material might be referenced
+    const columns = ['mat_huacal', 'mat_vista', 'jaladera', 'corredera', 'bisagras'];
+    let references: any[] = [];
+    
+    for (const column of columns) {
+      const { data: refs, error } = await supabase
+        .from('insumos')
+        .select('insumo_id, mueble')
+        .eq(column, materialId);
       
-    if (huacalError) {
-      console.error('Error fetching products with huacal:', huacalError);
+      if (error) {
+        console.error(`Error checking references in ${column}:`, error);
+        continue;
     }
     
-    const { data: productsWithVista, error: vistaError } = await supabase
-      .from('inventario')
-      .select('mueble_id, nombre_mueble')
-      .eq('mat_vista', materialId);
-      
-    if (vistaError) {
-      console.error('Error fetching products with vista:', vistaError);
-    }
-    
-    const { data: productsWithJaladera, error: jaladeraError } = await supabase
-      .from('inventario')
-      .select('mueble_id, nombre_mueble')
-      .eq('jaladera', materialId);
-      
-    if (jaladeraError) {
-      console.error('Error fetching products with jaladera:', jaladeraError);
-    }
-    
-    const { data: productsWithCorredera, error: correderaError } = await supabase
-      .from('inventario')
-      .select('mueble_id, nombre_mueble')
-      .eq('corredera', materialId);
-      
-    if (correderaError) {
-      console.error('Error fetching products with corredera:', correderaError);
-    }
-    
-    const { data: productsWithBisagras, error: bisagrasError } = await supabase
-      .from('inventario')
-      .select('mueble_id, nombre_mueble')
-      .eq('bisagras', materialId);
-      
-    if (bisagrasError) {
-      console.error('Error fetching products with bisagras:', bisagrasError);
-    }
-    
-    // Combine and deduplicate the products
-    const allProducts = [
-      ...(productsWithHuacal || []).map(p => ({ ...p, usage: 'Material Huacal' })),
-      ...(productsWithVista || []).map(p => ({ ...p, usage: 'Material Vista' })),
-      ...(productsWithJaladera || []).map(p => ({ ...p, usage: 'Jaladera' })),
-      ...(productsWithCorredera || []).map(p => ({ ...p, usage: 'Corredera' })),
-      ...(productsWithBisagras || []).map(p => ({ ...p, usage: 'Bisagras' }))
-    ];
-    
-    // Group by product ID to show all usages
-    const productMap = new Map();
-    
-    allProducts.forEach(product => {
-      if (!productMap.has(product.mueble_id)) {
-        productMap.set(product.mueble_id, {
-          mueble_id: product.mueble_id,
-          nombre_mueble: product.nombre_mueble,
-          usages: [product.usage]
-        });
-      } else {
-        const existingProduct = productMap.get(product.mueble_id);
-        existingProduct.usages.push(product.usage);
+      if (refs && refs.length > 0) {
+        references.push(...refs.map(ref => ({ ...ref, column })));
       }
-    });
+    }
     
-    relatedProducts = Array.from(productMap.values());
+    relatedProducts = references;
     
   } catch (err) {
     console.error('Error fetching material:', err);
@@ -209,15 +158,15 @@ export default async function MaterialDetailPage({
             {relatedProducts.length > 0 ? (
               <ul className="space-y-3">
                 {relatedProducts.map((product) => (
-                  <li key={product.mueble_id} className="border-b pb-2 last:border-0">
+                  <li key={product.insumo_id} className="border-b pb-2 last:border-0">
                     <Link 
-                      href={`/productos/${product.mueble_id}`}
+                      href={`/productos/${product.insumo_id}`}
                       className="text-blue-600 hover:underline font-medium"
                     >
-                      {product.nombre_mueble || `Producto #${product.mueble_id}`}
+                      {product.mueble || `Producto #${product.insumo_id}`}
                     </Link>
                     <div className="text-sm text-gray-600 mt-1">
-                      Usado como: {product.usages.join(', ')}
+                      Usado como: {product.column}
                     </div>
                   </li>
                 ))}

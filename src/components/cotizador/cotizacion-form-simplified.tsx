@@ -36,13 +36,6 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
 import { DayPicker } from "react-day-picker";
 import Image from 'next/image';
@@ -96,6 +89,7 @@ const cotizacionFormSchema = z.object({
   jaladera: z.string().optional(),
   corredera: z.string().optional(),  // Changed from correderas to corredera
   bisagras: z.string().optional(),
+  tipOnLargo: z.string().optional(),
   
   // Delivery and Payment
   deliveryTime: z.number().int().min(1, { message: "Tiempo de entrega requerido" }),
@@ -125,6 +119,9 @@ const cotizacionFormSchema = z.object({
         cajones: z.number().nullable().optional(),
         puertas: z.number().nullable().optional(),
         entrepaños: z.number().nullable().optional(),
+        tip_on_largo: z.number().nullable().optional(),
+        u_tl: z.number().min(0).default(0).optional(),
+        t_tl: z.number().min(0).default(0).optional(),
       }).optional(),
     })
   ),
@@ -316,7 +313,7 @@ const NewClientModal = ({
   );
 };
 
-export default function CotizacionForm() {
+function CotizacionForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -330,6 +327,7 @@ export default function CotizacionForm() {
   const [jaladeraMaterials, setJaladeraMaterials] = useState<any[]>([]);
   const [correderasMaterials, setCorrederasMaterials] = useState<any[]>([]);
   const [bisagrasMaterials, setBisagrasMaterials] = useState<any[]>([]);
+  const [tipOnLargoMaterials, setTipOnLargoMaterials] = useState<any[]>([]);
   
   // State for tracking totals
   const [totals, setTotals] = useState({
@@ -344,6 +342,47 @@ export default function CotizacionForm() {
   const [inventorySearchQuery, setInventorySearchQuery] = useState("");
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<any>(null);
   const [showInventorySearch, setShowInventorySearch] = useState(false);
+  
+  // Add enhanced search states
+  // Manual categories list - these won't change frequently
+  const CATEGORIES = [
+    'Alacena',
+    'Alacena Esquinera', 
+    'Alacena Esquinera TipOn',
+    'Alacena TipOn',
+    'Cajón',
+    'Cajón con vista',
+    'Cajonera',
+    'Cajón interno',
+    'Cajón interno Vista', 
+    'Cajón U',
+    'Cajón U con vista',
+    'Closet',
+    'Decorativo',
+    'Entrepaño',
+    'Gabinete',
+    'Gabinete Esquinero',
+    'Huacal',
+    'Locker',
+    'Locker TipOn',
+    'Parrilla',
+    'Repisa Doble Cfijación',
+    'Repisa Doble Simple',
+    'Repisa Triple Cfijación', 
+    'Repisa Triple Simple',
+    'Tarja',
+    'Vista',
+    'Zapatero'
+  ];
+  const [categories, setCategories] = useState<string[]>(CATEGORIES);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  
+  // Infinite scrolling states
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMoreItems, setHasMoreItems] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
   
   // Add client state
   const [isLoadingClients, setIsLoadingClients] = useState(false);
@@ -366,6 +405,7 @@ export default function CotizacionForm() {
   const [openJaladeraCombobox, setOpenJaladeraCombobox] = useState(false);
   const [openCorrederasCombobox, setOpenCorrederasCombobox] = useState(false);
   const [openBisagrasCombobox, setOpenBisagrasCombobox] = useState(false);
+  const [openTipOnLargoCombobox, setOpenTipOnLargoCombobox] = useState(false);
   
   // Add states for filtered materials in search
   const [filteredTabletos, setFilteredTabletos] = useState<any[]>([]);
@@ -373,6 +413,7 @@ export default function CotizacionForm() {
   const [filteredJaladera, setFilteredJaladera] = useState<any[]>([]);
   const [filteredCorrederas, setFilteredCorrederas] = useState<any[]>([]);
   const [filteredBisagras, setFilteredBisagras] = useState<any[]>([]);
+  const [filteredTipOnLargo, setFilteredTipOnLargo] = useState<any[]>([]);
   
   // Add state for current search
   const [matHuacalSearch, setMatHuacalSearch] = useState("");
@@ -382,6 +423,13 @@ export default function CotizacionForm() {
   const [jaladeraSearch, setJaladeraSearch] = useState("");
   const [correderasSearch, setCorrederasSearch] = useState("");
   const [bisagrasSearch, setBisagrasSearch] = useState("");
+  const [tipOnLargoSearch, setTipOnLargoSearch] = useState("");
+  
+  // Add state for debug calculation display
+  const [showDebugCalculations, setShowDebugCalculations] = useState(false);
+  
+  // Add ref for search debouncing
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Add state variables for date pickers
   const [isCotizacionDateOpen, setIsCotizacionDateOpen] = useState(false);
@@ -409,6 +457,7 @@ export default function CotizacionForm() {
       jaladera: "none",
       corredera: "none",
       bisagras: "none",
+      tipOnLargo: "none",
       deliveryTime: 90,
       paymentTerms: "70% anticipo, 30% contra entrega",
       items: [],
@@ -483,6 +532,17 @@ export default function CotizacionForm() {
         if (bisagrasError) throw bisagrasError;
         setBisagrasMaterials(bisagrasData || []);
         
+        // Fetch tipOnLargo materials
+        const { data: tipOnLargoData, error: tipOnLargoError } = await supabase
+          .from('materiales')
+          .select('*')
+          .eq('tipo', 'Herraje')
+          .eq('subcategoria', 'tip_on_largo')
+          .order('nombre', { ascending: true });
+          
+        if (tipOnLargoError) throw tipOnLargoError;
+        setTipOnLargoMaterials(tipOnLargoData || []);
+        
         console.log("Materials loaded successfully");
       } catch (error) {
         console.error('Error fetching materials:', error);
@@ -511,6 +571,11 @@ export default function CotizacionForm() {
         setBisagrasMaterials([
           { id_material: 9, nombre: 'Bisagra PVC Blanco', costo: 5, tipo: 'Bisagra' },
           { id_material: 10, nombre: 'Bisagra PVC Nogal', costo: 7, tipo: 'Bisagra' },
+        ]);
+        
+        setTipOnLargoMaterials([
+          { id_material: 11, nombre: 'TipOnLargo PVC Blanco', costo: 10, tipo: 'TipOnLargo' },
+          { id_material: 12, nombre: 'TipOnLargo PVC Nogal', costo: 12, tipo: 'TipOnLargo' },
         ]);
       } finally {
         setIsLoadingMaterials(false);
@@ -581,6 +646,260 @@ export default function CotizacionForm() {
     }
   };
 
+  // Debug calculation function to show detailed price breakdown
+  const getDebugCalculations = () => {
+    const items = form.getValues("items") || [];
+    const projectType = form.getValues('projectType');
+    
+    if (items.length === 0) return [];
+    
+    // Determine multiplier
+    let multiplier = 1;
+    if (projectType === "1") { // Residencial
+      multiplier = 1.8;
+    } else if (projectType === "3") { // Desarrollo
+      multiplier = 1.5;
+    }
+    
+    // Get selected materials
+    const matHuacalId = form.getValues('matHuacal');
+    const matVistaId = form.getValues('matVista');
+    const chapHuacalId = form.getValues('chapHuacal');
+    const chapVistaId = form.getValues('chapVista');
+    const jaladeraId = form.getValues('jaladera');
+    const correderaId = form.getValues('corredera');
+    const bisagrasId = form.getValues('bisagras');
+    const tipOnLargoId = form.getValues('tipOnLargo');
+    
+    const matHuacalMaterial = matHuacalId && matHuacalId !== "none" ? 
+      tabletosMaterials.find(m => m.id_material.toString() === matHuacalId) : null;
+    const matVistaMaterial = matVistaId && matVistaId !== "none" ? 
+      tabletosMaterials.find(m => m.id_material.toString() === matVistaId) : null;
+    const chapHuacalMaterial = chapHuacalId && chapHuacalId !== "none" ? 
+      chapacintaMaterials.find(m => m.id_material.toString() === chapHuacalId) : null;
+    const chapVistaMaterial = chapVistaId && chapVistaId !== "none" ? 
+      chapacintaMaterials.find(m => m.id_material.toString() === chapVistaId) : null;
+    const jaladeraMaterial = jaladeraId && jaladeraId !== "none" ? 
+      jaladeraMaterials.find(m => m.id_material.toString() === jaladeraId) : null;
+    const correderaMaterial = correderaId && correderaId !== "none" ? 
+      correderasMaterials.find(m => m.id_material.toString() === correderaId) : null;
+    const bisagrasMaterial = bisagrasId && bisagrasId !== "none" ? 
+      bisagrasMaterials.find(m => m.id_material.toString() === bisagrasId) : null;
+    const tipOnLargoMaterial = tipOnLargoId && tipOnLargoId !== "none" ? 
+      tipOnLargoMaterials.find(m => m.id_material.toString() === tipOnLargoId) : null;
+    
+    // Default costs for accessories
+    const DEFAULT_PATAS_COST = 10;
+    const DEFAULT_CLIP_PATAS_COST = 2;
+    const DEFAULT_MENSULAS_COST = 0.9;
+    const DEFAULT_KIT_TORNILLO_COST = 30;
+    const DEFAULT_CIF_COST = 100;
+    
+    return items.map((item, index) => {
+      const furnitureData = item.furnitureData;
+      if (!furnitureData) {
+        return {
+          index,
+          description: item.description,
+          components: [],
+          calculatedPrice: 0,
+          storedPrice: item.unitPrice || 0,
+          hasDiscrepancy: false
+        };
+      }
+      
+      const components = [];
+      let calculatedPrice = 0;
+      
+      // Calculate each component
+      if (furnitureData.mat_huacal && matHuacalMaterial) {
+        const cost = furnitureData.mat_huacal * matHuacalMaterial.costo * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Material Huacal',
+          material: matHuacalMaterial.nombre,
+          quantity: furnitureData.mat_huacal,
+          unitCost: matHuacalMaterial.costo,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.mat_vista && matVistaMaterial) {
+        const cost = furnitureData.mat_vista * matVistaMaterial.costo * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Material Vista',
+          material: matVistaMaterial.nombre,
+          quantity: furnitureData.mat_vista,
+          unitCost: matVistaMaterial.costo,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.chap_huacal && chapHuacalMaterial) {
+        const cost = furnitureData.chap_huacal * chapHuacalMaterial.costo * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Chapacinta Huacal',
+          material: chapHuacalMaterial.nombre,
+          quantity: furnitureData.chap_huacal,
+          unitCost: chapHuacalMaterial.costo,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.chap_vista && chapVistaMaterial) {
+        const cost = furnitureData.chap_vista * chapVistaMaterial.costo * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Chapacinta Vista',
+          material: chapVistaMaterial.nombre,
+          quantity: furnitureData.chap_vista,
+          unitCost: chapVistaMaterial.costo,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.jaladera && jaladeraMaterial) {
+        const cost = furnitureData.jaladera * jaladeraMaterial.costo * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Jaladera',
+          material: jaladeraMaterial.nombre,
+          quantity: furnitureData.jaladera,
+          unitCost: jaladeraMaterial.costo,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.corredera && correderaMaterial) {
+        const cost = furnitureData.corredera * correderaMaterial.costo * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Corredera',
+          material: correderaMaterial.nombre,
+          quantity: furnitureData.corredera,
+          unitCost: correderaMaterial.costo,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.bisagras && bisagrasMaterial) {
+        const cost = furnitureData.bisagras * bisagrasMaterial.costo * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Bisagras',
+          material: bisagrasMaterial.nombre,
+          quantity: furnitureData.bisagras,
+          unitCost: bisagrasMaterial.costo,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.tip_on_largo && tipOnLargoMaterial) {
+        const cost = furnitureData.tip_on_largo * tipOnLargoMaterial.costo * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Tip-on Largo',
+          material: tipOnLargoMaterial.nombre,
+          quantity: furnitureData.tip_on_largo,
+          unitCost: tipOnLargoMaterial.costo,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      // Add accessories
+      if (furnitureData.patas && furnitureData.patas > 0) {
+        const cost = furnitureData.patas * DEFAULT_PATAS_COST * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Patas',
+          material: 'Patas estándar',
+          quantity: furnitureData.patas,
+          unitCost: DEFAULT_PATAS_COST,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.clip_patas && furnitureData.clip_patas > 0) {
+        const cost = furnitureData.clip_patas * DEFAULT_CLIP_PATAS_COST * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Clip Patas',
+          material: 'Clip patas estándar',
+          quantity: furnitureData.clip_patas,
+          unitCost: DEFAULT_CLIP_PATAS_COST,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.mensulas && furnitureData.mensulas > 0) {
+        const cost = furnitureData.mensulas * DEFAULT_MENSULAS_COST * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Ménsulas',
+          material: 'Ménsulas estándar',
+          quantity: furnitureData.mensulas,
+          unitCost: DEFAULT_MENSULAS_COST,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.kit_tornillo && furnitureData.kit_tornillo > 0) {
+        const cost = furnitureData.kit_tornillo * DEFAULT_KIT_TORNILLO_COST * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'Kit Tornillo',
+          material: 'Kit tornillo estándar',
+          quantity: furnitureData.kit_tornillo,
+          unitCost: DEFAULT_KIT_TORNILLO_COST,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      if (furnitureData.cif && furnitureData.cif > 0) {
+        const cost = furnitureData.cif * DEFAULT_CIF_COST * multiplier;
+        calculatedPrice += cost;
+        components.push({
+          name: 'CIF',
+          material: 'CIF estándar',
+          quantity: furnitureData.cif,
+          unitCost: DEFAULT_CIF_COST,
+          multiplier,
+          total: cost
+        });
+      }
+      
+      // Round calculated price
+      calculatedPrice = Math.round(calculatedPrice * 100) / 100;
+      const storedPrice = item.unitPrice || 0;
+      const hasDiscrepancy = Math.abs(calculatedPrice - storedPrice) > 0.01;
+      
+      return {
+        index,
+        description: item.description,
+        components,
+        calculatedPrice,
+        storedPrice,
+        hasDiscrepancy,
+        quantity: item.quantity || 1,
+        discount: item.discount || 0
+      };
+    });
+  };
+
   // Add function to handle price, quantity, or discount changes
   const handleItemValueChange = (index: number, field: string, value: any) => {
     console.log(`Updating ${field} for item ${index} to:`, value);
@@ -619,47 +938,108 @@ export default function CotizacionForm() {
   useEffect(() => {
     calculateTotals();
   }, []);
+  
+  // Cleanup search timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
-  // Fetch inventory items
-  const fetchInventory = useCallback(async (searchQuery = '') => {
-    setIsLoadingInventory(true);
+  // Fetch inventory items with infinite scrolling
+  const fetchInventory = useCallback(async (searchQuery = '', category = '', page = 0, append = false) => {
+    if (page === 0) {
+      setIsLoadingInventory(true);
+      setInventoryItems([]);
+      setCurrentPage(0);
+      setHasMoreItems(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+    
     try {
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
       
-      let query = supabase
-        .from('inventario')
-        .select('*');
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
       
-      // Add search filter if query is provided
+      let query = supabase
+        .from('insumos')
+        .select('*', { count: 'exact' });
+      
+      // Add category filter if specified
+      if (category && category !== '') {
+        query = query.eq('categoria', category);
+      }
+      
+      // Add search filter - search in descripcion if category is selected, otherwise in mueble
       if (searchQuery && searchQuery.length >= 2) {
-        query = query.ilike('nombre_mueble', `%${searchQuery}%`);
+        if (category && category !== '') {
+          query = query.ilike('descripcion', `%${searchQuery}%`);
+        } else {
+          query = query.ilike('mueble', `%${searchQuery}%`);
+        }
       }
       
       // Add pagination and ordering
-      query = query.order('nombre_mueble').limit(20);
+      if (category && category !== '') {
+        query = query.order('descripcion').range(from, to);
+      } else {
+        query = query.order('categoria').order('descripcion').range(from, to);
+      }
       
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       
       if (error) {
         console.error('Error fetching inventory items:', error);
         return;
       }
       
-      setInventoryItems(data || []);
+      const newItems = data || [];
+      const hasMore = count ? from + newItems.length < count : false;
+      
+      console.log(`Fetched ${newItems.length} items (page ${page}). Total: ${count}, HasMore: ${hasMore}`);
+      
+      if (append && page > 0) {
+        setInventoryItems(prev => [...prev, ...newItems]);
+      } else {
+        setInventoryItems(newItems);
+      }
+      
+      setCurrentPage(page);
+      setHasMoreItems(hasMore);
+      setTotalCount(count || 0);
+      
     } catch (error) {
       console.error('Error in fetchInventory:', error);
       // Set mock data if there's an error
-      setInventoryItems([
-        { mueble_id: 1, nombre_mueble: 'Alacena 60x30x70', mat_huacal: 0.5, mat_vista: 0.6, chap_huacal: 2.5, chap_vista: 3 },
-        { mueble_id: 2, nombre_mueble: 'Base 90x60x85', mat_huacal: 0.8, mat_vista: 0.9, chap_huacal: 3.5, chap_vista: 4 },
-      ]);
+      if (page === 0) {
+        setInventoryItems([
+          { insumo_id: 1, mueble: 'Alacena 60x30x70', categoria: 'Alacena', descripcion: '60x30x70, 2P, Si-Jalad', mat_huacal: 0.5, mat_vista: 0.6, chap_huacal: 2.5, chap_vista: 3 },
+          { insumo_id: 2, mueble: 'Base 90x60x85', categoria: 'Gabinete', descripcion: '90x60x85, 1P, No-Jalad', mat_huacal: 0.8, mat_vista: 0.9, chap_huacal: 3.5, chap_vista: 4 },
+          { insumo_id: 3, mueble: 'Cajón 40x20x15', categoria: 'Cajón', descripcion: '40x20x15, Si-Jalad', mat_huacal: 0.3, mat_vista: 0.4, chap_huacal: 1.5, chap_vista: 2 },
+          { insumo_id: 4, mueble: 'Closet 120x200x60', categoria: 'Closet', descripcion: '120x200x60, 2P, No-Jalad', mat_huacal: 2.5, mat_vista: 3.0, chap_huacal: 8.0, chap_vista: 10 },
+        ]);
+        setHasMoreItems(false);
+        setTotalCount(4);
+      }
     } finally {
       setIsLoadingInventory(false);
+      setIsLoadingMore(false);
     }
-  }, []);
+  }, [PAGE_SIZE]);
+  
+  // Function to load more items (infinite scroll)
+  const loadMoreItems = useCallback(() => {
+    if (!isLoadingMore && hasMoreItems) {
+      fetchInventory(inventorySearchQuery, selectedCategory, currentPage + 1, true);
+    }
+  }, [fetchInventory, inventorySearchQuery, selectedCategory, currentPage, isLoadingMore, hasMoreItems]);
   
   // Add function to add an inventory item
   const addInventoryItem = (item: any) => {
@@ -667,7 +1047,7 @@ export default function CotizacionForm() {
     
     // Create furniture data object with all possible fields from inventory
     const furnitureData = {
-      mueble_id: item.mueble_id,
+      insumo_id: item.insumo_id,
       mat_huacal: item.mat_huacal || null,
       mat_vista: item.mat_vista || null,
       chap_huacal: item.chap_huacal || null,
@@ -685,6 +1065,10 @@ export default function CotizacionForm() {
       cajones: item.cajones || null,
       puertas: item.puertas || null,
       entrepaños: item.entrepaños || null,
+      // Add new tip_on_largo fields
+      tip_on_largo: item.tip_on_largo || null,
+      u_tl: item.u_tl || 0,
+      t_tl: item.t_tl || 0,
     };
     
     console.log("Furniture data:", furnitureData);
@@ -699,9 +1083,10 @@ export default function CotizacionForm() {
     const jaladeraId = form.getValues('jaladera');
     const correderaId = form.getValues('corredera');
     const bisagrasId = form.getValues('bisagras');
+    const tipOnLargoId = form.getValues('tipOnLargo');
     
     console.log("Selected material IDs:", {
-      matHuacalId, matVistaId, chapHuacalId, chapVistaId, jaladeraId, correderaId, bisagrasId
+      matHuacalId, matVistaId, chapHuacalId, chapVistaId, jaladeraId, correderaId, bisagrasId, tipOnLargoId
     });
     
     // Get all selected material objects with costs
@@ -719,6 +1104,8 @@ export default function CotizacionForm() {
       correderasMaterials.find(m => m.id_material.toString() === correderaId) : null;
     const bisagrasMaterial = bisagrasId && bisagrasId !== "none" ? 
       bisagrasMaterials.find(m => m.id_material.toString() === bisagrasId) : null;
+    const tipOnLargoMaterial = tipOnLargoId && tipOnLargoId !== "none" ? 
+      tipOnLargoMaterials.find(m => m.id_material.toString() === tipOnLargoId) : null;
     
     // Default cost values for fixed materials that are not selectable
     const DEFAULT_PATAS_COST = 10;
@@ -729,7 +1116,7 @@ export default function CotizacionForm() {
     
     console.log("Material objects:", {
       matHuacalMaterial, matVistaMaterial, chapHuacalMaterial, chapVistaMaterial, 
-      jaladeraMaterial, correderaMaterial, bisagrasMaterial
+      jaladeraMaterial, correderaMaterial, bisagrasMaterial, tipOnLargoMaterial
     });
     
     // Apply multiplier based on project type
@@ -791,6 +1178,12 @@ export default function CotizacionForm() {
       console.log(`Bisagras: ${furnitureData.bisagras} * ${bisagrasMaterial.costo} * ${multiplier} = ${componentPrice}`);
     }
     
+    if (furnitureData.u_tl && tipOnLargoMaterial) {
+      const componentPrice = furnitureData.u_tl * tipOnLargoMaterial.costo * multiplier;
+      price += componentPrice;
+      console.log(`Tip-on Largo: ${furnitureData.u_tl} * ${tipOnLargoMaterial.costo} * ${multiplier} = ${componentPrice}`);
+    }
+    
     // 2. Additional auto-included materials - these are not selectable but always added
     if (furnitureData.patas && furnitureData.patas > 0) {
       const componentPrice = furnitureData.patas * DEFAULT_PATAS_COST * multiplier;
@@ -832,7 +1225,7 @@ export default function CotizacionForm() {
     
     // Create the new item with all the calculated data
     const newItem = {
-      description: item.nombre_mueble,
+      description: `${item.categoria} - ${item.descripcion}`,
       quantity: 1,
       unitPrice: price,
       discount: 0,
@@ -851,6 +1244,7 @@ export default function CotizacionForm() {
     setShowInventorySearch(false);
     setSelectedInventoryItem(null);
     setInventorySearchQuery("");
+    setSelectedCategory('');
     
     // Give React time to update the DOM before switching tabs
     setTimeout(() => {
@@ -862,12 +1256,12 @@ export default function CotizacionForm() {
     }, 10);
   };
   
-  // Load inventory items when needed
+  // Load inventory items when needed - only when there's a search query or category
   useEffect(() => {
-    if (showInventorySearch) {
-      fetchInventory(inventorySearchQuery);
+    if (showInventorySearch && (inventorySearchQuery.length >= 2 || selectedCategory)) {
+      fetchInventory(inventorySearchQuery, selectedCategory, 0, false);
     }
-  }, [showInventorySearch, inventorySearchQuery, fetchInventory]);
+  }, [showInventorySearch, inventorySearchQuery, selectedCategory, fetchInventory]);
 
   // Add function to fetch clients
   const fetchClients = useCallback(async () => {
@@ -1105,6 +1499,16 @@ export default function CotizacionForm() {
         });
       }
       
+      if (data.tipOnLargo && data.tipOnLargo !== "none") {
+        const costo = getMaterialCost(data.tipOnLargo, tipOnLargoMaterials);
+        materialsToSave.push({
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: "tipOnLargo",
+          id_material: parseInt(data.tipOnLargo),
+          costo_usado: costo
+        });
+      }
+      
       console.log("Saving materials:", materialsToSave);
       
       if (materialsToSave.length > 0) {
@@ -1221,6 +1625,10 @@ export default function CotizacionForm() {
     setFilteredBisagras(bisagrasMaterials);
   }, [bisagrasMaterials]);
   
+  useEffect(() => {
+    setFilteredTipOnLargo(tipOnLargoMaterials);
+  }, [tipOnLargoMaterials]);
+  
   // Filter materials when search terms change
   useEffect(() => {
     if (matHuacalSearch) {
@@ -1305,7 +1713,19 @@ export default function CotizacionForm() {
       setFilteredBisagras(bisagrasMaterials);
     }
   }, [bisagrasSearch, bisagrasMaterials]);
-
+  
+  useEffect(() => {
+    if (tipOnLargoSearch) {
+      setFilteredTipOnLargo(
+        tipOnLargoMaterials.filter(m => 
+          m.nombre.toLowerCase().includes(tipOnLargoSearch.toLowerCase())
+        )
+      );
+    } else {
+      setFilteredTipOnLargo(tipOnLargoMaterials);
+    }
+  }, [tipOnLargoSearch, tipOnLargoMaterials]);
+  
   // Add watchers for form fields
   const clientTabWatch = form.watch(["clientName", "clientId"]);
   const projectTabWatch = form.watch(["projectName", "projectType", "vendedor", "fabricante", "instalador", "deliveryTime", "paymentTerms"]);
@@ -1385,37 +1805,39 @@ export default function CotizacionForm() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[350px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar cliente..." />
-                            <div className="max-h-[300px] overflow-y-auto">
-                              {isLoadingClients ? (
-                                <div className="py-6 text-center">
-                                  <Loader2 className="h-5 w-5 mx-auto animate-spin text-gray-400" />
-                                  <p className="text-sm text-gray-500 mt-2">Cargando clientes...</p>
-                                </div>
-                              ) : clients.length === 0 ? (
-                                <CommandEmpty>No se encontraron clientes</CommandEmpty>
-                              ) : (
-                                <CommandGroup>
-                                  {clients.map(client => (
-                                    <CommandItem
-                                      key={client.id}
-                                      value={client.id.toString()}
-                                      onSelect={handleClientSelect}
-                                      className="w-full cursor-pointer"
+                          <div className="max-h-[300px] overflow-y-auto">
+                            {isLoadingClients ? (
+                              <div className="py-6 text-center">
+                                <Loader2 className="h-5 w-5 mx-auto animate-spin text-gray-400" />
+                                <p className="text-sm text-gray-500 mt-2">Cargando clientes...</p>
+                              </div>
+                            ) : clients.length === 0 ? (
+                              <div className="py-6 text-center">
+                                <p className="text-sm text-gray-500">No se encontraron clientes</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {clients.map(client => (
+                                  <div key={client.id} className="flex justify-between items-center">
+                                    <div className="flex flex-col w-full">
+                                      <span className="font-medium">{client.name}</span>
+                                      {client.email && (
+                                        <span className="text-xs text-muted-foreground">{client.email}</span>
+                                      )}
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleClientSelect(client.id.toString())}
+                                      className="bg-white hover:bg-gray-50"
                                     >
-                                      <div className="flex flex-col w-full">
-                                        <span className="font-medium">{client.name}</span>
-                                        {client.email && (
-                                          <span className="text-xs text-muted-foreground">{client.email}</span>
-                                        )}
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              )}
-                            </div>
-                          </Command>
+                                      Seleccionar
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -1808,515 +2230,168 @@ export default function CotizacionForm() {
                                   </FormControl>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-full p-0" align="start">
-                                  <Command>
-                                    <CommandInput 
-                                      placeholder="Buscar material..." 
-                                      className="h-9"
-                                      value={matHuacalSearch}
-                                      onValueChange={setMatHuacalSearch}
-                                    />
-                                    {matHuacalSearch.length > 0 && filteredTabletos.length === 0 && (
-                                      <CommandEmpty>No se encontraron materiales para "{matHuacalSearch}"</CommandEmpty>
-                                    )}
-                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
-                                      <CommandItem
-                                        value="none"
-                                        onSelect={() => {
-                                          form.setValue("matHuacal", "none");
-                                          setOpenMatHuacalCombobox(false);
-                                        }}
-                                      >
-                                        <span>Ninguno</span>
-                                      </CommandItem>
-                                      {filteredTabletos.map((material) => (
-                                        <CommandItem
-                                          key={material.id_material}
-                                          value={material.id_material.toString()}
-                                          onSelect={() => {
-                                            form.setValue("matHuacal", material.id_material.toString());
-                                            setOpenMatHuacalCombobox(false);
-                                          }}
-                                        >
-                                          <HighlightedText 
-                                            text={`${material.nombre} - $${material.costo}`} 
-                                            query={matHuacalSearch} 
-                                          />
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </Command>
+                                  <div className="max-h-[300px] overflow-y-auto">
+                                    <div className="space-y-2">
+                                      <FormField
+                                        control={form.control}
+                                        name="matHuacal"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>Material Huacal</FormLabel>
+                                            <FormControl>
+                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                                {field.value && field.value !== "none"
+                                                  ? tabletosMaterials.find(
+                                                      (material) => material.id_material.toString() === field.value
+                                                    )?.nombre || "Ninguno"
+                                                  : "Ninguno"}
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="matVista"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>Material Vista</FormLabel>
+                                            <FormControl>
+                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                                {field.value && field.value !== "none"
+                                                  ? tabletosMaterials.find(
+                                                      (material) => material.id_material.toString() === field.value
+                                                    )?.nombre || "Ninguno"
+                                                  : "Ninguno"}
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="chapHuacal"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>Chapacinta Huacal</FormLabel>
+                                            <FormControl>
+                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                                {field.value && field.value !== "none"
+                                                  ? chapacintaMaterials.find(
+                                                      (material) => material.id_material.toString() === field.value
+                                                    )?.nombre || "Ninguno"
+                                                  : "Ninguno"}
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="chapVista"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>Chapacinta Vista</FormLabel>
+                                            <FormControl>
+                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                                {field.value && field.value !== "none"
+                                                  ? chapacintaMaterials.find(
+                                                      (material) => material.id_material.toString() === field.value
+                                                    )?.nombre || "Ninguno"
+                                                  : "Ninguno"}
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="jaladera"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>Jaladera</FormLabel>
+                                            <FormControl>
+                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                                {field.value && field.value !== "none"
+                                                  ? jaladeraMaterials.find(
+                                                      (material) => material.id_material.toString() === field.value
+                                                    )?.nombre || "Ninguno"
+                                                  : "Ninguno"}
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="corredera"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>Correderas</FormLabel>
+                                            <FormControl>
+                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                                {field.value && field.value !== "none"
+                                                  ? correderasMaterials.find(
+                                                      (material) => material.id_material.toString() === field.value
+                                                    )?.nombre || "Ninguno"
+                                                  : "Ninguno"}
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="bisagras"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>Bisagras</FormLabel>
+                                            <FormControl>
+                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                                {field.value && field.value !== "none"
+                                                  ? bisagrasMaterials.find(
+                                                      (material) => material.id_material.toString() === field.value
+                                                    )?.nombre || "Ninguno"
+                                                  : "Ninguno"}
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="tipOnLargo"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>Tip-on Largo</FormLabel>
+                                            <FormControl>
+                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                                {field.value && field.value !== "none"
+                                                  ? tipOnLargoMaterials.find(
+                                                      (material) => material.id_material.toString() === field.value
+                                                    )?.nombre || "Ninguno"
+                                                  : "Ninguno"}
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+                                  </div>
                                 </PopoverContent>
                               </Popover>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        
-                        <FormField
-                          control={form.control}
-                          name="matVista"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Material Vista</FormLabel>
-                              <Popover open={openMatVistaCombobox} onOpenChange={setOpenMatVistaCombobox}>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      aria-expanded={openMatVistaCombobox}
-                                      className="w-full justify-between"
-                                    >
-                                      {field.value && field.value !== "none"
-                                        ? tabletosMaterials.find(
-                                            (material) => material.id_material.toString() === field.value
-                                          )?.nombre || "Ninguno"
-                                        : "Ninguno"}
-                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0" align="start">
-                                  <Command>
-                                    <CommandInput 
-                                      placeholder="Buscar material..." 
-                                      className="h-9"
-                                      value={matVistaSearch}
-                                      onValueChange={setMatVistaSearch}
-                                    />
-                                    {matVistaSearch.length > 0 && filteredTabletos.length === 0 && (
-                                      <CommandEmpty>No se encontraron materiales para "{matVistaSearch}"</CommandEmpty>
-                                    )}
-                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
-                                      <CommandItem
-                                        value="none"
-                                        onSelect={() => {
-                                          form.setValue("matVista", "none");
-                                          setOpenMatVistaCombobox(false);
-                                        }}
-                                      >
-                                        <span>Ninguno</span>
-                                      </CommandItem>
-                                      {filteredTabletos.map((material) => (
-                                        <CommandItem
-                                          key={material.id_material}
-                                          value={material.id_material.toString()}
-                                          onSelect={() => {
-                                            form.setValue("matVista", material.id_material.toString());
-                                            setOpenMatVistaCombobox(false);
-                                          }}
-                                        >
-                                          <HighlightedText 
-                                            text={`${material.nombre} - $${material.costo}`} 
-                                            query={matVistaSearch} 
-                                          />
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                        <FormField
-                          control={form.control}
-                          name="chapHuacal"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Chapacinta Huacal</FormLabel>
-                              <Popover open={openChapHuacalCombobox} onOpenChange={setOpenChapHuacalCombobox}>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      aria-expanded={openChapHuacalCombobox}
-                                      className="w-full justify-between"
-                                    >
-                                      {field.value && field.value !== "none"
-                                        ? chapacintaMaterials.find(
-                                            (material) => material.id_material.toString() === field.value
-                                          )?.nombre || "Ninguno"
-                                        : "Ninguno"}
-                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0" align="start">
-                                  <Command>
-                                    <CommandInput 
-                                      placeholder="Buscar chapacinta..."
-                                      className="h-9"
-                                      value={chapHuacalSearch}
-                                      onValueChange={setChapHuacalSearch}
-                                    />
-                                    {chapHuacalSearch.length > 0 && filteredChapacinta.length === 0 && (
-                                      <CommandEmpty>No se encontraron chapacinta para "{chapHuacalSearch}"</CommandEmpty>
-                                    )}
-                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
-                                      <CommandItem
-                                        value="none"
-                                        onSelect={() => {
-                                          form.setValue("chapHuacal", "none");
-                                          setOpenChapHuacalCombobox(false);
-                                        }}
-                                      >
-                                        <span>Ninguno</span>
-                                      </CommandItem>
-                                      {filteredChapacinta.map((material) => (
-                                        <CommandItem
-                                          key={material.id_material}
-                                          value={material.id_material.toString()}
-                                          onSelect={() => {
-                                            form.setValue("chapHuacal", material.id_material.toString());
-                                            setOpenChapHuacalCombobox(false);
-                                          }}
-                                        >
-                                          <HighlightedText 
-                                            text={`${material.nombre} - $${material.costo}`} 
-                                            query={chapHuacalSearch} 
-                                          />
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="chapVista"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Chapacinta Vista</FormLabel>
-                              <Popover open={openChapVistaCombobox} onOpenChange={setOpenChapVistaCombobox}>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      aria-expanded={openChapVistaCombobox}
-                                      className="w-full justify-between"
-                                    >
-                                      {field.value && field.value !== "none"
-                                        ? chapacintaMaterials.find(
-                                            (material) => material.id_material.toString() === field.value
-                                          )?.nombre || "Ninguno"
-                                        : "Ninguno"}
-                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0" align="start">
-                                  <Command>
-                                    <CommandInput 
-                                      placeholder="Buscar chapacinta..." 
-                                      className="h-9"
-                                      value={chapVistaSearch}
-                                      onValueChange={setChapVistaSearch}
-                                    />
-                                    {chapVistaSearch.length > 0 && filteredChapacinta.length === 0 && (
-                                      <CommandEmpty>No se encontraron chapacinta para "{chapVistaSearch}"</CommandEmpty>
-                                    )}
-                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
-                                      <CommandItem
-                                        value="none"
-                                        onSelect={() => {
-                                          form.setValue("chapVista", "none");
-                                          setOpenChapVistaCombobox(false);
-                                        }}
-                                      >
-                                        <span>Ninguno</span>
-                                      </CommandItem>
-                                      {filteredChapacinta.map((material) => (
-                                        <CommandItem
-                                          key={material.id_material}
-                                          value={material.id_material.toString()}
-                                          onSelect={() => {
-                                            form.setValue("chapVista", material.id_material.toString());
-                                            setOpenChapVistaCombobox(false);
-                                          }}
-                                        >
-                                          <HighlightedText 
-                                            text={`${material.nombre} - $${material.costo}`} 
-                                            query={chapVistaSearch} 
-                                          />
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                        <FormField
-                          control={form.control}
-                          name="jaladera"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Jaladera</FormLabel>
-                              <Popover open={openJaladeraCombobox} onOpenChange={setOpenJaladeraCombobox}>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      aria-expanded={openJaladeraCombobox}
-                                      className="w-full justify-between"
-                                    >
-                                      {field.value && field.value !== "none"
-                                        ? jaladeraMaterials.find(
-                                            (material) => material.id_material.toString() === field.value
-                                          )?.nombre || "Ninguno"
-                                        : "Ninguno"}
-                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0" align="start">
-                                  <Command>
-                                    <CommandInput 
-                                      placeholder="Buscar jaladera..." 
-                                      className="h-9"
-                                      value={jaladeraSearch}
-                                      onValueChange={setJaladeraSearch}
-                                    />
-                                    {jaladeraSearch.length > 0 && filteredJaladera.length === 0 && (
-                                      <CommandEmpty>No se encontraron jaladeras para "{jaladeraSearch}"</CommandEmpty>
-                                    )}
-                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
-                                      <CommandItem
-                                        value="none"
-                                        onSelect={() => {
-                                          form.setValue("jaladera", "none");
-                                          setOpenJaladeraCombobox(false);
-                                        }}
-                                      >
-                                        <span>Ninguno</span>
-                                      </CommandItem>
-                                      {filteredJaladera.map((material) => (
-                                        <CommandItem
-                                          key={material.id_material}
-                                          value={material.id_material.toString()}
-                                          onSelect={() => {
-                                            form.setValue("jaladera", material.id_material.toString());
-                                            setOpenJaladeraCombobox(false);
-                                          }}
-                                        >
-                                          <HighlightedText 
-                                            text={`${material.nombre} - $${material.costo}`} 
-                                            query={jaladeraSearch} 
-                                          />
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="corredera"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Correderas</FormLabel>
-                              <Popover open={openCorrederasCombobox} onOpenChange={setOpenCorrederasCombobox}>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      aria-expanded={openCorrederasCombobox}
-                                      className="w-full justify-between"
-                                    >
-                                      {field.value && field.value !== "none"
-                                        ? correderasMaterials.find(
-                                            (material) => material.id_material.toString() === field.value
-                                          )?.nombre || "Ninguno"
-                                        : "Ninguno"}
-                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0" align="start">
-                                  <Command>
-                                    <CommandInput 
-                                      placeholder="Buscar correderas..." 
-                                      className="h-9"
-                                      value={correderasSearch}
-                                      onValueChange={setCorrederasSearch}
-                                    />
-                                    {correderasSearch.length > 0 && filteredCorrederas.length === 0 && (
-                                      <CommandEmpty>No se encontraron correderas para "{correderasSearch}"</CommandEmpty>
-                                    )}
-                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
-                                      <CommandItem
-                                        value="none"
-                                        onSelect={() => {
-                                          form.setValue("corredera", "none");
-                                          setOpenCorrederasCombobox(false);
-                                        }}
-                                      >
-                                        <span>Ninguno</span>
-                                      </CommandItem>
-                                      {filteredCorrederas.map((material) => (
-                                        <CommandItem
-                                          key={material.id_material}
-                                          value={material.id_material.toString()}
-                                          onSelect={() => {
-                                            form.setValue("corredera", material.id_material.toString());
-                                            setOpenCorrederasCombobox(false);
-                                          }}
-                                        >
-                                          <HighlightedText 
-                                            text={`${material.nombre} - $${material.costo}`} 
-                                            query={correderasSearch} 
-                                          />
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="bisagras"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Bisagras</FormLabel>
-                              <Popover open={openBisagrasCombobox} onOpenChange={setOpenBisagrasCombobox}>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      aria-expanded={openBisagrasCombobox}
-                                      className="w-full justify-between"
-                                    >
-                                      {field.value && field.value !== "none"
-                                        ? bisagrasMaterials.find(
-                                            (material) => material.id_material.toString() === field.value
-                                          )?.nombre || "Ninguno"
-                                        : "Ninguno"}
-                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0" align="start">
-                                  <Command>
-                                    <CommandInput 
-                                      placeholder="Buscar bisagras..." 
-                                      className="h-9"
-                                      value={bisagrasSearch}
-                                      onValueChange={setBisagrasSearch}
-                                    />
-                                    {bisagrasSearch.length > 0 && filteredBisagras.length === 0 && (
-                                      <CommandEmpty>No se encontraron bisagras para "{bisagrasSearch}"</CommandEmpty>
-                                    )}
-                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
-                                      <CommandItem
-                                        value="none"
-                                        onSelect={() => {
-                                          form.setValue("bisagras", "none");
-                                          setOpenBisagrasCombobox(false);
-                                        }}
-                                      >
-                                        <span>Ninguno</span>
-                                      </CommandItem>
-                                      {filteredBisagras.map((material) => (
-                                        <CommandItem
-                                          key={material.id_material}
-                                          value={material.id_material.toString()}
-                                          onSelect={() => {
-                                            form.setValue("bisagras", material.id_material.toString());
-                                            setOpenBisagrasCombobox(false);
-                                          }}
-                                        >
-                                          <HighlightedText 
-                                            text={`${material.nombre} - $${material.costo}`} 
-                                            query={bisagrasSearch} 
-                                          />
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      <div className="mt-6 border border-gray-200 rounded-md p-4">
-                        <h4 className="font-medium mb-2">Materiales Seleccionados</h4>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="font-medium">Material Huacal:</span>{" "}
-                            {form.watch("matHuacal") && form.watch("matHuacal") !== "none" 
-                              ? tabletosMaterials.find(m => m.id_material.toString() === form.watch("matHuacal"))?.nombre 
-                              : "Ninguno"}
-                          </div>
-                          <div>
-                            <span className="font-medium">Material Vista:</span>{" "}
-                            {form.watch("matVista") && form.watch("matVista") !== "none" 
-                              ? tabletosMaterials.find(m => m.id_material.toString() === form.watch("matVista"))?.nombre 
-                              : "Ninguno"}
-                          </div>
-                          <div>
-                            <span className="font-medium">Chapacinta Huacal:</span>{" "}
-                            {form.watch("chapHuacal") && form.watch("chapHuacal") !== "none" 
-                              ? chapacintaMaterials.find(m => m.id_material.toString() === form.watch("chapHuacal"))?.nombre 
-                              : "Ninguno"}
-                          </div>
-                          <div>
-                            <span className="font-medium">Chapacinta Vista:</span>{" "}
-                            {form.watch("chapVista") && form.watch("chapVista") !== "none" 
-                              ? chapacintaMaterials.find(m => m.id_material.toString() === form.watch("chapVista"))?.nombre 
-                              : "Ninguno"}
-                          </div>
-                          <div>
-                            <span className="font-medium">Jaladera:</span>{" "}
-                            {form.watch("jaladera") && form.watch("jaladera") !== "none" 
-                              ? jaladeraMaterials.find(m => m.id_material.toString() === form.watch("jaladera"))?.nombre 
-                              : "Ninguno"}
-                          </div>
-                          <div>
-                            <span className="font-medium">Correderas:</span>{" "}
-                            {form.watch("corredera") && form.watch("corredera") !== "none" 
-                              ? correderasMaterials.find(m => m.id_material.toString() === form.watch("corredera"))?.nombre 
-                              : "Ninguno"}
-                          </div>
-                          <div>
-                            <span className="font-medium">Bisagras:</span>{" "}
-                            {form.watch("bisagras") && form.watch("bisagras") !== "none" 
-                              ? bisagrasMaterials.find(m => m.id_material.toString() === form.watch("bisagras"))?.nombre 
-                              : "Ninguno"}
-                          </div>
-                        </div>
                       </div>
                     </>
                   )}
@@ -2358,6 +2433,7 @@ export default function CotizacionForm() {
                           <TableRow>
                             <TableHead className="w-[50%]">Descripción</TableHead>
                             <TableHead className="text-right">Cantidad</TableHead>
+                            <TableHead className="text-right">U TL</TableHead>
                             <TableHead className="text-right">Precio Unitario</TableHead>
                             <TableHead className="text-right">Descuento (%)</TableHead>
                             <TableHead className="text-right">Total</TableHead>
@@ -2393,6 +2469,28 @@ export default function CotizacionForm() {
                                         const value = parseInt(e.target.value) || 1;
                                         field.onChange(value);
                                         handleItemValueChange(index, 'quantity', value);
+                                      }}
+                                    />
+                                  )}
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.furnitureData.u_tl`}
+                                  render={({ field }) => (
+                                    <Input 
+                                      {...field} 
+                                      type="number" 
+                                      className="w-20 text-right ml-auto"
+                                      min={0}
+                                      step={0.01}
+                                      placeholder="0"
+                                      onChange={e => {
+                                        const value = parseFloat(e.target.value) || 0;
+                                        field.onChange(value);
+                                        // Recalculate price when U TL changes
+                                        setTimeout(calculateTotals, 10);
                                       }}
                                     />
                                   )}
@@ -2495,6 +2593,162 @@ export default function CotizacionForm() {
                     </div>
                   </div>
                   
+                  {/* Debug Calculations Section */}
+                  {fields.length > 0 && (
+                    <div className="mt-8">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base font-medium">Desglose de Cálculos</h3>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDebugCalculations(!showDebugCalculations)}
+                        >
+                          {showDebugCalculations ? "Ocultar" : "Mostrar"} Cálculos
+                        </Button>
+                      </div>
+                      
+                      {showDebugCalculations && (
+                        <div id="debug-section" className="rounded-md border p-4 bg-gray-50">
+                          <div className="space-y-6">
+                            {/* Project Info */}
+                            <div className="text-sm">
+                              <div className="font-medium mb-2">Información del Proyecto:</div>
+                              <div className="grid grid-cols-2 gap-4 text-gray-600">
+                                <div>Tipo: {form.getValues('projectType') === "1" ? "Residencial (180%)" : form.getValues('projectType') === "3" ? "Desarrollo (150%)" : "Otro (100%)"}</div>
+                                <div>Multiplicador: {form.getValues('projectType') === "1" ? "1.8x" : form.getValues('projectType') === "3" ? "1.5x" : "1.0x"}</div>
+                              </div>
+                            </div>
+                            
+                            {/* Materials Info */}
+                            <div className="text-sm">
+                              <div className="font-medium mb-2">Materiales Seleccionados:</div>
+                              <div className="grid grid-cols-2 gap-2 text-gray-600">
+                                {form.getValues('matHuacal') !== "none" && (
+                                  <div>Mat. Huacal: {tabletosMaterials.find(m => m.id_material.toString() === form.getValues('matHuacal'))?.nombre || "N/A"}</div>
+                                )}
+                                {form.getValues('matVista') !== "none" && (
+                                  <div>Mat. Vista: {tabletosMaterials.find(m => m.id_material.toString() === form.getValues('matVista'))?.nombre || "N/A"}</div>
+                                )}
+                                {form.getValues('chapHuacal') !== "none" && (
+                                  <div>Chap. Huacal: {chapacintaMaterials.find(m => m.id_material.toString() === form.getValues('chapHuacal'))?.nombre || "N/A"}</div>
+                                )}
+                                {form.getValues('chapVista') !== "none" && (
+                                  <div>Chap. Vista: {chapacintaMaterials.find(m => m.id_material.toString() === form.getValues('chapVista'))?.nombre || "N/A"}</div>
+                                )}
+                                {form.getValues('jaladera') !== "none" && (
+                                  <div>Jaladera: {jaladeraMaterials.find(m => m.id_material.toString() === form.getValues('jaladera'))?.nombre || "N/A"}</div>
+                                )}
+                                {form.getValues('corredera') !== "none" && (
+                                  <div>Corredera: {correderasMaterials.find(m => m.id_material.toString() === form.getValues('corredera'))?.nombre || "N/A"}</div>
+                                )}
+                                {form.getValues('bisagras') !== "none" && (
+                                  <div>Bisagras: {bisagrasMaterials.find(m => m.id_material.toString() === form.getValues('bisagras'))?.nombre || "N/A"}</div>
+                                )}
+                                {form.getValues('tipOnLargo') !== "none" && (
+                                  <div>Tip-on Largo: {tipOnLargoMaterials.find(m => m.id_material.toString() === form.getValues('tipOnLargo'))?.nombre || "N/A"}</div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Item Calculations */}
+                            <div>
+                              <div className="font-medium mb-3">Desglose por Artículo:</div>
+                              <div className="space-y-4">
+                                {getDebugCalculations().map((item) => (
+                                  <div key={item.index} className="border rounded-md p-3 bg-white">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="font-medium text-sm">
+                                        {item.index + 1}. {item.description || "Sin descripción"}
+                                      </div>
+                                      {item.hasDiscrepancy && (
+                                        <div className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                                          ⚠️ Discrepancia
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {item.components.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {item.components.map((component, idx) => (
+                                          <div key={idx} className="text-xs text-gray-600 flex justify-between">
+                                            <div className="flex-1">
+                                              <span className="font-medium">{component.name}:</span> {component.material}
+                                            </div>
+                                            <div className="text-right">
+                                              {component.quantity} × ${component.unitCost} × {component.multiplier} = ${component.total.toFixed(2)}
+                                            </div>
+                                          </div>
+                                        ))}
+                                        
+                                        <div className="border-t pt-2 mt-2">
+                                          <div className="flex justify-between text-sm">
+                                            <div>Precio Calculado:</div>
+                                            <div className="font-medium">${item.calculatedPrice.toFixed(2)}</div>
+                                          </div>
+                                          <div className="flex justify-between text-sm">
+                                            <div>Precio Almacenado:</div>
+                                            <div className={item.hasDiscrepancy ? "text-red-600 font-medium" : ""}>${item.storedPrice.toFixed(2)}</div>
+                                          </div>
+                                          {item.hasDiscrepancy && (
+                                            <div className="flex justify-between text-xs text-red-600">
+                                              <div>Diferencia:</div>
+                                              <div>${Math.abs(item.calculatedPrice - item.storedPrice).toFixed(2)}</div>
+                                            </div>
+                                          )}
+                                        </div>
+                                        
+                                        <div className="border-t pt-2 mt-2 bg-gray-50 rounded p-2">
+                                          <div className="text-xs text-gray-600 space-y-1">
+                                            <div className="flex justify-between">
+                                              <div>Cantidad:</div>
+                                              <div>{item.quantity || 1}</div>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <div>Descuento:</div>
+                                              <div>{item.discount || 0}%</div>
+                                            </div>
+                                            <div className="flex justify-between font-medium">
+                                              <div>Subtotal Final:</div>
+                                              <div>${((item.quantity || 1) * item.storedPrice * (1 - (item.discount || 0) / 100)).toFixed(2)}</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-gray-500 italic">
+                                        No hay datos de mueble para calcular componentes
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {/* Summary */}
+                            <div className="border-t pt-4">
+                              <div className="font-medium mb-2">Resumen de Totales:</div>
+                              <div className="text-sm space-y-1">
+                                <div className="flex justify-between">
+                                  <div>Subtotal (sin IVA):</div>
+                                  <div>${totals.subtotal.toFixed(2)}</div>
+                                </div>
+                                <div className="flex justify-between">
+                                  <div>IVA (16%):</div>
+                                  <div>${totals.tax.toFixed(2)}</div>
+                                </div>
+                                <div className="flex justify-between font-medium border-t pt-1">
+                                  <div>Total:</div>
+                                  <div>${totals.total.toFixed(2)}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   {/* Add notes field */}
                   <div className="mt-6">
                     <FormField
@@ -2572,70 +2826,182 @@ export default function CotizacionForm() {
       </Card>
       
       {/* Inventory Search Dialog */}
-      <Dialog open={showInventorySearch} onOpenChange={setShowInventorySearch}>
-        <DialogContent className="sm:max-w-[600px]">
+      <Dialog open={showInventorySearch} onOpenChange={(open) => {
+        setShowInventorySearch(open);
+        if (!open) {
+          // Reset search state when dialog is closed
+          setInventorySearchQuery("");
+          setSelectedCategory('');
+          setInventoryItems([]);
+          setCurrentPage(0);
+          setHasMoreItems(true);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Agregar Producto</DialogTitle>
+            <DialogDescription>
+              Busque productos por categoría y descripción. {totalCount > 0 && `Total: ${totalCount.toLocaleString()} productos`}
+            </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Input
-                placeholder="Buscar mueble..."
-                value={inventorySearchQuery}
-                onChange={(e) => setInventorySearchQuery(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                type="button" 
-                onClick={() => fetchInventory(inventorySearchQuery)}
-                variant="outline"
-                size="icon"
+          <div className="space-y-4 overflow-hidden max-h-[60vh] flex flex-col">
+            {/* Category Selection */}
+            <div className="space-y-2 flex-shrink-0">
+              <Label className="text-sm font-medium">Categoría</Label>
+              <Select
+                value={selectedCategory}
+                onValueChange={(value) => {
+                  setSelectedCategory(value === "all" ? '' : value);
+                  setInventorySearchQuery('');
+                  if (value && value !== "all") {
+                    fetchInventory('', value, 0, false);
+                  } else {
+                    setInventoryItems([]);
+                  }
+                }}
               >
-                <Search className="h-4 w-4" />
-              </Button>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar categoría..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <SelectItem value="all">Todas las categorías</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Search Input */}
+            <div className="space-y-2 flex-shrink-0">
+              <Label className="text-sm font-medium">Búsqueda</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  placeholder={selectedCategory 
+                    ? `Buscar en ${selectedCategory}...` 
+                    : "Buscar producto (mín. 2 caracteres)..."
+                  }
+                  value={inventorySearchQuery}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setInventorySearchQuery(value);
+                    
+                    // Auto-search with simple timeout
+                    if (searchTimeoutRef.current) {
+                      clearTimeout(searchTimeoutRef.current);
+                    }
+                    
+                    searchTimeoutRef.current = setTimeout(() => {
+                      if (selectedCategory || value.length >= 2) {
+                        fetchInventory(value, selectedCategory, 0, false);
+                      }
+                    }, 500);
+                  }}
+                  className="flex-1"
+                />
+                <Button 
+                  type="button" 
+                  onClick={() => fetchInventory(inventorySearchQuery, selectedCategory, 0, false)}
+                  variant="outline"
+                  size="icon"
+                  disabled={isLoadingInventory || (!selectedCategory && inventorySearchQuery.length < 2)}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             
-            {isLoadingInventory ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : inventoryItems.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No se encontraron muebles. Intente con otra búsqueda.
-              </div>
-            ) : (
-              <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead className="w-[100px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {inventoryItems.map((item) => (
-                      <TableRow key={item.mueble_id}>
-                        <TableCell>{item.nombre_mueble}</TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => addInventoryItem(item)}
-                          >
-                            Seleccionar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-            
-            <div className="pt-4 text-sm text-muted-foreground">
-              Seleccione un producto del inventario para agregarlo automáticamente a la cotización.
-              El precio se calculará automáticamente según los materiales seleccionados.
+            {/* Results */}
+            <div className="flex-1 min-h-0 space-y-2">
+              {!selectedCategory && inventorySearchQuery.length < 2 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Seleccione una categoría o busque un producto</p>
+                </div>
+              ) : isLoadingInventory ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-6 w-6 mx-auto animate-spin mb-2" />
+                  <p className="text-sm text-muted-foreground">Cargando productos...</p>
+                </div>
+              ) : inventoryItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <X className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No se encontraron productos</p>
+                </div>
+              ) : (
+                <div className="space-y-2 h-full flex flex-col">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {inventoryItems.length} de {totalCount.toLocaleString()} productos
+                  </p>
+                  
+                  <div className="border rounded-lg bg-white flex-1 min-h-0 flex flex-col">
+                    <div className="overflow-auto flex-1">
+                      <Table className="w-full">
+                        <TableHeader className="bg-gray-50/80">
+                          <TableRow>
+                            <TableHead className="w-[140px] font-semibold py-3 px-4">Categoría</TableHead>
+                            <TableHead className="font-semibold py-3 px-4">Descripción</TableHead>
+                            <TableHead className="w-[120px] text-center font-semibold py-3 px-4">Acción</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {inventoryItems.map((item) => (
+                            <TableRow key={item.insumo_id} className="hover:bg-gray-50/50 border-b border-gray-100">
+                              <TableCell className="font-medium text-blue-600 text-sm py-3 px-4">
+                                {item.categoria}
+                              </TableCell>
+                              <TableCell className="text-sm py-3 px-4">
+                                {selectedCategory && inventorySearchQuery 
+                                  ? <HighlightedText text={item.descripcion} query={inventorySearchQuery} />
+                                  : !selectedCategory && inventorySearchQuery
+                                  ? <HighlightedText text={item.mueble || item.descripcion} query={inventorySearchQuery} />
+                                  : item.descripcion
+                                }
+                              </TableCell>
+                              <TableCell className="text-center py-3 px-4">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => addInventoryItem(item)}
+                                  className="h-8 px-4 text-xs bg-gray-900 hover:bg-gray-800"
+                                >
+                                  Seleccionar
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    
+                    {/* Load More Button */}
+                    {hasMoreItems && (
+                      <div className="p-4 text-center border-t bg-gray-50/30">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={loadMoreItems}
+                          disabled={isLoadingMore}
+                          className="bg-white hover:bg-gray-50"
+                        >
+                          {isLoadingMore ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Cargando...
+                            </>
+                          ) : (
+                            `Cargar más (${totalCount - inventoryItems.length} restantes)`
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
@@ -2649,4 +3015,6 @@ export default function CotizacionForm() {
       />
     </>
   );
-} 
+}
+
+export default CotizacionForm;

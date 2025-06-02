@@ -15,8 +15,8 @@ export default function CotizadorLayout({ children }: { children: ReactNode }) {
   
   useEffect(() => {
     if (mounted && !isLoading && !isAuthenticated) {
-      // If not authenticated with Auth0, redirect to home
-      router.push('/');
+      // If not authenticated with Auth0, redirect to /login
+      router.push('/login');
     }
   }, [isAuthenticated, isLoading, mounted, router]);
   

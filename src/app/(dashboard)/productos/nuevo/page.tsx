@@ -134,8 +134,27 @@ export default function NuevoProductoPage() {
       
       // Insert the new product
       const { data, error } = await supabase
-        .from('inventario')
-        .insert([producto])
+        .from('insumos')
+        .insert([{
+          mueble: producto.nombre_mueble,
+          cajones: producto.cajones,
+          puertas: producto.puertas,
+          entrepaños: producto.entrepaños,
+          mat_huacal: producto.mat_huacal,
+          mat_vista: producto.mat_vista,
+          chap_huacal: producto.chap_huacal,
+          chap_vista: producto.chap_vista,
+          jaladera: producto.jaladera,
+          corredera: producto.corredera,
+          bisagras: producto.bisagras,
+          patas: producto.patas,
+          clip_patas: producto.clip_patas,
+          mensulas: producto.mensulas,
+          kit_tornillo: producto.kit_tornillo,
+          cif: producto.cif,
+          tipo_mueble: 'Mueble',
+          tipo: 'Mueble',
+        }])
         .select()
         .single();
       
