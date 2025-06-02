@@ -2,30 +2,32 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 
 /**
- * Function to create the inventario and materiales tables if they don't exist
+ * Function to create the insumos and materiales tables if they don't exist
  */
 export async function createTablesIfNotExist(
   supabase: SupabaseClient<Database>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Check if inventario table exists by attempting to fetch 1 row
-    const { error: inventarioCheckError } = await supabase
-      .from('inventario')
-      .select('id')
+    console.log('Checking if tables exist...');
+    
+    // Check if insumos table exists by attempting to fetch 1 row
+    const { error: insumosCheckError } = await supabase
+      .from('insumos')
+      .select('*')
       .limit(1);
 
-    // If the table doesn't exist, create it
-    if (inventarioCheckError && inventarioCheckError.code === '42P01') {
-      console.log('Creating inventario table...');
+    // If table doesn't exist (error code 42P01), create it
+    if (insumosCheckError && insumosCheckError.code === '42P01') {
+      console.log('Creating insumos table...');
       
-      // Create the inventario table
-      const { error: createInventarioError } = await supabase.rpc('create_inventario_table');
+      // Create the insumos table
+      const { error: createInsumosError } = await supabase.rpc('create_insumos_table');
       
-      if (createInventarioError) {
-        console.error('Error creating inventario table:', createInventarioError);
+      if (createInsumosError) {
+        console.error('Error creating insumos table:', createInsumosError);
         return {
           success: false,
-          error: `Error creating inventario table: ${createInventarioError.message}`
+          error: `Error creating insumos table: ${createInsumosError.message}`
         };
       }
     }
@@ -69,11 +71,11 @@ export async function createSqlFunctions(
   supabase: SupabaseClient<Database>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Create function to create inventario table
-    const { error: createInventarioFunctionError } = await supabase.rpc('create_sql_functions', {
-      function_name: 'create_inventario_table',
+    // Create function to create insumos table
+    const { error: createInsumosFunctionError } = await supabase.rpc('create_sql_functions', {
+      function_name: 'create_insumos_table',
       function_sql: `
-        CREATE TABLE IF NOT EXISTS public.inventario (
+        CREATE TABLE IF NOT EXISTS public.insumos (
           id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
           name TEXT NOT NULL,
           description TEXT,
@@ -87,43 +89,43 @@ export async function createSqlFunctions(
         );
         
         -- Add RLS policies
-        ALTER TABLE public.inventario ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE public.insumos ENABLE ROW LEVEL SECURITY;
         
         -- Create policy to allow all authenticated users to read
         CREATE POLICY "Allow authenticated read access"
-          ON public.inventario
+          ON public.insumos
           FOR SELECT
           TO authenticated
           USING (true);
         
         -- Create policy to allow authenticated users to insert with their user ID
         CREATE POLICY "Allow authenticated insert access"
-          ON public.inventario
+          ON public.insumos
           FOR INSERT
           TO authenticated
           WITH CHECK (true);
           
         -- Create policy to allow authenticated users to update rows
         CREATE POLICY "Allow authenticated update access"
-          ON public.inventario
+          ON public.insumos
           FOR UPDATE
           TO authenticated
           USING (true);
           
         -- Create policy to allow authenticated users to delete rows
         CREATE POLICY "Allow authenticated delete access"
-          ON public.inventario
+          ON public.insumos
           FOR DELETE
           TO authenticated
           USING (true);
       `
     });
 
-    if (createInventarioFunctionError) {
-      console.error('Error creating inventario function:', createInventarioFunctionError);
+    if (createInsumosFunctionError) {
+      console.error('Error creating insumos function:', createInsumosFunctionError);
       return {
         success: false,
-        error: `Error creating inventario function: ${createInventarioFunctionError.message}`
+        error: `Error creating insumos function: ${createInsumosFunctionError.message}`
       };
     }
 

@@ -29,28 +29,28 @@ async function verifyData() {
   console.log('Supabase client created!');
 
   try {
-    // Check data in the inventario table
-    console.log('\nChecking data in inventario table:');
-    const { data: inventarioData, error: inventarioError } = await supabase
-      .from('inventario')
-      .select('*');
+    // Check data in the insumos table
+    console.log('\nChecking data in insumos table:');
+    const { data: insumosData, error: insumosError } = await supabase
+      .from('insumos')
+      .select('*')
+      .limit(5);
     
-    if (inventarioError) {
-      console.error('Error fetching inventario data:', inventarioError);
+    if (insumosError) {
+      console.error('Error fetching insumos data:', insumosError);
     } else {
-      console.log(`Found ${inventarioData.length} rows in inventario table:`);
-      inventarioData.forEach(item => {
-        console.log(`- ID: ${item.mueble_id}, Name: ${item.nombre_mueble}`);
+      console.log(`Found ${insumosData.length} rows in insumos table:`);
+      insumosData.forEach(item => {
+        console.log(`- Insumo ID: ${item.insumo_id}, Nombre: ${item.mueble || 'N/A'}`);
       });
       
-      if (inventarioData.length === 0) {
-        console.log('Reseeding the inventario table...');
+      if (insumosData.length === 0) {
+        console.log('Reseeding the insumos table...');
         
         // Basic products data
         const products = [
           {
-            mueble_id: 1,
-            nombre_mueble: 'Alacena de Cocina',
+            mueble: 'Alacena de Cocina',
             cajones: 3,
             puertas: 2,
             entrepaños: 1,
@@ -62,8 +62,7 @@ async function verifyData() {
             cif: 5000
           },
           {
-            mueble_id: 2,
-            nombre_mueble: 'Vestidor Completo',
+            mueble: 'Vestidor Completo',
             cajones: 5,
             puertas: 4,
             entrepaños: 3,
@@ -77,7 +76,7 @@ async function verifyData() {
         ];
         
         const { data: insertData, error: insertError } = await supabase
-          .from('inventario')
+          .from('insumos')
           .insert(products)
           .select();
           
@@ -138,15 +137,15 @@ async function verifyData() {
     
     const anonClient = createClient(supabaseUrl, anonKey);
     
-    // Check if we can read from inventario with anon key
-    const { data: anonInventarioData, error: anonInventarioError } = await anonClient
-      .from('inventario')
+    // Check if we can read from insumos with anon key
+    const { data: anonInsumosData, error: anonInsumosError } = await anonClient
+      .from('insumos')
       .select('*');
     
-    if (anonInventarioError) {
-      console.error('Anonymous access to inventario failed:', anonInventarioError);
+    if (anonInsumosError) {
+      console.error('Anonymous access to insumos failed:', anonInsumosError);
     } else {
-      console.log(`Anonymous access: Found ${anonInventarioData.length} rows in inventario table`);
+      console.log(`Anonymous access: Found ${anonInsumosData.length} rows in insumos table`);
     }
     
     // Check if we can read from materiales with anon key

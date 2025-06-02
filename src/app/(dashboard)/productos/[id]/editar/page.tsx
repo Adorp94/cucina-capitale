@@ -17,7 +17,7 @@ import { useToast } from '@/components/ui/use-toast';
 type Material = Database['public']['Tables']['materiales']['Row'];
 
 // Type for product
-type Producto = Database['public']['Tables']['inventario']['Row'];
+type Producto = Database['public']['Tables']['insumos']['Row'];
 
 export default function EditarProductoPage({
   params,
@@ -46,9 +46,9 @@ export default function EditarProductoPage({
       try {
         // Fetch the product
         const { data: productoData, error: productoError } = await supabase
-          .from('inventario')
+          .from('insumos')
           .select('*')
-          .eq('mueble_id', productId)
+          .eq('insumo_id', productId)
           .single();
           
         if (productoError) {
@@ -134,7 +134,7 @@ export default function EditarProductoPage({
     
     try {
       // Validate required fields
-      if (!producto.nombre_mueble) {
+      if (!producto.mueble) {
         setFormError('El nombre del producto es obligatorio');
         setIsSubmitting(false);
         return;
@@ -142,26 +142,31 @@ export default function EditarProductoPage({
       
       // Update the product
       const { error } = await supabase
-        .from('inventario')
+        .from('insumos')
         .update({
-          nombre_mueble: producto.nombre_mueble,
+          mueble: producto.mueble,
           cajones: producto.cajones,
           puertas: producto.puertas,
           entrepaños: producto.entrepaños,
           mat_huacal: producto.mat_huacal,
           mat_vista: producto.mat_vista,
+          chap_huacal: producto.chap_huacal,
+          chap_vista: producto.chap_vista,
           jaladera: producto.jaladera,
           corredera: producto.corredera,
           bisagras: producto.bisagras,
-          chap_huacal: producto.chap_huacal,
-          chap_vista: producto.chap_vista,
           patas: producto.patas,
           clip_patas: producto.clip_patas,
           mensulas: producto.mensulas,
           kit_tornillo: producto.kit_tornillo,
-          cif: producto.cif
+          cif: producto.cif,
+          tipo_mueble: producto.tipo_mueble,
+          tipo: producto.tipo,
+          tipon_largo: producto.tipon_largo,
+          u_tl: producto.u_tl,
+          t_tl: producto.t_tl
         })
-        .eq('mueble_id', productId);
+        .eq('insumo_id', productId);
       
       if (error) {
         setFormError(`Error al actualizar el producto: ${error.message}`);
@@ -173,7 +178,7 @@ export default function EditarProductoPage({
       // Show success message
       toast({
         title: 'Producto actualizado',
-        description: `El producto "${producto.nombre_mueble}" ha sido actualizado exitosamente.`,
+        description: `El producto "${producto.mueble}" ha sido actualizado exitosamente.`,
       });
       
       // Redirect to the product details page
@@ -193,9 +198,9 @@ export default function EditarProductoPage({
     
     try {
       const { error } = await supabase
-        .from('inventario')
+        .from('insumos')
         .delete()
-        .eq('mueble_id', productId);
+        .eq('insumo_id', productId);
       
       if (error) {
         toast({
@@ -303,11 +308,11 @@ export default function EditarProductoPage({
               <div className="grid gap-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre_mueble">Nombre del Producto *</Label>
+                    <Label htmlFor="mueble">Nombre del Producto *</Label>
                     <Input
-                      id="nombre_mueble"
-                      name="nombre_mueble"
-                      value={producto.nombre_mueble || ''}
+                      id="mueble"
+                      name="mueble"
+                      value={producto.mueble || ''}
                       onChange={handleChange}
                       required
                     />

@@ -35,20 +35,20 @@ async function fixRlsWithRest() {
     // The URL for the pg API
     const pgApiUrl = `${supabaseUrl}/rest/v1/`;
     
-    // Execute function to disable RLS on inventario
-    console.log('Disabling RLS on inventario...');
-    const disableInventarioResponse = await fetch(`${pgApiUrl}rpc/disable_rls_inventario`, {
+    // Execute function to disable RLS on insumos
+    console.log('Disabling RLS on insumos...');
+    const disableInsumosResponse = await fetch(`${pgApiUrl}rpc/disable_rls_insumos`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': supabaseServiceKey,
-        'Authorization': `Bearer ${supabaseServiceKey}`
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey
       },
       body: JSON.stringify({})
     });
     
-    const disableInventarioResult = await disableInventarioResponse.json();
-    console.log('Disable RLS on inventario result:', disableInventarioResponse.status, disableInventarioResult);
+    const disableInsumosResult = await disableInsumosResponse.json();
+    console.log('Disable RLS on insumos result:', disableInsumosResponse.status, disableInsumosResult);
     
     // Execute function to disable RLS on materiales
     console.log('Disabling RLS on materiales...');
@@ -75,17 +75,17 @@ async function fixRlsWithRest() {
     
     const anonClient = createClient(supabaseUrl, anonKey);
     
-    // Check if we can read from inventario with anon key
-    const { data: inventarioData, error: inventarioError } = await anonClient
-      .from('inventario')
+    // Check if we can read from insumos with anon key
+    const { data: insumosData, error: insumosError } = await anonClient
+      .from('insumos')
       .select('*');
     
-    if (inventarioError) {
-      console.error('Anonymous access to inventario failed:', inventarioError);
+    if (insumosError) {
+      console.error('Anonymous access to insumos failed:', insumosError);
     } else {
-      console.log(`Anonymous access: Found ${inventarioData.length} rows in inventario table`);
-      if (inventarioData.length > 0) {
-        console.log('First row:', inventarioData[0]);
+      console.log(`Anonymous access: Found ${insumosData.length} rows in insumos table`);
+      if (insumosData.length > 0) {
+        console.log('First row:', insumosData[0]);
       }
     }
     

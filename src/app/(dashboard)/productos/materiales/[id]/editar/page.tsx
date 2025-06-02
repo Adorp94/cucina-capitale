@@ -98,14 +98,14 @@ export default function EditarMaterialPage({
   useEffect(() => {
     const checkRelations = async () => {
       try {
-        // Check multiple columns in inventario where this material might be referenced
+        // Check multiple columns in insumos where this material might be referenced
         const columns = ['mat_huacal', 'mat_vista', 'jaladera', 'corredera', 'bisagras'];
         let totalCount = 0;
         
         for (const column of columns) {
           const { count, error } = await supabase
-            .from('inventario')
-            .select('mueble_id', { count: 'exact', head: true })
+            .from('insumos')
+            .select('insumo_id', { count: 'exact', head: true })
             .eq(column, materialId);
             
           if (error) {

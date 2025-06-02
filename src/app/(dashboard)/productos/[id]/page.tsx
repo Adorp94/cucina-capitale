@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import { Database } from '@/types/supabase';
 
 // Types for product and material
-type Producto = Database['public']['Tables']['inventario']['Row'];
+type Producto = Database['public']['Tables']['insumos']['Row'];
 type Material = Database['public']['Tables']['materiales']['Row'];
 
 // Type for product with related materials
@@ -38,9 +38,9 @@ export default async function ProductoDetailPage({
     
     // Fetch the product
     const { data: productoData, error: productoError } = await supabase
-      .from('inventario')
+      .from('insumos')
       .select('*')
-      .eq('mueble_id', productId)
+      .eq('insumo_id', productId)
       .single();
     
     if (productoError) {
@@ -133,7 +133,7 @@ export default async function ProductoDetailPage({
     <div className="container px-4 md:px-6 py-8 md:py-10 max-w-7xl mx-auto">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">
-          {producto?.nombre_mueble || `Producto #${productId}`}
+          {producto?.mueble || `Producto #${productId}`}
         </h1>
         <div className="flex gap-2">
           <Button asChild variant="outline" className="shadow-sm">
@@ -154,11 +154,11 @@ export default async function ProductoDetailPage({
             <dl className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:gap-2">
                 <dt className="font-medium text-gray-600 min-w-36">ID:</dt>
-                <dd>{producto?.mueble_id}</dd>
+                <dd>{producto?.insumo_id}</dd>
               </div>
               <div className="flex flex-col sm:flex-row sm:gap-2">
                 <dt className="font-medium text-gray-600 min-w-36">Nombre:</dt>
-                <dd>{producto?.nombre_mueble || 'No especificado'}</dd>
+                <dd>{producto?.mueble || 'No especificado'}</dd>
               </div>
               <div className="flex flex-col sm:flex-row sm:gap-2">
                 <dt className="font-medium text-gray-600 min-w-36">CIF:</dt>

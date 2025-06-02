@@ -29,34 +29,35 @@ async function createSqlFunctions() {
   console.log('Supabase client created!');
 
   try {
-    // Create SQL function to disable RLS on inventario
-    console.log('\nCreating SQL function to disable RLS on inventario...');
+    // Create SQL function to disable RLS on insumos
+    console.log('\nCreating SQL function to disable RLS on insumos...');
     
-    // Define the SQL function for inventario
-    const inventarioFunctionSQL = `
-      -- Function to disable RLS on inventario table
-      CREATE OR REPLACE FUNCTION public.disable_rls_inventario()
+    // Define the SQL function for insumos
+    const insumosFunctionSQL = `
+      -- Function to disable RLS on insumos table
+      CREATE OR REPLACE FUNCTION public.disable_rls_insumos()
       RETURNS void
       LANGUAGE plpgsql
       SECURITY DEFINER
       AS $$
       BEGIN
-        -- Disable RLS on inventario table
-        ALTER TABLE public.inventario DISABLE ROW LEVEL SECURITY;
+        -- Disable RLS on insumos table
+        ALTER TABLE public.insumos DISABLE ROW LEVEL SECURITY;
+        
+        RAISE NOTICE 'RLS disabled on insumos table';
       END;
       $$;
 
-      -- Grant execute permission to the function for authenticated and anon roles
-      GRANT EXECUTE ON FUNCTION public.disable_rls_inventario() TO authenticated, anon;
+      GRANT EXECUTE ON FUNCTION public.disable_rls_insumos() TO authenticated, anon;
     `;
     
-    // Execute the SQL to create the function
-    const { error: inventarioFunctionError } = await supabase.rpc('pg_query', { 
-      query: inventarioFunctionSQL 
+    // Execute with error handling
+    const { error: insumosFunctionError } = await supabase.rpc('pg_query', {
+      query: insumosFunctionSQL
     });
     
-    if (inventarioFunctionError) {
-      console.error('Error creating inventario function:', inventarioFunctionError);
+    if (insumosFunctionError) {
+      console.error('Error creating insumos function:', insumosFunctionError);
       
       // Try a more direct approach
       console.log('Trying direct SQL execution...');
@@ -70,7 +71,7 @@ async function createSqlFunctions() {
             'Prefer': 'resolution=ignore-duplicates,params=single-object'
           },
           body: JSON.stringify({
-            query: inventarioFunctionSQL
+            query: insumosFunctionSQL
           })
         });
         
@@ -80,7 +81,7 @@ async function createSqlFunctions() {
         console.error('Error with direct SQL execution:', e);
       }
     } else {
-      console.log('Successfully created SQL function for inventario');
+      console.log('Successfully created SQL function for insumos');
     }
     
     // Create SQL function to disable RLS on materiales

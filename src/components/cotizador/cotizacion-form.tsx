@@ -60,7 +60,7 @@ import {
 
 // Define furniture data schema for storing complete inventory records
 const furnitureDataSchema = z.object({
-  mueble_id: z.number(),
+  insumo_id: z.number(),
   cajones: z.number().nullable(),
   puertas: z.number().nullable(),
   entrepaños: z.number().nullable(),
@@ -611,7 +611,7 @@ export default function CotizacionForm() {
       
       // Build the base query
       let query = supabase
-        .from('inventario')
+        .from('insumos')
         .select('*', { count: 'exact' });
 
       // Add type filter if specified
@@ -621,11 +621,11 @@ export default function CotizacionForm() {
 
       // Add search filter
       if (searchQuery && searchQuery.length >= 2) {
-        query = query.ilike('nombre_mueble', `%${searchQuery}%`);
+        query = query.ilike('mueble', `%${searchQuery}%`);
       }
 
       // Add pagination and ordering
-      query = query.range(from, to).order('nombre_mueble');
+      query = query.range(from, to).order('mueble');
       
       const { data, error } = await query;
       
@@ -1017,7 +1017,7 @@ export default function CotizacionForm() {
       // Insert quotation items
       const quotationItems = data.items.map((item, index) => ({
         id_cotizacion: quotation.id_cotizacion,
-        mueble_id: item.furnitureData?.mueble_id || null,
+        insumo_id: item.furnitureData?.insumo_id || null,
         position: index,
         description: item.description,
         quantity: item.quantity,
@@ -1323,13 +1323,13 @@ export default function CotizacionForm() {
 
   const handleFurnitureSelection = (value: string, index: number) => {
     // Find the selected inventory item based on nombre_mueble
-    const selectedItem = rowInventory[index]?.items.find((item) => item.nombre_mueble === value);
+    const selectedItem = rowInventory[index]?.items.find((item) => item.mueble === value);
     console.log("Selected item:", selectedItem);
     
     if (selectedItem) {
       // Store furniture data for price calculation
       const furnitureData = {
-        mueble_id: selectedItem.mueble_id,
+        insumo_id: selectedItem.insumo_id,
         mat_huacal: selectedItem.mat_huacal || null,
         mat_vista: selectedItem.mat_vista || null,
         chap_huacal: selectedItem.chap_huacal || null,
@@ -1350,7 +1350,7 @@ export default function CotizacionForm() {
       console.log("Stored furniture data:", furnitureData);
       
       // First update furniture details in the form
-      form.setValue(`items.${index}.description`, selectedItem.nombre_mueble);
+      form.setValue(`items.${index}.description`, selectedItem.mueble);
       form.setValue(`items.${index}.quantity`, form.getValues(`items.${index}.quantity`) || 1);
       form.setValue(`items.${index}.furnitureData`, furnitureData);
       
