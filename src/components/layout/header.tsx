@@ -43,6 +43,9 @@ export default function Header() {
                 <Link href="/cotizaciones" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
                   Cotizaciones
                 </Link>
+                <Link href="/datos" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                  Datos
+                </Link>
                 <span className="text-sm font-medium text-gray-400 cursor-not-allowed" title="En desarrollo">
                   Clientes
                 </span>

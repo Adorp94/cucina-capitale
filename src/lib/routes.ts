@@ -23,6 +23,7 @@ export const protectedRoutes = [
   '/dashboard',
   '/cotizaciones',
   '/cotizador(.*)',
+  '/datos',
   '/clientes',
   '/productos'
 ];
