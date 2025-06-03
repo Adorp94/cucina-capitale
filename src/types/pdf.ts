@@ -35,6 +35,7 @@ export interface QuotationItem {
 export interface QuotationPDF {
   id_cotizacion: number;
   project_name: string;
+  project_code?: string;
   project_type: string;
   subtotal: Decimal;
   tax_rate: number;

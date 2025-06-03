@@ -30,6 +30,7 @@ type Quotation = {
   valid_until: string | null;
   delivery_time: string | null;
   notes: string | null;
+  project_code: string | null;
   cliente: {
     nombre: string;
     correo: string;
@@ -173,6 +174,7 @@ export default function CotizacionesPage() {
             <TableHeader>
               <TableRow className="bg-gray-50 hover:bg-gray-50">
                 <TableHead className="py-3">ID</TableHead>
+                <TableHead className="py-3">Código Proyecto</TableHead>
                 <TableHead className="py-3">Cliente</TableHead>
                 <TableHead className="py-3">Proyecto</TableHead>
                 <TableHead className="py-3">Tipo</TableHead>
@@ -186,6 +188,15 @@ export default function CotizacionesPage() {
               {quotations.map((quotation) => (
                 <TableRow key={quotation.id_cotizacion} className="hover:bg-gray-50">
                   <TableCell className="font-medium py-3">{quotation.id_cotizacion}</TableCell>
+                  <TableCell className="py-3">
+                    {quotation.project_code ? (
+                      <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                        {quotation.project_code}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Sin código</span>
+                    )}
+                  </TableCell>
                   <TableCell className="py-3">
                     <div>
                       <div className="font-medium">{quotation.cliente.nombre}</div>

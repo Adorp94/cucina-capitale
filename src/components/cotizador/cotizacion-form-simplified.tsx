@@ -5,7 +5,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, CalendarIcon, Plus, Trash2, Loader2, Search, ChevronDown, Calculator, X } from 'lucide-react';
+import { ChevronLeft, CalendarIcon, Plus, Trash2, Loader2, Search, ChevronDown, Calculator, X, Package, Info } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
@@ -46,6 +46,13 @@ import {
   CommandInput,
   CommandItem,
 } from "@/components/ui/command";
+import { 
+  generateFurnitureCode,
+  parseProjectCode,
+  AREAS,
+  FURNITURE_TYPES,
+  type FurnitureCodeConfig 
+} from '@/lib/project-codes';
 
 // Component to highlight search matches in text
 const HighlightedText = ({ text, query }: { text: string; query: string }) => {
@@ -80,6 +87,7 @@ const cotizacionFormSchema = z.object({
   // Project Information
   projectName: z.string().min(1, { message: "Nombre del proyecto requerido" }),
   projectType: z.string().min(1, { message: "Tipo de proyecto requerido" }),
+  prototipo: z.string().optional(), // For vertical projects (B1, A2, PH, etc.)
   cotizacionDate: z.date(),
   validUntil: z.date(),
   
@@ -109,6 +117,10 @@ const cotizacionFormSchema = z.object({
       quantity: z.number().int().min(1, { message: "Cantidad debe ser al menos 1" }),
       unitPrice: z.number().min(0, { message: "Precio unitario debe ser positivo" }),
       discount: z.number().min(0).max(100, { message: "Descuento debe estar entre 0 y 100" }).default(0),
+      // Add area and furniture type fields for project coding
+      area: z.string().optional(),
+      furnitureType: z.string().optional(),
+      productionType: z.enum(['original', 'additional', 'warranty']).default('original').optional(),
       furnitureData: z.object({
         insumo_id: z.number().optional(),
         mat_huacal: z.number().nullable().optional(),
@@ -452,6 +464,7 @@ function CotizacionForm() {
       clientAddress: "",
       projectName: "",
       projectType: "1",
+      prototipo: "", // For vertical projects (B1, A2, PH, etc.)
       cotizacionDate: new Date(),
       validUntil: addDays(new Date(), 15), // Set default to 15 days from today
       vendedor: "",
@@ -929,6 +942,37 @@ function CotizacionForm() {
     }, 10);
   };
 
+  // Add function to generate individual furniture codes
+  const generateItemCode = (index: number): string | null => {
+    const item = form.getValues(`items.${index}`);
+    const projectType = form.getValues('projectType');
+    const prototipo = form.getValues('prototipo');
+    const cotizacionDate = form.getValues('cotizacionDate');
+    
+    if (!item.area || !item.furnitureType) {
+      return null; // Cannot generate code without area and furniture type
+    }
+    
+    try {
+      const config: FurnitureCodeConfig = {
+        projectType: projectType === '1' ? 'residencial' : 'vertical',
+        verticalProject: projectType === '3' ? 'WN' : undefined, // Default to WN for now
+        date: cotizacionDate,
+        consecutiveNumber: 1, // This would come from the generated project code
+        prototipo: projectType === '3' ? prototipo : undefined,
+        area: item.area,
+        muebleType: item.furnitureType,
+        productionType: item.productionType === 'additional' ? 'A' : 
+                       item.productionType === 'warranty' ? 'G' : undefined
+      };
+      
+      return generateFurnitureCode(config);
+    } catch (error) {
+      console.error('Error generating furniture code:', error);
+      return null;
+    }
+  };
+
   // Watch for changes to items to update totals
   form.watch((value, { name }) => {
     if (name?.startsWith('items')) {
@@ -936,10 +980,18 @@ function CotizacionForm() {
     }
   });
 
+  // Watch for changes to item area, furniture type, or production type to trigger code regeneration
+  const watchedItems = form.watch('items');
+  
   // Initialize totals when component mounts
   useEffect(() => {
     calculateTotals();
   }, []);
+  
+  // Trigger re-render when watched items change (for code updates)
+  useEffect(() => {
+    // This effect will trigger when any item changes, causing codes to recalculate
+  }, [watchedItems]);
   
   // Cleanup search timeout on unmount
   useEffect(() => {
@@ -1042,6 +1094,76 @@ function CotizacionForm() {
       fetchInventory(inventorySearchQuery, selectedCategory, currentPage + 1, true);
     }
   }, [fetchInventory, inventorySearchQuery, selectedCategory, currentPage, isLoadingMore, hasMoreItems]);
+  
+  // Helper functions to map categories to default area and furniture type codes
+  const getDefaultAreaForCategory = (categoria: string): string => {
+    const categoryMap: Record<string, string> = {
+      'Alacena': 'CL', // Closet
+      'Alacena Esquinera': 'CL',
+      'Alacena Esquinera TipOn': 'CL',
+      'Alacena TipOn': 'CL',
+      'Gabinete': 'CL',
+      'Gabinete Esquinero': 'CL',
+      'Cajón': 'CL',
+      'Cajón con vista': 'CL',
+      'Cajonera': 'CL',
+      'Cajón interno': 'CL',
+      'Cajón interno Vista': 'CL',
+      'Cajón U': 'CL',
+      'Cajón U con vista': 'CL',
+      'Closet': 'VD', // Vestidor
+      'Despensa': 'DP',
+      'Lavandería': 'LV',
+      'Locker': 'CL',
+      'Locker TipOn': 'CL',
+      'Parrilla': 'CL',
+      'Tarja': 'CL',
+      'Decorativo': 'ES', // Especialidad
+      'Huacal': 'CL',
+      'Entrepaño': 'CL',
+      'Vista': 'CL',
+      'Zapatero': 'VD',
+      'Repisa Doble Cfijación': 'CL',
+      'Repisa Doble Simple': 'CL',
+      'Repisa Triple Cfijación': 'CL',
+      'Repisa Triple Simple': 'CL',
+      'Librero': 'LB'
+    };
+    
+    return categoryMap[categoria] || 'CL'; // Default to Closet
+  };
+
+  const getDefaultFurnitureTypeForCategory = (categoria: string): string => {
+    const categoryMap: Record<string, string> = {
+      'Alacena': 'ALC',
+      'Alacena Esquinera': 'ALE',
+      'Alacena Esquinera TipOn': 'AET',
+      'Alacena TipOn': 'ALT',
+      'Gabinete': 'GAB',
+      'Gabinete Esquinero': 'GAE',
+      'Cajón': 'CJN',
+      'Cajón con vista': 'CJV',
+      'Cajonera': 'CAJ',
+      'Cajón interno': 'CJI',
+      'Cajón interno Vista': 'CIV',
+      'Cajón U': 'CJU',
+      'Cajón U con vista': 'CUV',
+      'Closet': 'CLO',
+      'Locker': 'LOC',
+      'Locker TipOn': 'LOT',
+      'Parrilla': 'PAR',
+      'Tarja': 'TAR',
+      'Decorativo': 'DEC',
+      'Huacal': 'HUA',
+      'Entrepaño': 'ENT',
+      'Vista': 'VIS',
+      'Zapatero': 'ZAP',
+      'Repisa Doble Cfijación': 'RDC',
+      'Repisa Triple Cfijación': 'RTC'
+    };
+    
+    return categoryMap[categoria] || 'ACC'; // Default to Accesorio
+  };
   
   // Add function to add an inventory item
   const addInventoryItem = (item: any) => {
@@ -1231,6 +1353,10 @@ function CotizacionForm() {
       quantity: 1,
       unitPrice: price,
       discount: 0,
+      // Auto-assign area and furniture type based on category
+      area: getDefaultAreaForCategory(item.categoria),
+      furnitureType: getDefaultFurnitureTypeForCategory(item.categoria),
+      productionType: 'original' as const,
       furnitureData,
     };
     
@@ -1360,6 +1486,45 @@ function CotizacionForm() {
       const taxes = subtotal * taxRate;
       const total = subtotal + taxes;
       
+      // Generate project code by calling the API
+      let projectCode = null;
+      try {
+        console.log("Generating project code for:", {
+          projectType: data.projectType,
+          projectTypeName: data.projectType === '1' ? 'Residencial' : data.projectType === '3' ? 'Desarrollo' : 'Otro',
+          verticalProject: data.projectType === '3' ? 'WN' : null
+        });
+        
+        const projectCodeResponse = await fetch('/api/project-codes/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            projectType: data.projectType,
+            verticalProject: data.projectType === '3' ? 'WN' : null, // Default to WN for development projects
+            prototipo: data.projectType === '3' ? data.prototipo || null : null // Use form value for vertical projects
+          }),
+        });
+        
+        if (projectCodeResponse.ok) {
+          const projectCodeData = await projectCodeResponse.json();
+          projectCode = projectCodeData.projectCode;
+          console.log("✅ Project code generated successfully:", {
+            projectCode,
+            consecutiveNumber: projectCodeData.consecutiveNumber,
+            year: projectCodeData.year,
+            month: projectCodeData.month
+          });
+        } else {
+          const errorData = await projectCodeResponse.json();
+          console.warn("⚠️ Could not generate project code:", errorData);
+        }
+      } catch (error) {
+        console.warn("❌ Error generating project code:", error);
+        // Continue without project code
+      }
+      
       // Get project type text based on ID
       const projectTypeMap: Record<string, string> = {
         "1": "Residencial",
@@ -1380,6 +1545,7 @@ function CotizacionForm() {
         valid_until: data.validUntil.toISOString(),
         delivery_time: data.deliveryTime,
         notes: data.notes || null,
+        project_code: projectCode, // Add the generated project code
         // Remove fields that don't exist in the database schema
         // vendedor, fabricante, instalador are not in the cotizaciones table
       };
@@ -1528,8 +1694,10 @@ function CotizacionForm() {
       
       // Show success message using toast
       toast({
-        title: "Éxito",
-        description: "Cotización generada correctamente",
+        title: "¡Cotización creada exitosamente!",
+        description: projectCode 
+          ? `Código de proyecto asignado: ${projectCode}`
+          : "Cotización generada correctamente",
       });
       
       // Ask user if they want to download the PDF
@@ -2037,6 +2205,89 @@ function CotizacionForm() {
                   <h3 className="text-lg font-medium">Detalles del Proyecto</h3>
                   <Separator />
                   
+                  {/* Project Code Information Card */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium text-blue-800 mb-1">Código de Proyecto Automático</h4>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 h-6 px-2">
+                                <Info className="h-3 w-3 mr-1" />
+                                Ayuda
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[600px]">
+                              <DialogHeader>
+                                <DialogTitle>Sistema de Códigos de Proyecto</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <h4 className="font-medium mb-2">Formato del Código de Proyecto:</h4>
+                                  <div className="bg-gray-50 p-3 rounded font-mono text-sm">
+                                    [TIPO]-[FECHA]-[CONSECUTIVO]-[PROTOTIPO]
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <h5 className="font-medium text-sm mb-1">Proyectos Residenciales:</h5>
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                      <div>• <strong>TIPO:</strong> RE</div>
+                                      <div>• <strong>Ejemplo:</strong> RE-505-001</div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <h5 className="font-medium text-sm mb-1">Proyectos Verticales:</h5>
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                      <div>• <strong>TIPO:</strong> WN, SY, etc.</div>
+                                      <div>• <strong>Ejemplo:</strong> WN-505-001-B1</div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <h4 className="font-medium mb-2">Códigos de Productos Individuales:</h4>
+                                  <div className="bg-gray-50 p-3 rounded font-mono text-sm mb-2">
+                                    [CODIGO_PROYECTO]-[AREA]-[MUEBLE][-TIPO_PRODUCCION]
+                                  </div>
+                                  <div className="text-sm text-gray-600 space-y-1">
+                                    <div>• <strong>ÁREA:</strong> CL (Closet), DP (Despensa), LV (Lavandería), etc.</div>
+                                    <div>• <strong>MUEBLE:</strong> ALC (Alacena), GAB (Gabinete), CJN (Cajón), etc.</div>
+                                    <div>• <strong>PRODUCCIÓN:</strong> A (Adicional), G (Garantía), vacío (Original)</div>
+                                  </div>
+                                </div>
+                                
+                                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded">
+                                  <h5 className="font-medium text-sm text-yellow-800 mb-1">Ejemplos Completos:</h5>
+                                  <div className="text-sm text-yellow-700 space-y-1 font-mono">
+                                    <div>RE-505-001-CL-ALC (Alacena original)</div>
+                                    <div>WN-505-001-B1-CL-ALC-A (Alacena adicional)</div>
+                                    <div>RE-505-002-DP-GAB-G (Gabinete garantía)</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          Se generará automáticamente un código único para este proyecto. 
+                          <br />
+                          <strong>Residencial:</strong> RE-{new Date().getFullYear().toString().slice(-1)}{(new Date().getMonth() + 1).toString().padStart(2, '0')}-001
+                          <br />
+                          <strong>Desarrollo:</strong> WN-{new Date().getFullYear().toString().slice(-1)}{(new Date().getMonth() + 1).toString().padStart(2, '0')}-001-{form.watch('prototipo') || 'B1'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -2079,6 +2330,29 @@ function CotizacionForm() {
                         </FormItem>
                       )}
                     />
+                    
+                    {/* Prototipo field - only show for vertical projects */}
+                    {form.watch('projectType') === '3' && (
+                      <FormField
+                        control={form.control}
+                        name="prototipo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Prototipo</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Ej. B1, A2, PH" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                            <p className="text-xs text-gray-500">
+                              Código del prototipo para proyectos verticales (ej. B1, A2, PH)
+                            </p>
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2954,11 +3228,15 @@ function CotizacionForm() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-[50%]">Descripción</TableHead>
-                            <TableHead className="text-right">Cantidad</TableHead>
+                            <TableHead className="w-[30%]">Descripción</TableHead>
+                            <TableHead className="w-[100px]">Área</TableHead>
+                            <TableHead className="w-[120px]">Tipo Mueble</TableHead>
+                            <TableHead className="w-[100px]">Producción</TableHead>
+                            <TableHead className="w-[140px]">Código</TableHead>
+                            <TableHead className="text-right">Cant.</TableHead>
                             <TableHead className="text-right">U TL</TableHead>
-                            <TableHead className="text-right">Precio Unitario</TableHead>
-                            <TableHead className="text-right">Descuento (%)</TableHead>
+                            <TableHead className="text-right">Precio Unit.</TableHead>
+                            <TableHead className="text-right">Desc. (%)</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                             <TableHead className="w-[70px]"></TableHead>
                           </TableRow>
@@ -2977,6 +3255,100 @@ function CotizacionForm() {
                                     />
                                   )}
                                 />
+                              </TableCell>
+                              <TableCell>
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.area`}
+                                  render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Área" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Object.entries(AREAS).map(([name, code]) => (
+                                          <SelectItem key={code} value={code}>
+                                            {code} - {name.toLowerCase().replace(/_/g, ' ')}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.furnitureType`}
+                                  render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Tipo" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Object.entries(FURNITURE_TYPES).map(([name, code]) => (
+                                          <SelectItem key={code} value={code}>
+                                            {code} - {name.toLowerCase().replace(/_/g, ' ')}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.productionType`}
+                                  render={({ field }) => (
+                                    <Select 
+                                      onValueChange={field.onChange} 
+                                      value={field.value || 'original'}
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Tipo" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="original">Original</SelectItem>
+                                        <SelectItem value="additional">Adicional</SelectItem>
+                                        <SelectItem value="warranty">Garantía</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-mono text-xs bg-gray-50 border rounded px-2 py-1">
+                                  {(() => {
+                                    const item = form.getValues(`items.${index}`);
+                                    const projectType = form.getValues('projectType');
+                                    const prototipo = form.getValues('prototipo');
+                                    const cotizacionDate = form.getValues('cotizacionDate');
+                                    
+                                    if (!item.area || !item.furnitureType) {
+                                      return <span className="text-gray-400">Sin código</span>;
+                                    }
+                                    
+                                    try {
+                                      const config: FurnitureCodeConfig = {
+                                        projectType: projectType === '1' ? 'residencial' : 'vertical',
+                                        verticalProject: projectType === '3' ? 'WN' : undefined,
+                                        date: cotizacionDate,
+                                        consecutiveNumber: 1, // This will be updated when project code is generated
+                                        prototipo: projectType === '3' ? prototipo : undefined,
+                                        area: item.area,
+                                        muebleType: item.furnitureType,
+                                        productionType: item.productionType === 'additional' ? 'A' : 
+                                                       item.productionType === 'warranty' ? 'G' : undefined
+                                      };
+                                      
+                                      const code = generateFurnitureCode(config);
+                                      return <span className="text-blue-600">{code}</span>;
+                                    } catch (error) {
+                                      return <span className="text-red-400">Error</span>;
+                                    }
+                                  })()}
+                                </div>
                               </TableCell>
                               <TableCell className="text-right">
                                 <FormField
