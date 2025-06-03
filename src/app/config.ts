@@ -25,6 +25,7 @@ export const authenticatedRoutes = [
   '/dashboard',
   '/cotizaciones', 
   '/cotizador',
+  '/datos',
   '/clientes',
   '/productos',
 ]; 
