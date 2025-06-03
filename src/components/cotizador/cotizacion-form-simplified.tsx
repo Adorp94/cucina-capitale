@@ -39,6 +39,13 @@ import {
 import { Label } from "@/components/ui/label";
 import { DayPicker } from "react-day-picker";
 import Image from 'next/image';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
 
 // Component to highlight search matches in text
 const HighlightedText = ({ text, query }: { text: string; query: string }) => {
@@ -403,7 +410,7 @@ function CotizacionForm() {
   const [openChapHuacalCombobox, setOpenChapHuacalCombobox] = useState(false);
   const [openChapVistaCombobox, setOpenChapVistaCombobox] = useState(false);
   const [openJaladeraCombobox, setOpenJaladeraCombobox] = useState(false);
-  const [openCorrederasCombobox, setOpenCorrederasCombobox] = useState(false);
+  const [openCorrederaCombobox, setOpenCorrederaCombobox] = useState(false);
   const [openBisagrasCombobox, setOpenBisagrasCombobox] = useState(false);
   const [openTipOnLargoCombobox, setOpenTipOnLargoCombobox] = useState(false);
   
@@ -421,7 +428,7 @@ function CotizacionForm() {
   const [chapHuacalSearch, setChapHuacalSearch] = useState("");
   const [chapVistaSearch, setChapVistaSearch] = useState("");
   const [jaladeraSearch, setJaladeraSearch] = useState("");
-  const [correderasSearch, setCorrederasSearch] = useState("");
+  const [correderaSearch, setCorrederaSearch] = useState("");
   const [bisagrasSearch, setBisagrasSearch] = useState("");
   const [tipOnLargoSearch, setTipOnLargoSearch] = useState("");
   
@@ -482,37 +489,37 @@ function CotizacionForm() {
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
         
-        // Fetch tabletos materials
-        const { data: tabletosData, error: tabletosError } = await supabase
+        // Fetch Tableros materials (fixed: was 'Tabletos')
+        const { data: tablerosData, error: tablerosError } = await supabase
           .from('materiales')
           .select('*')
-          .eq('tipo', 'Tabletos')
+          .eq('tipo', 'Tableros')
           .order('nombre', { ascending: true });
           
-        if (tabletosError) throw tabletosError;
-        setTabletosMaterials(tabletosData || []);
+        if (tablerosError) throw tablerosError;
+        setTabletosMaterials(tablerosData || []);
         
-        // Fetch chapacinta materials
-        const { data: chapacintaData, error: chapacintaError } = await supabase
+        // Fetch Cubrecantos materials (fixed: was 'Chapacinta')
+        const { data: cubrecantosData, error: cubrecantosError } = await supabase
           .from('materiales')
           .select('*')
-          .eq('tipo', 'Chapacinta')
+          .eq('tipo', 'Cubrecantos')
           .order('nombre', { ascending: true });
           
-        if (chapacintaError) throw chapacintaError;
-        setChapacintaMaterials(chapacintaData || []);
+        if (cubrecantosError) throw cubrecantosError;
+        setChapacintaMaterials(cubrecantosData || []);
         
-        // Fetch jaladera materials
-        const { data: jaladeraData, error: jaladeraError } = await supabase
+        // Fetch Jaladeras materials
+        const { data: jaladerasData, error: jaladerasError } = await supabase
           .from('materiales')
           .select('*')
-          .eq('tipo', 'Jaladera')
+          .eq('tipo', 'Jaladeras')
           .order('nombre', { ascending: true });
           
-        if (jaladeraError) throw jaladeraError;
-        setJaladeraMaterials(jaladeraData || []);
+        if (jaladerasError) throw jaladerasError;
+        setJaladeraMaterials(jaladerasData || []);
         
-        // Fetch correderas materials
+        // Fetch Correderas materials
         const { data: correderasData, error: correderasError } = await supabase
           .from('materiales')
           .select('*')
@@ -522,7 +529,7 @@ function CotizacionForm() {
         if (correderasError) throw correderasError;
         setCorrederasMaterials(correderasData || []);
         
-        // Fetch bisagras materials
+        // Fetch Bisagras materials
         const { data: bisagrasData, error: bisagrasError } = await supabase
           .from('materiales')
           .select('*')
@@ -532,18 +539,13 @@ function CotizacionForm() {
         if (bisagrasError) throw bisagrasError;
         setBisagrasMaterials(bisagrasData || []);
         
-        // Fetch tipOnLargo materials
-        const { data: tipOnLargoData, error: tipOnLargoError } = await supabase
-          .from('materiales')
-          .select('*')
-          .eq('tipo', 'Herraje')
-          .eq('subcategoria', 'tip_on_largo')
-          .order('nombre', { ascending: true });
-          
-        if (tipOnLargoError) throw tipOnLargoError;
-        setTipOnLargoMaterials(tipOnLargoData || []);
-        
         console.log("Materials loaded successfully");
+        console.log("Tableros count:", tablerosData?.length);
+        console.log("Cubrecantos count:", cubrecantosData?.length);
+        console.log("Jaladeras count:", jaladerasData?.length);
+        console.log("Correderas count:", correderasData?.length);
+        console.log("Bisagras count:", bisagrasData?.length);
+        
       } catch (error) {
         console.error('Error fetching materials:', error);
         
@@ -1691,16 +1693,16 @@ function CotizacionForm() {
   }, [jaladeraSearch, jaladeraMaterials]);
   
   useEffect(() => {
-    if (correderasSearch) {
+    if (correderaSearch) {
       setFilteredCorrederas(
         correderasMaterials.filter(m => 
-          m.nombre.toLowerCase().includes(correderasSearch.toLowerCase())
+          m.nombre.toLowerCase().includes(correderaSearch.toLowerCase())
         )
       );
     } else {
       setFilteredCorrederas(correderasMaterials);
     }
-  }, [correderasSearch, correderasMaterials]);
+  }, [correderaSearch, correderasMaterials]);
   
   useEffect(() => {
     if (bisagrasSearch) {
@@ -1736,6 +1738,124 @@ function CotizacionForm() {
                            !!form.getValues("vendedor") && !!form.getValues("fabricante") && 
                            !!form.getValues("instalador") && !!form.getValues("deliveryTime") && 
                            !!form.getValues("paymentTerms");
+
+  // New function to fetch compatible cubrecantos for a selected tablero
+  const fetchCompatibleCubrecantos = async (tableroId: string): Promise<any[]> => {
+    if (!tableroId || tableroId === "none") {
+      return chapacintaMaterials; // Return all cubrecantos if no tablero selected
+    }
+    
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      // First get the relationship IDs
+      const { data: relationships, error: relError } = await supabase
+        .from('material_relationships')
+        .select('material_id_secondary')
+        .eq('material_id_primary', parseInt(tableroId))
+        .eq('relationship_type', 'tablero_cubrecanto');
+      
+      if (relError) {
+        console.error('Error fetching relationships:', relError);
+        return chapacintaMaterials; // Fallback to all cubrecantos
+      }
+      
+      if (!relationships || relationships.length === 0) {
+        console.log('No relationships found for tablero', tableroId);
+        return chapacintaMaterials; // Return all if no specific relationships
+      }
+      
+      // Extract the IDs
+      const compatibleIds = relationships.map(rel => rel.material_id_secondary);
+      
+      // Fetch the actual materials
+      const { data: compatibleMaterials, error: matError } = await supabase
+        .from('materiales')
+        .select('*')
+        .eq('tipo', 'Cubrecantos')
+        .in('id_material', compatibleIds);
+      
+      if (matError) {
+        console.error('Error fetching compatible materials:', matError);
+        return chapacintaMaterials; // Fallback to all cubrecantos
+      }
+      
+      console.log(`Found ${compatibleMaterials?.length || 0} compatible cubrecantos for tablero ${tableroId}`);
+      return compatibleMaterials || [];
+      
+    } catch (error) {
+      console.error('Error in fetchCompatibleCubrecantos:', error);
+      return chapacintaMaterials; // Fallback to all cubrecantos
+    }
+  };
+
+  // State for compatible cubrecantos
+  const [compatibleCubrecantos, setCompatibleCubrecantos] = useState<any[]>([]);
+
+  // Update compatible cubrecantos when tablero selection changes
+  useEffect(() => {
+    const updateCompatibleCubrecantos = async () => {
+      const matHuacalId = form.getValues('matHuacal');
+      if (!matHuacalId) return; // Exit early if no value
+      
+      const compatible = await fetchCompatibleCubrecantos(matHuacalId);
+      setCompatibleCubrecantos(compatible);
+      
+      // Reset cubrecanto selection if current selection is not compatible
+      const currentChapHuacal = form.getValues('chapHuacal');
+      if (currentChapHuacal && currentChapHuacal !== "none") {
+        const isCompatible = compatible.some(c => c.id_material.toString() === currentChapHuacal);
+        if (!isCompatible) {
+          form.setValue('chapHuacal', 'none');
+          console.log('Reset chapHuacal selection due to incompatibility');
+        }
+      }
+    };
+    
+    updateCompatibleCubrecantos();
+  }, [form.watch('matHuacal')]);
+
+  // Filter functions for material search
+  const getFilteredTableros = () => {
+    if (!matHuacalSearch.trim() && !matVistaSearch.trim()) return tabletosMaterials;
+    const searchTerm = matHuacalSearch || matVistaSearch;
+    return tabletosMaterials.filter(material => 
+      material.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const getFilteredCubrecantos = () => {
+    let materialsToFilter = compatibleCubrecantos.length > 0 ? compatibleCubrecantos : chapacintaMaterials;
+    if (!chapHuacalSearch.trim() && !chapVistaSearch.trim()) return materialsToFilter;
+    const searchTerm = chapHuacalSearch || chapVistaSearch;
+    return materialsToFilter.filter(material => 
+      material.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const getFilteredJaladeras = () => {
+    if (!jaladeraSearch.trim()) return jaladeraMaterials;
+    return jaladeraMaterials.filter(material => 
+      material.nombre.toLowerCase().includes(jaladeraSearch.toLowerCase())
+    );
+  };
+
+  const getFilteredCorrederas = () => {
+    if (!correderaSearch.trim()) return correderasMaterials;
+    return correderasMaterials.filter(material => 
+      material.nombre.toLowerCase().includes(correderaSearch.toLowerCase())
+    );
+  };
+
+  const getFilteredBisagras = () => {
+    if (!bisagrasSearch.trim()) return bisagrasMaterials;
+    return bisagrasMaterials.filter(material => 
+      material.nombre.toLowerCase().includes(bisagrasSearch.toLowerCase())
+    );
+  };
 
   return (
     <>
@@ -2194,16 +2314,17 @@ function CotizacionForm() {
                   ) : (
                     <>
                       <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4 text-sm">
-                        <p>Los materiales seleccionados afectan directamente al cálculo de precios de los productos. Use el buscador para encontrar rápidamente materiales específicos.</p>
+                        <p>Los materiales seleccionados afectan directamente al cálculo de precios de los productos. El sistema mostrará solo cubrecantos compatibles con el tablero seleccionado.</p>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Tablero Huacal */}
                         <FormField
                           control={form.control}
                           name="matHuacal"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Material Huacal</FormLabel>
+                              <FormLabel>Tablero Huacal ({tabletosMaterials.length} disponibles)</FormLabel>
                               <Popover open={openMatHuacalCombobox} onOpenChange={setOpenMatHuacalCombobox}>
                                 <PopoverTrigger asChild>
                                   <FormControl>
@@ -2217,168 +2338,521 @@ function CotizacionForm() {
                                         ? tabletosMaterials.find(
                                             (material) => material.id_material.toString() === field.value
                                           )?.nombre || "Ninguno"
-                                        : "Ninguno"}
+                                        : "Seleccionar tablero..."}
                                       <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-full p-0" align="start">
-                                  <div className="max-h-[300px] overflow-y-auto">
-                                    <div className="space-y-2">
-                                      <FormField
-                                        control={form.control}
-                                        name="matHuacal"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-col">
-                                            <FormLabel>Material Huacal</FormLabel>
-                                            <FormControl>
-                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                                                {field.value && field.value !== "none"
-                                                  ? tabletosMaterials.find(
-                                                      (material) => material.id_material.toString() === field.value
-                                                    )?.nombre || "Ninguno"
-                                                  : "Ninguno"}
-                                              </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                      <FormField
-                                        control={form.control}
-                                        name="matVista"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-col">
-                                            <FormLabel>Material Vista</FormLabel>
-                                            <FormControl>
-                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                                                {field.value && field.value !== "none"
-                                                  ? tabletosMaterials.find(
-                                                      (material) => material.id_material.toString() === field.value
-                                                    )?.nombre || "Ninguno"
-                                                  : "Ninguno"}
-                                              </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                      <FormField
-                                        control={form.control}
-                                        name="chapHuacal"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-col">
-                                            <FormLabel>Chapacinta Huacal</FormLabel>
-                                            <FormControl>
-                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                                                {field.value && field.value !== "none"
-                                                  ? chapacintaMaterials.find(
-                                                      (material) => material.id_material.toString() === field.value
-                                                    )?.nombre || "Ninguno"
-                                                  : "Ninguno"}
-                                              </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                      <FormField
-                                        control={form.control}
-                                        name="chapVista"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-col">
-                                            <FormLabel>Chapacinta Vista</FormLabel>
-                                            <FormControl>
-                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                                                {field.value && field.value !== "none"
-                                                  ? chapacintaMaterials.find(
-                                                      (material) => material.id_material.toString() === field.value
-                                                    )?.nombre || "Ninguno"
-                                                  : "Ninguno"}
-                                              </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                      <FormField
-                                        control={form.control}
-                                        name="jaladera"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-col">
-                                            <FormLabel>Jaladera</FormLabel>
-                                            <FormControl>
-                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                                                {field.value && field.value !== "none"
-                                                  ? jaladeraMaterials.find(
-                                                      (material) => material.id_material.toString() === field.value
-                                                    )?.nombre || "Ninguno"
-                                                  : "Ninguno"}
-                                              </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                      <FormField
-                                        control={form.control}
-                                        name="corredera"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-col">
-                                            <FormLabel>Correderas</FormLabel>
-                                            <FormControl>
-                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                                                {field.value && field.value !== "none"
-                                                  ? correderasMaterials.find(
-                                                      (material) => material.id_material.toString() === field.value
-                                                    )?.nombre || "Ninguno"
-                                                  : "Ninguno"}
-                                              </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                      <FormField
-                                        control={form.control}
-                                        name="bisagras"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-col">
-                                            <FormLabel>Bisagras</FormLabel>
-                                            <FormControl>
-                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                                                {field.value && field.value !== "none"
-                                                  ? bisagrasMaterials.find(
-                                                      (material) => material.id_material.toString() === field.value
-                                                    )?.nombre || "Ninguno"
-                                                  : "Ninguno"}
-                                              </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                      <FormField
-                                        control={form.control}
-                                        name="tipOnLargo"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-col">
-                                            <FormLabel>Tip-on Largo</FormLabel>
-                                            <FormControl>
-                                              <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                                                {field.value && field.value !== "none"
-                                                  ? tipOnLargoMaterials.find(
-                                                      (material) => material.id_material.toString() === field.value
-                                                    )?.nombre || "Ninguno"
-                                                  : "Ninguno"}
-                                              </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                    </div>
-                                  </div>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Buscar tablero..." 
+                                      value={matHuacalSearch}
+                                      onValueChange={setMatHuacalSearch}
+                                    />
+                                    <CommandEmpty>No se encontraron tableros.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="none"
+                                        onSelect={() => {
+                                          field.onChange("none");
+                                          setOpenMatHuacalCombobox(false);
+                                          setMatHuacalSearch("");
+                                        }}
+                                      >
+                                        Ninguno
+                                      </CommandItem>
+                                      {getFilteredTableros().map((material) => (
+                                        <CommandItem
+                                          key={material.id_material}
+                                          value={material.id_material.toString()}
+                                          onSelect={() => {
+                                            field.onChange(material.id_material.toString());
+                                            setOpenMatHuacalCombobox(false);
+                                            setMatHuacalSearch("");
+                                          }}
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">
+                                              <HighlightedText 
+                                                text={material.nombre} 
+                                                query={matHuacalSearch} 
+                                              />
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Tablero Vista */}
+                        <FormField
+                          control={form.control}
+                          name="matVista"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Tablero Vista ({tabletosMaterials.length} disponibles)</FormLabel>
+                              <Popover open={openMatVistaCombobox} onOpenChange={setOpenMatVistaCombobox}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={openMatVistaCombobox}
+                                      className="w-full justify-between"
+                                    >
+                                      {field.value && field.value !== "none"
+                                        ? tabletosMaterials.find(
+                                            (material) => material.id_material.toString() === field.value
+                                          )?.nombre || "Ninguno"
+                                        : "Seleccionar tablero..."}
+                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Buscar tablero..." 
+                                      value={matVistaSearch}
+                                      onValueChange={setMatVistaSearch}
+                                    />
+                                    <CommandEmpty>No se encontraron tableros.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="none"
+                                        onSelect={() => {
+                                          field.onChange("none");
+                                          setOpenMatVistaCombobox(false);
+                                          setMatVistaSearch("");
+                                        }}
+                                      >
+                                        Ninguno
+                                      </CommandItem>
+                                      {getFilteredTableros().map((material) => (
+                                        <CommandItem
+                                          key={material.id_material}
+                                          value={material.id_material.toString()}
+                                          onSelect={() => {
+                                            field.onChange(material.id_material.toString());
+                                            setOpenMatVistaCombobox(false);
+                                            setMatVistaSearch("");
+                                          }}
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">
+                                              <HighlightedText 
+                                                text={material.nombre} 
+                                                query={matVistaSearch} 
+                                              />
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Cubrecanto Huacal */}
+                        <FormField
+                          control={form.control}
+                          name="chapHuacal"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>
+                                Cubrecanto Huacal 
+                                ({compatibleCubrecantos.length > 0 
+                                  ? `${compatibleCubrecantos.length} compatibles` 
+                                  : `${chapacintaMaterials.length} disponibles`})
+                              </FormLabel>
+                              <Popover open={openChapHuacalCombobox} onOpenChange={setOpenChapHuacalCombobox}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={openChapHuacalCombobox}
+                                      className="w-full justify-between"
+                                    >
+                                      {field.value && field.value !== "none"
+                                        ? (compatibleCubrecantos.length > 0 ? compatibleCubrecantos : chapacintaMaterials).find(
+                                            (material) => material.id_material.toString() === field.value
+                                          )?.nombre || "Ninguno"
+                                        : "Seleccionar cubrecanto..."}
+                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Buscar cubrecanto..." 
+                                      value={chapHuacalSearch}
+                                      onValueChange={setChapHuacalSearch}
+                                    />
+                                    <CommandEmpty>No se encontraron cubrecantos compatibles.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="none"
+                                        onSelect={() => {
+                                          field.onChange("none");
+                                          setOpenChapHuacalCombobox(false);
+                                          setChapHuacalSearch("");
+                                        }}
+                                      >
+                                        Ninguno
+                                      </CommandItem>
+                                      {getFilteredCubrecantos().map((material) => (
+                                        <CommandItem
+                                          key={material.id_material}
+                                          value={material.id_material.toString()}
+                                          onSelect={() => {
+                                            field.onChange(material.id_material.toString());
+                                            setOpenChapHuacalCombobox(false);
+                                            setChapHuacalSearch("");
+                                          }}
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">
+                                              <HighlightedText 
+                                                text={material.nombre} 
+                                                query={chapHuacalSearch} 
+                                              />
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Cubrecanto Vista */}
+                        <FormField
+                          control={form.control}
+                          name="chapVista"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>
+                                Cubrecanto Vista 
+                                ({compatibleCubrecantos.length > 0 
+                                  ? `${compatibleCubrecantos.length} compatibles` 
+                                  : `${chapacintaMaterials.length} disponibles`})
+                              </FormLabel>
+                              <Popover open={openChapVistaCombobox} onOpenChange={setOpenChapVistaCombobox}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={openChapVistaCombobox}
+                                      className="w-full justify-between"
+                                    >
+                                      {field.value && field.value !== "none"
+                                        ? (compatibleCubrecantos.length > 0 ? compatibleCubrecantos : chapacintaMaterials).find(
+                                            (material) => material.id_material.toString() === field.value
+                                          )?.nombre || "Ninguno"
+                                        : "Seleccionar cubrecanto..."}
+                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Buscar cubrecanto..." 
+                                      value={chapVistaSearch}
+                                      onValueChange={setChapVistaSearch}
+                                    />
+                                    <CommandEmpty>No se encontraron cubrecantos compatibles.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="none"
+                                        onSelect={() => {
+                                          field.onChange("none");
+                                          setOpenChapVistaCombobox(false);
+                                          setChapVistaSearch("");
+                                        }}
+                                      >
+                                        Ninguno
+                                      </CommandItem>
+                                      {getFilteredCubrecantos().map((material) => (
+                                        <CommandItem
+                                          key={material.id_material}
+                                          value={material.id_material.toString()}
+                                          onSelect={() => {
+                                            field.onChange(material.id_material.toString());
+                                            setOpenChapVistaCombobox(false);
+                                            setChapVistaSearch("");
+                                          }}
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">
+                                              <HighlightedText 
+                                                text={material.nombre} 
+                                                query={chapVistaSearch} 
+                                              />
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Jaladera */}
+                        <FormField
+                          control={form.control}
+                          name="jaladera"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Jaladera ({jaladeraMaterials.length} disponibles)</FormLabel>
+                              <Popover open={openJaladeraCombobox} onOpenChange={setOpenJaladeraCombobox}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={openJaladeraCombobox}
+                                      className="w-full justify-between"
+                                    >
+                                      {field.value && field.value !== "none"
+                                        ? jaladeraMaterials.find(
+                                            (material) => material.id_material.toString() === field.value
+                                          )?.nombre || "Ninguno"
+                                        : "Seleccionar jaladera..."}
+                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Buscar jaladera..." 
+                                      value={jaladeraSearch}
+                                      onValueChange={setJaladeraSearch}
+                                    />
+                                    <CommandEmpty>No se encontraron jaladeras.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="none"
+                                        onSelect={() => {
+                                          field.onChange("none");
+                                          setOpenJaladeraCombobox(false);
+                                          setJaladeraSearch("");
+                                        }}
+                                      >
+                                        Ninguno
+                                      </CommandItem>
+                                      {getFilteredJaladeras().map((material) => (
+                                        <CommandItem
+                                          key={material.id_material}
+                                          value={material.id_material.toString()}
+                                          onSelect={() => {
+                                            field.onChange(material.id_material.toString());
+                                            setOpenJaladeraCombobox(false);
+                                            setJaladeraSearch("");
+                                          }}
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">
+                                              <HighlightedText 
+                                                text={material.nombre} 
+                                                query={jaladeraSearch} 
+                                              />
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Corredera */}
+                        <FormField
+                          control={form.control}
+                          name="corredera"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Corredera ({correderasMaterials.length} disponibles)</FormLabel>
+                              <Popover open={openCorrederaCombobox} onOpenChange={setOpenCorrederaCombobox}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={openCorrederaCombobox}
+                                      className="w-full justify-between"
+                                    >
+                                      {field.value && field.value !== "none"
+                                        ? correderasMaterials.find(
+                                            (material) => material.id_material.toString() === field.value
+                                          )?.nombre || "Ninguno"
+                                        : "Seleccionar corredera..."}
+                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Buscar corredera..." 
+                                      value={correderaSearch}
+                                      onValueChange={setCorrederaSearch}
+                                    />
+                                    <CommandEmpty>No se encontraron correderas.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="none"
+                                        onSelect={() => {
+                                          field.onChange("none");
+                                          setOpenCorrederaCombobox(false);
+                                          setCorrederaSearch("");
+                                        }}
+                                      >
+                                        Ninguno
+                                      </CommandItem>
+                                      {getFilteredCorrederas().map((material) => (
+                                        <CommandItem
+                                          key={material.id_material}
+                                          value={material.id_material.toString()}
+                                          onSelect={() => {
+                                            field.onChange(material.id_material.toString());
+                                            setOpenCorrederaCombobox(false);
+                                            setCorrederaSearch("");
+                                          }}
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">
+                                              <HighlightedText 
+                                                text={material.nombre} 
+                                                query={correderaSearch} 
+                                              />
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Bisagras */}
+                        <FormField
+                          control={form.control}
+                          name="bisagras"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Bisagras ({bisagrasMaterials.length} disponibles)</FormLabel>
+                              <Popover open={openBisagrasCombobox} onOpenChange={setOpenBisagrasCombobox}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={openBisagrasCombobox}
+                                      className="w-full justify-between"
+                                    >
+                                      {field.value && field.value !== "none"
+                                        ? bisagrasMaterials.find(
+                                            (material) => material.id_material.toString() === field.value
+                                          )?.nombre || "Ninguno"
+                                        : "Seleccionar bisagra..."}
+                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Buscar bisagra..." 
+                                      value={bisagrasSearch}
+                                      onValueChange={setBisagrasSearch}
+                                    />
+                                    <CommandEmpty>No se encontraron bisagras.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="none"
+                                        onSelect={() => {
+                                          field.onChange("none");
+                                          setOpenBisagrasCombobox(false);
+                                          setBisagrasSearch("");
+                                        }}
+                                      >
+                                        Ninguno
+                                      </CommandItem>
+                                      {getFilteredBisagras().map((material) => (
+                                        <CommandItem
+                                          key={material.id_material}
+                                          value={material.id_material.toString()}
+                                          onSelect={() => {
+                                            field.onChange(material.id_material.toString());
+                                            setOpenBisagrasCombobox(false);
+                                            setBisagrasSearch("");
+                                          }}
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">
+                                              <HighlightedText 
+                                                text={material.nombre} 
+                                                query={bisagrasSearch} 
+                                              />
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </Command>
                                 </PopoverContent>
                               </Popover>
                               <FormMessage />
@@ -2386,6 +2860,18 @@ function CotizacionForm() {
                           )}
                         />
                       </div>
+
+                      {/* Material Compatibility Info */}
+                      {form.getValues('matHuacal') && form.getValues('matHuacal') !== "none" && (
+                        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
+                          <h4 className="font-medium text-green-800 mb-2">Compatibilidad de Materiales</h4>
+                          <p className="text-sm text-green-700">
+                            {compatibleCubrecantos.length > 0 
+                              ? `Se encontraron ${compatibleCubrecantos.length} cubrecantos compatibles con el tablero seleccionado.`
+                              : "No se han definido compatibilidades específicas para este tablero. Se muestran todos los cubrecantos."}
+                          </p>
+                        </div>
+                      )}
                     </>
                   )}
                 </TabsContent>
