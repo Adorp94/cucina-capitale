@@ -2359,8 +2359,11 @@ function CotizacionForm() {
                                           setOpenMatHuacalCombobox(false);
                                           setMatHuacalSearch("");
                                         }}
+                                        className="cursor-pointer"
                                       >
-                                        Ninguno
+                                        <div className="flex w-full items-center justify-between py-1">
+                                          <span className="font-medium">Ninguno</span>
+                                        </div>
                                       </CommandItem>
                                       {getFilteredTableros().map((material) => (
                                         <CommandItem
@@ -2371,16 +2374,17 @@ function CotizacionForm() {
                                             setOpenMatHuacalCombobox(false);
                                             setMatHuacalSearch("");
                                           }}
+                                          className="cursor-pointer"
                                         >
-                                          <div className="flex flex-col">
-                                            <span className="font-medium">
+                                          <div className="flex w-full items-center justify-between py-1">
+                                            <span className="font-medium text-left">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={matHuacalSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground">
-                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              ${material.costo}
                                             </span>
                                           </div>
                                         </CommandItem>
@@ -2435,8 +2439,11 @@ function CotizacionForm() {
                                           setOpenMatVistaCombobox(false);
                                           setMatVistaSearch("");
                                         }}
+                                        className="cursor-pointer"
                                       >
-                                        Ninguno
+                                        <div className="flex w-full items-center justify-between py-1">
+                                          <span className="font-medium">Ninguno</span>
+                                        </div>
                                       </CommandItem>
                                       {getFilteredTableros().map((material) => (
                                         <CommandItem
@@ -2447,16 +2454,17 @@ function CotizacionForm() {
                                             setOpenMatVistaCombobox(false);
                                             setMatVistaSearch("");
                                           }}
+                                          className="cursor-pointer"
                                         >
-                                          <div className="flex flex-col">
-                                            <span className="font-medium">
+                                          <div className="flex w-full items-center justify-between py-1">
+                                            <span className="font-medium text-left">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={matVistaSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground">
-                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              ${material.costo}
                                             </span>
                                           </div>
                                         </CommandItem>
@@ -2516,8 +2524,11 @@ function CotizacionForm() {
                                           setOpenChapHuacalCombobox(false);
                                           setChapHuacalSearch("");
                                         }}
+                                        className="cursor-pointer"
                                       >
-                                        Ninguno
+                                        <div className="flex w-full items-center justify-between py-1">
+                                          <span className="font-medium">Ninguno</span>
+                                        </div>
                                       </CommandItem>
                                       {getFilteredCubrecantos().map((material) => (
                                         <CommandItem
@@ -2528,16 +2539,17 @@ function CotizacionForm() {
                                             setOpenChapHuacalCombobox(false);
                                             setChapHuacalSearch("");
                                           }}
+                                          className="cursor-pointer"
                                         >
-                                          <div className="flex flex-col">
-                                            <span className="font-medium">
+                                          <div className="flex w-full items-center justify-between py-1">
+                                            <span className="font-medium text-left">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={chapHuacalSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground">
-                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              ${material.costo}
                                             </span>
                                           </div>
                                         </CommandItem>
@@ -2597,8 +2609,11 @@ function CotizacionForm() {
                                           setOpenChapVistaCombobox(false);
                                           setChapVistaSearch("");
                                         }}
+                                        className="cursor-pointer"
                                       >
-                                        Ninguno
+                                        <div className="flex w-full items-center justify-between py-1">
+                                          <span className="font-medium">Ninguno</span>
+                                        </div>
                                       </CommandItem>
                                       {getFilteredCubrecantos().map((material) => (
                                         <CommandItem
@@ -2609,16 +2624,17 @@ function CotizacionForm() {
                                             setOpenChapVistaCombobox(false);
                                             setChapVistaSearch("");
                                           }}
+                                          className="cursor-pointer"
                                         >
-                                          <div className="flex flex-col">
-                                            <span className="font-medium">
+                                          <div className="flex w-full items-center justify-between py-1">
+                                            <span className="font-medium text-left">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={chapVistaSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground">
-                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              ${material.costo}
                                             </span>
                                           </div>
                                         </CommandItem>
@@ -2673,8 +2689,11 @@ function CotizacionForm() {
                                           setOpenJaladeraCombobox(false);
                                           setJaladeraSearch("");
                                         }}
+                                        className="cursor-pointer"
                                       >
-                                        Ninguno
+                                        <div className="flex w-full items-center justify-between py-1">
+                                          <span className="font-medium">Ninguno</span>
+                                        </div>
                                       </CommandItem>
                                       {getFilteredJaladeras().map((material) => (
                                         <CommandItem
@@ -2685,16 +2704,17 @@ function CotizacionForm() {
                                             setOpenJaladeraCombobox(false);
                                             setJaladeraSearch("");
                                           }}
+                                          className="cursor-pointer"
                                         >
-                                          <div className="flex flex-col">
-                                            <span className="font-medium">
+                                          <div className="flex w-full items-center justify-between py-1">
+                                            <span className="font-medium text-left">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={jaladeraSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground">
-                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              ${material.costo}
                                             </span>
                                           </div>
                                         </CommandItem>
@@ -2749,8 +2769,11 @@ function CotizacionForm() {
                                           setOpenCorrederaCombobox(false);
                                           setCorrederaSearch("");
                                         }}
+                                        className="cursor-pointer"
                                       >
-                                        Ninguno
+                                        <div className="flex w-full items-center justify-between py-1">
+                                          <span className="font-medium">Ninguno</span>
+                                        </div>
                                       </CommandItem>
                                       {getFilteredCorrederas().map((material) => (
                                         <CommandItem
@@ -2761,16 +2784,17 @@ function CotizacionForm() {
                                             setOpenCorrederaCombobox(false);
                                             setCorrederaSearch("");
                                           }}
+                                          className="cursor-pointer"
                                         >
-                                          <div className="flex flex-col">
-                                            <span className="font-medium">
+                                          <div className="flex w-full items-center justify-between py-1">
+                                            <span className="font-medium text-left">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={correderaSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground">
-                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              ${material.costo}
                                             </span>
                                           </div>
                                         </CommandItem>
@@ -2825,8 +2849,11 @@ function CotizacionForm() {
                                           setOpenBisagrasCombobox(false);
                                           setBisagrasSearch("");
                                         }}
+                                        className="cursor-pointer"
                                       >
-                                        Ninguno
+                                        <div className="flex w-full items-center justify-between py-1">
+                                          <span className="font-medium">Ninguno</span>
+                                        </div>
                                       </CommandItem>
                                       {getFilteredBisagras().map((material) => (
                                         <CommandItem
@@ -2837,16 +2864,17 @@ function CotizacionForm() {
                                             setOpenBisagrasCombobox(false);
                                             setBisagrasSearch("");
                                           }}
+                                          className="cursor-pointer"
                                         >
-                                          <div className="flex flex-col">
-                                            <span className="font-medium">
+                                          <div className="flex w-full items-center justify-between py-1">
+                                            <span className="font-medium text-left">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={bisagrasSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground">
-                                              ${material.costo} - {material.categoria || 'Sin categoría'}
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              ${material.costo}
                                             </span>
                                           </div>
                                         </CommandItem>
