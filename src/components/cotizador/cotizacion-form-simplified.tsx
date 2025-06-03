@@ -2343,15 +2343,17 @@ function CotizacionForm() {
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0" align="start">
-                                  <Command>
+                                <PopoverContent className="w-[400px] p-0 max-h-[300px]" align="start">
+                                  <Command className="max-h-[300px]">
                                     <CommandInput 
                                       placeholder="Buscar tablero..." 
                                       value={matHuacalSearch}
                                       onValueChange={setMatHuacalSearch}
                                     />
-                                    <CommandEmpty>No se encontraron tableros.</CommandEmpty>
-                                    <CommandGroup>
+                                    {getFilteredTableros().length === 0 && matHuacalSearch && (
+                                      <CommandEmpty>No se encontraron tableros.</CommandEmpty>
+                                    )}
+                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
                                         onSelect={() => {
@@ -2361,14 +2363,14 @@ function CotizacionForm() {
                                         }}
                                         className="cursor-pointer"
                                       >
-                                        <div className="flex w-full items-center justify-between py-1">
+                                        <div className="flex w-full items-center justify-between p-2">
                                           <span className="font-medium">Ninguno</span>
                                         </div>
                                       </CommandItem>
                                       {getFilteredTableros().map((material) => (
                                         <CommandItem
                                           key={material.id_material}
-                                          value={material.id_material.toString()}
+                                          value={`${material.nombre}-${material.id_material}`}
                                           onSelect={() => {
                                             field.onChange(material.id_material.toString());
                                             setOpenMatHuacalCombobox(false);
@@ -2376,14 +2378,14 @@ function CotizacionForm() {
                                           }}
                                           className="cursor-pointer"
                                         >
-                                          <div className="flex w-full items-center justify-between py-1">
-                                            <span className="font-medium text-left">
+                                          <div className="flex w-full items-center justify-between p-2">
+                                            <span className="font-medium text-left flex-1">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={matHuacalSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground ml-2">
+                                            <span className="text-sm text-muted-foreground ml-2 flex-shrink-0">
                                               ${material.costo}
                                             </span>
                                           </div>
@@ -2423,15 +2425,17 @@ function CotizacionForm() {
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0" align="start">
-                                  <Command>
+                                <PopoverContent className="w-[400px] p-0 max-h-[300px]" align="start">
+                                  <Command className="max-h-[300px]">
                                     <CommandInput 
                                       placeholder="Buscar tablero..." 
                                       value={matVistaSearch}
                                       onValueChange={setMatVistaSearch}
                                     />
-                                    <CommandEmpty>No se encontraron tableros.</CommandEmpty>
-                                    <CommandGroup>
+                                    {getFilteredTableros().length === 0 && matVistaSearch && (
+                                      <CommandEmpty>No se encontraron tableros.</CommandEmpty>
+                                    )}
+                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
                                         onSelect={() => {
@@ -2441,14 +2445,14 @@ function CotizacionForm() {
                                         }}
                                         className="cursor-pointer"
                                       >
-                                        <div className="flex w-full items-center justify-between py-1">
+                                        <div className="flex w-full items-center justify-between p-2">
                                           <span className="font-medium">Ninguno</span>
                                         </div>
                                       </CommandItem>
                                       {getFilteredTableros().map((material) => (
                                         <CommandItem
                                           key={material.id_material}
-                                          value={material.id_material.toString()}
+                                          value={`${material.nombre}-${material.id_material}`}
                                           onSelect={() => {
                                             field.onChange(material.id_material.toString());
                                             setOpenMatVistaCombobox(false);
@@ -2456,14 +2460,14 @@ function CotizacionForm() {
                                           }}
                                           className="cursor-pointer"
                                         >
-                                          <div className="flex w-full items-center justify-between py-1">
-                                            <span className="font-medium text-left">
+                                          <div className="flex w-full items-center justify-between p-2">
+                                            <span className="font-medium text-left flex-1">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={matVistaSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground ml-2">
+                                            <span className="text-sm text-muted-foreground ml-2 flex-shrink-0">
                                               ${material.costo}
                                             </span>
                                           </div>
@@ -2508,15 +2512,17 @@ function CotizacionForm() {
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0" align="start">
-                                  <Command>
+                                <PopoverContent className="w-[400px] p-0 max-h-[300px]" align="start">
+                                  <Command className="max-h-[300px]">
                                     <CommandInput 
                                       placeholder="Buscar cubrecanto..." 
                                       value={chapHuacalSearch}
                                       onValueChange={setChapHuacalSearch}
                                     />
-                                    <CommandEmpty>No se encontraron cubrecantos compatibles.</CommandEmpty>
-                                    <CommandGroup>
+                                    {getFilteredCubrecantos().length === 0 && chapHuacalSearch && (
+                                      <CommandEmpty>No se encontraron cubrecantos compatibles.</CommandEmpty>
+                                    )}
+                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
                                         onSelect={() => {
@@ -2526,14 +2532,14 @@ function CotizacionForm() {
                                         }}
                                         className="cursor-pointer"
                                       >
-                                        <div className="flex w-full items-center justify-between py-1">
+                                        <div className="flex w-full items-center justify-between p-2">
                                           <span className="font-medium">Ninguno</span>
                                         </div>
                                       </CommandItem>
                                       {getFilteredCubrecantos().map((material) => (
                                         <CommandItem
                                           key={material.id_material}
-                                          value={material.id_material.toString()}
+                                          value={`${material.nombre}-${material.id_material}`}
                                           onSelect={() => {
                                             field.onChange(material.id_material.toString());
                                             setOpenChapHuacalCombobox(false);
@@ -2541,14 +2547,14 @@ function CotizacionForm() {
                                           }}
                                           className="cursor-pointer"
                                         >
-                                          <div className="flex w-full items-center justify-between py-1">
-                                            <span className="font-medium text-left">
+                                          <div className="flex w-full items-center justify-between p-2">
+                                            <span className="font-medium text-left flex-1">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={chapHuacalSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground ml-2">
+                                            <span className="text-sm text-muted-foreground ml-2 flex-shrink-0">
                                               ${material.costo}
                                             </span>
                                           </div>
@@ -2593,15 +2599,17 @@ function CotizacionForm() {
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0" align="start">
-                                  <Command>
+                                <PopoverContent className="w-[400px] p-0 max-h-[300px]" align="start">
+                                  <Command className="max-h-[300px]">
                                     <CommandInput 
                                       placeholder="Buscar cubrecanto..." 
                                       value={chapVistaSearch}
                                       onValueChange={setChapVistaSearch}
                                     />
-                                    <CommandEmpty>No se encontraron cubrecantos compatibles.</CommandEmpty>
-                                    <CommandGroup>
+                                    {getFilteredCubrecantos().length === 0 && chapVistaSearch && (
+                                      <CommandEmpty>No se encontraron cubrecantos compatibles.</CommandEmpty>
+                                    )}
+                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
                                         onSelect={() => {
@@ -2611,14 +2619,14 @@ function CotizacionForm() {
                                         }}
                                         className="cursor-pointer"
                                       >
-                                        <div className="flex w-full items-center justify-between py-1">
+                                        <div className="flex w-full items-center justify-between p-2">
                                           <span className="font-medium">Ninguno</span>
                                         </div>
                                       </CommandItem>
                                       {getFilteredCubrecantos().map((material) => (
                                         <CommandItem
                                           key={material.id_material}
-                                          value={material.id_material.toString()}
+                                          value={`${material.nombre}-${material.id_material}`}
                                           onSelect={() => {
                                             field.onChange(material.id_material.toString());
                                             setOpenChapVistaCombobox(false);
@@ -2626,14 +2634,14 @@ function CotizacionForm() {
                                           }}
                                           className="cursor-pointer"
                                         >
-                                          <div className="flex w-full items-center justify-between py-1">
-                                            <span className="font-medium text-left">
+                                          <div className="flex w-full items-center justify-between p-2">
+                                            <span className="font-medium text-left flex-1">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={chapVistaSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground ml-2">
+                                            <span className="text-sm text-muted-foreground ml-2 flex-shrink-0">
                                               ${material.costo}
                                             </span>
                                           </div>
@@ -2673,15 +2681,17 @@ function CotizacionForm() {
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0" align="start">
-                                  <Command>
+                                <PopoverContent className="w-[400px] p-0 max-h-[300px]" align="start">
+                                  <Command className="max-h-[300px]">
                                     <CommandInput 
                                       placeholder="Buscar jaladera..." 
                                       value={jaladeraSearch}
                                       onValueChange={setJaladeraSearch}
                                     />
-                                    <CommandEmpty>No se encontraron jaladeras.</CommandEmpty>
-                                    <CommandGroup>
+                                    {getFilteredJaladeras().length === 0 && jaladeraSearch && (
+                                      <CommandEmpty>No se encontraron jaladeras.</CommandEmpty>
+                                    )}
+                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
                                         onSelect={() => {
@@ -2691,14 +2701,14 @@ function CotizacionForm() {
                                         }}
                                         className="cursor-pointer"
                                       >
-                                        <div className="flex w-full items-center justify-between py-1">
+                                        <div className="flex w-full items-center justify-between p-2">
                                           <span className="font-medium">Ninguno</span>
                                         </div>
                                       </CommandItem>
                                       {getFilteredJaladeras().map((material) => (
                                         <CommandItem
                                           key={material.id_material}
-                                          value={material.id_material.toString()}
+                                          value={`${material.nombre}-${material.id_material}`}
                                           onSelect={() => {
                                             field.onChange(material.id_material.toString());
                                             setOpenJaladeraCombobox(false);
@@ -2706,14 +2716,14 @@ function CotizacionForm() {
                                           }}
                                           className="cursor-pointer"
                                         >
-                                          <div className="flex w-full items-center justify-between py-1">
-                                            <span className="font-medium text-left">
+                                          <div className="flex w-full items-center justify-between p-2">
+                                            <span className="font-medium text-left flex-1">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={jaladeraSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground ml-2">
+                                            <span className="text-sm text-muted-foreground ml-2 flex-shrink-0">
                                               ${material.costo}
                                             </span>
                                           </div>
@@ -2753,15 +2763,17 @@ function CotizacionForm() {
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0" align="start">
-                                  <Command>
+                                <PopoverContent className="w-[400px] p-0 max-h-[300px]" align="start">
+                                  <Command className="max-h-[300px]">
                                     <CommandInput 
                                       placeholder="Buscar corredera..." 
                                       value={correderaSearch}
                                       onValueChange={setCorrederaSearch}
                                     />
-                                    <CommandEmpty>No se encontraron correderas.</CommandEmpty>
-                                    <CommandGroup>
+                                    {getFilteredCorrederas().length === 0 && correderaSearch && (
+                                      <CommandEmpty>No se encontraron correderas.</CommandEmpty>
+                                    )}
+                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
                                         onSelect={() => {
@@ -2771,14 +2783,14 @@ function CotizacionForm() {
                                         }}
                                         className="cursor-pointer"
                                       >
-                                        <div className="flex w-full items-center justify-between py-1">
+                                        <div className="flex w-full items-center justify-between p-2">
                                           <span className="font-medium">Ninguno</span>
                                         </div>
                                       </CommandItem>
                                       {getFilteredCorrederas().map((material) => (
                                         <CommandItem
                                           key={material.id_material}
-                                          value={material.id_material.toString()}
+                                          value={`${material.nombre}-${material.id_material}`}
                                           onSelect={() => {
                                             field.onChange(material.id_material.toString());
                                             setOpenCorrederaCombobox(false);
@@ -2786,14 +2798,14 @@ function CotizacionForm() {
                                           }}
                                           className="cursor-pointer"
                                         >
-                                          <div className="flex w-full items-center justify-between py-1">
-                                            <span className="font-medium text-left">
+                                          <div className="flex w-full items-center justify-between p-2">
+                                            <span className="font-medium text-left flex-1">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={correderaSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground ml-2">
+                                            <span className="text-sm text-muted-foreground ml-2 flex-shrink-0">
                                               ${material.costo}
                                             </span>
                                           </div>
@@ -2833,15 +2845,17 @@ function CotizacionForm() {
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0" align="start">
-                                  <Command>
+                                <PopoverContent className="w-[400px] p-0 max-h-[300px]" align="start">
+                                  <Command className="max-h-[300px]">
                                     <CommandInput 
                                       placeholder="Buscar bisagra..." 
                                       value={bisagrasSearch}
                                       onValueChange={setBisagrasSearch}
                                     />
-                                    <CommandEmpty>No se encontraron bisagras.</CommandEmpty>
-                                    <CommandGroup>
+                                    {getFilteredBisagras().length === 0 && bisagrasSearch && (
+                                      <CommandEmpty>No se encontraron bisagras.</CommandEmpty>
+                                    )}
+                                    <CommandGroup className="max-h-[200px] overflow-y-auto">
                                       <CommandItem
                                         value="none"
                                         onSelect={() => {
@@ -2851,14 +2865,14 @@ function CotizacionForm() {
                                         }}
                                         className="cursor-pointer"
                                       >
-                                        <div className="flex w-full items-center justify-between py-1">
+                                        <div className="flex w-full items-center justify-between p-2">
                                           <span className="font-medium">Ninguno</span>
                                         </div>
                                       </CommandItem>
                                       {getFilteredBisagras().map((material) => (
                                         <CommandItem
                                           key={material.id_material}
-                                          value={material.id_material.toString()}
+                                          value={`${material.nombre}-${material.id_material}`}
                                           onSelect={() => {
                                             field.onChange(material.id_material.toString());
                                             setOpenBisagrasCombobox(false);
@@ -2866,14 +2880,14 @@ function CotizacionForm() {
                                           }}
                                           className="cursor-pointer"
                                         >
-                                          <div className="flex w-full items-center justify-between py-1">
-                                            <span className="font-medium text-left">
+                                          <div className="flex w-full items-center justify-between p-2">
+                                            <span className="font-medium text-left flex-1">
                                               <HighlightedText 
                                                 text={material.nombre} 
                                                 query={bisagrasSearch} 
                                               />
                                             </span>
-                                            <span className="text-sm text-muted-foreground ml-2">
+                                            <span className="text-sm text-muted-foreground ml-2 flex-shrink-0">
                                               ${material.costo}
                                             </span>
                                           </div>
