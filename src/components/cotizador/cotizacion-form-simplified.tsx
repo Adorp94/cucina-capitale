@@ -110,7 +110,7 @@ const cotizacionFormSchema = z.object({
       unitPrice: z.number().min(0, { message: "Precio unitario debe ser positivo" }),
       discount: z.number().min(0).max(100, { message: "Descuento debe estar entre 0 y 100" }).default(0),
       furnitureData: z.object({
-        mueble_id: z.number().optional(),
+        insumo_id: z.number().optional(),
         mat_huacal: z.number().nullable().optional(),
         mat_vista: z.number().nullable().optional(),
         chap_huacal: z.number().nullable().optional(),
@@ -1404,13 +1404,15 @@ function CotizacionForm() {
       // Insert quotation items
       const quotationItems = data.items.map((item, index) => ({
         id_cotizacion: quotation.id_cotizacion,
-        mueble_id: item.furnitureData?.mueble_id || null,
+        insumo_id: item.furnitureData?.insumo_id || null,
         position: index,
         description: item.description,
         quantity: parseFloat(item.quantity.toString()),
         unit_price: parseFloat(item.unitPrice.toString()),
-        // Discount is applied in the total_price calculation but is not stored as a separate field
-        total_price: parseFloat(item.unitPrice.toString()) * parseFloat(item.quantity.toString()) * (1 - parseFloat(item.discount.toString()) / 100)
+        total_price: parseFloat(item.unitPrice.toString()) * parseFloat(item.quantity.toString()) * (1 - parseFloat(item.discount.toString()) / 100),
+        tip_on_largo: item.furnitureData?.tip_on_largo || 0,
+        u_tl: item.furnitureData?.u_tl || 0,
+        t_tl: item.furnitureData?.t_tl || 0
       }));
 
       const { error: itemsError } = await supabase
