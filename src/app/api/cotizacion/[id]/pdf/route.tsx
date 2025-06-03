@@ -299,6 +299,7 @@ export async function GET(
     const quotationForPDF: QuotationPDF = {
       id_cotizacion: parseInt(quotationRaw.id_cotizacion),
       project_name: quotationRaw.project_name || quotationRaw.nombre_proyecto || '',
+      project_code: quotationRaw.project_code || '',
       project_type: projectTypeText,
       total: new Decimal(quotationRaw.total || 0),
       subtotal: new Decimal(quotationRaw.subtotal || 0),
