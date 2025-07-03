@@ -22,6 +22,72 @@ export const DEFAULT_COTIZADOR_CONFIG: CotizadorConfig = {
   },
 };
 
+// Mapeo de tipos de proyecto del sistema actual al nuevo sistema de márgenes
+export const PROJECT_TYPE_MARGIN_MAPPING: Record<string, string> = {
+  '1': 'residencial',  // Residencial
+  '3': 'desarrollo',   // Desarrollo/Vertical  
+  '2': 'interno',      // Interno (si existe)
+};
+
+// Configuración de márgenes por defecto para fallback
+// Estos valores coinciden con los insertados en la base de datos
+export const DEFAULT_MARGIN_CONFIG = {
+  interno: {
+    margen_mp: 0.0000,      // 0% - Materia prima sin margen
+    margen_accesorios: 0.0000,  // 0% - Accesorios sin margen
+    gastos_fijos: 0.15,     // 15% - Gastos fijos (SIF)
+    margen_venta: 0.0000,   // 0% - Sin margen de venta
+  },
+  residencial: {
+    margen_mp: 0.0000,      // 0% - Materia prima sin margen
+    margen_accesorios: 0.0000,  // 0% - Accesorios sin margen
+    gastos_fijos: 0.30,     // 30% - Gastos fijos (SIF)
+    margen_venta: 0.30,     // 30% - Margen de venta
+  },
+  desarrollo: {
+    margen_mp: 0.0000,      // 0% - Materia prima sin margen
+    margen_accesorios: 0.0000,  // 0% - Accesorios sin margen
+    gastos_fijos: 0.15,     // 15% - Gastos fijos (SIF)
+    margen_venta: 0.25,     // 25% - Margen de venta
+  }
+};
+
+// Configuración de accesorios que requieren instalación
+export const ACCESSORIES_INSTALLATION_CONFIG = {
+  // Accesorios que requieren instalación (SIF aplicable)
+  requires_installation: [
+    'bisagras',
+    'pistones', 
+    'corredera',
+    'jaladera',
+    'tipOn',
+    'u_tl', // tip-on largo
+  ],
+  
+  // Accesorios que NO requieren instalación (SIF = 0)
+  no_installation: [
+    'clip_patas',
+    'patas',
+    'mensulas', 
+    'kit_tornillo',
+    'cif',
+    'porta_garrafones',
+    'accesorios_cubiertos',
+  ]
+};
+
+// Costos por defecto para accesorios (fallback si no se encuentran en la tabla)
+export const DEFAULT_ACCESSORY_COSTS = {
+  patas: 10,
+  clip_patas: 2,
+  mensulas: 0.9,
+  kit_tornillo: 30,
+  cif: 100,
+  bisagras: 15,
+  corredera: 25,
+  jaladera: 50,
+};
+
 // Categorías de productos
 export const PRODUCT_CATEGORIES = [
   'Cocina',

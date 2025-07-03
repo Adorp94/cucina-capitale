@@ -2065,21 +2065,21 @@ function CotizacionForm() {
                   <TabsTrigger value="items">Productos</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="client" className="space-y-4 mt-4">
-                  <h3 className="text-lg font-medium text-gray-800 mb-4">Información del Cliente</h3>
+                <TabsContent value="client" className="space-y-3 mt-3">
+                  <h3 className="text-base font-medium text-slate-800 mb-3">Información del Cliente</h3>
                   
-                  <div className="p-6 bg-white rounded-lg border border-gray-100 shadow-sm">
-                    <div className="mb-5">
-                      <div className="flex justify-between items-center mb-1.5">
-                        <Label className="text-sm font-medium text-gray-700">Seleccionar Cliente</Label>
+                  <div className="p-4 bg-white rounded-md border border-slate-200/60 shadow-sm">
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <Label className="text-xs font-medium text-slate-700">Seleccionar Cliente</Label>
                         <Button 
                           type="button" 
                           onClick={() => setShowClientModal(true)} 
                           variant="outline" 
                           size="sm"
-                          className="bg-white hover:bg-gray-50"
+                          className="h-7 px-2 text-xs bg-white hover:bg-slate-50 border-slate-300"
                         >
-                          <Plus className="h-4 w-4 mr-2 text-gray-600" /> Agregar Cliente
+                          <Plus className="h-3 w-3 mr-1 text-slate-600" /> Agregar
                         </Button>
                       </div>
                       <Popover open={openClientCombobox} onOpenChange={setOpenClientCombobox}>
@@ -2088,10 +2088,10 @@ function CotizacionForm() {
                             variant="outline"
                             role="combobox"
                             aria-expanded={openClientCombobox}
-                            className="w-full md:w-[calc(50%-12px)] justify-between mt-1.5 font-normal text-gray-700 border border-input"
+                            className="w-full md:w-[calc(50%-8px)] justify-between h-8 text-xs font-normal text-slate-700 border-slate-300 hover:border-slate-400"
                           >
                             {form.watch('clientName') || "Seleccionar cliente..."}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[350px] p-0" align="start">
@@ -2125,16 +2125,16 @@ function CotizacionForm() {
                       </Popover>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
                       <div>
                         <FormField
                           control={form.control}
                           name="clientName"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm font-medium text-gray-700">Nombre</FormLabel>
+                              <FormLabel className="text-xs font-medium text-slate-700">Nombre</FormLabel>
                               <FormControl>
-                                <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                <div className="p-2 border rounded text-xs bg-slate-50 text-slate-700 border-slate-200">
                                   {field.value || 'No seleccionado'}
                                 </div>
                               </FormControl>
@@ -2150,9 +2150,9 @@ function CotizacionForm() {
                           name="clientEmail"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm font-medium text-gray-700">Correo electrónico</FormLabel>
+                              <FormLabel className="text-xs font-medium text-slate-700">Correo electrónico</FormLabel>
                               <FormControl>
-                                <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                <div className="p-2 border rounded text-xs bg-slate-50 text-slate-700 border-slate-200">
                                   {field.value || 'No disponible'}
                                 </div>
                               </FormControl>
@@ -2168,9 +2168,9 @@ function CotizacionForm() {
                           name="clientPhone"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm font-medium text-gray-700">Teléfono</FormLabel>
+                              <FormLabel className="text-xs font-medium text-slate-700">Teléfono</FormLabel>
                               <FormControl>
-                                <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                <div className="p-2 border rounded text-xs bg-slate-50 text-slate-700 border-slate-200">
                                   {field.value || 'No disponible'}
                                 </div>
                               </FormControl>
@@ -2186,9 +2186,9 @@ function CotizacionForm() {
                           name="clientAddress"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm font-medium text-gray-700">Dirección</FormLabel>
+                              <FormLabel className="text-xs font-medium text-slate-700">Dirección</FormLabel>
                               <FormControl>
-                                <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                                <div className="p-2 border rounded text-xs bg-slate-50 text-slate-700 border-slate-200">
                                   {field.value || 'No disponible'}
                                 </div>
                               </FormControl>
@@ -2201,12 +2201,12 @@ function CotizacionForm() {
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="project" className="space-y-4 mt-4">
-                  <h3 className="text-lg font-medium">Detalles del Proyecto</h3>
-                  <Separator />
+                <TabsContent value="project" className="space-y-3 mt-3">
+                  <h3 className="text-base font-medium text-slate-800">Detalles del Proyecto</h3>
+                  <Separator className="border-slate-200" />
                   
                   {/* Project Code Information Card */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-blue-50/60 border border-blue-200/60 rounded-md p-3">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0">
                         <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -2215,11 +2215,11 @@ function CotizacionForm() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-blue-800 mb-1">Código de Proyecto Automático</h4>
+                          <h4 className="text-xs font-medium text-blue-800 mb-1">Código de Proyecto Automático</h4>
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 h-6 px-2">
-                                <Info className="h-3 w-3 mr-1" />
+                              <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 h-5 px-1 text-xs">
+                                <Info className="h-3 w-3 mr-0.5" />
                                 Ayuda
                               </Button>
                             </DialogTrigger>
@@ -2277,7 +2277,7 @@ function CotizacionForm() {
                             </DialogContent>
                           </Dialog>
                         </div>
-                        <p className="text-sm text-blue-700">
+                        <p className="text-xs text-blue-700 leading-relaxed">
                           Se generará automáticamente un código único para este proyecto. 
                           <br />
                           <strong>Residencial:</strong> RE-{new Date().getFullYear().toString().slice(-1)}{(new Date().getMonth() + 1).toString().padStart(2, '0')}-001
@@ -2288,15 +2288,15 @@ function CotizacionForm() {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
                       name="projectName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nombre del Proyecto</FormLabel>
+                          <FormLabel className="text-xs font-medium text-slate-700">Nombre del Proyecto</FormLabel>
                           <FormControl>
-                            <Input placeholder="Ej. Remodelación Cocina" {...field} />
+                            <Input placeholder="Ej. Remodelación Cocina" {...field} className="h-8 text-xs border-slate-300" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -2308,13 +2308,13 @@ function CotizacionForm() {
                       name="projectType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tipo de Proyecto</FormLabel>
+                          <FormLabel className="text-xs font-medium text-slate-700">Tipo de Proyecto</FormLabel>
                           <Select 
                             onValueChange={field.onChange} 
                             defaultValue={field.value}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className="h-8 text-xs border-slate-300">
                                 <SelectValue placeholder="Seleccionar tipo" />
                               </SelectTrigger>
                             </FormControl>
