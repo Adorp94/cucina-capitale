@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-});
-
 const BASE_PRICE_ID = 'price_1REKRjFrtyVJ3k1EIuF9dPzq'; // $65/month
 const PER_USER_PRICE_ID = 'price_1REKSJFrtyVJ3k1ExaXxjuBY'; // $9/user/month
 
 export async function POST(req: NextRequest) {
   try {
+    // Initialize Stripe inside the function to avoid build-time issues
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2023-10-16',
+    });
     const body = await req.json();
     const { companyName, companyAdminEmail, userCount } = body;
 
