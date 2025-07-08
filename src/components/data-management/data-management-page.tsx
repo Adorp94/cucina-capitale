@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Package, Hammer, Link } from 'lucide-react';
 
@@ -14,66 +13,85 @@ export default function DataManagementPage() {
   const [activeTab, setActiveTab] = useState('materiales');
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="py-2">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="materiales" className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            Materiales
-            <Badge variant="secondary" className="ml-2">1,713</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="insumos" className="flex items-center gap-2">
-            <Hammer className="h-4 w-4" />
-            Productos
-            <Badge variant="secondary" className="ml-2">99,014</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="relationships" className="flex items-center gap-2">
-            <Link className="h-4 w-4" />
-            Relaciones
-            <Badge variant="secondary" className="ml-2">544</Badge>
-          </TabsTrigger>
-        </TabsList>
+        {/* Compact tab navigation */}
+        <div className="mb-4">
+          <TabsList className="bg-gray-50 p-1 rounded-lg border border-gray-200">
+            <TabsTrigger 
+              value="materiales" 
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
+            >
+              <Package className="h-4 w-4" />
+              <span>Materiales</span>
+              <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
+                1,713
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="insumos" 
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
+            >
+              <Hammer className="h-4 w-4" />
+              <span>Productos</span>
+              <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
+                99,014
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="relationships" 
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
+            >
+              <Link className="h-4 w-4" />
+              <span>Relaciones</span>
+              <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
+                544
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="materiales">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestión de Materiales</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Administre tableros, cubrecantos, jaladeras, correderas y bisagras
+        {/* Compact content areas */}
+        <TabsContent value="materiales" className="mt-0">
+          <div className="border border-gray-200 rounded-lg bg-white">
+            <div className="px-5 py-3 border-b border-gray-100">
+              <h3 className="font-medium text-gray-900">Gestión de Materiales</h3>
+              <p className="text-sm text-gray-600 mt-0.5">
+                Tableros, cubrecantos, jaladeras, correderas y bisagras
               </p>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="p-5">
               <MaterialesManager />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
-        <TabsContent value="insumos">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestión de Productos</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Administre el inventario de productos de cocina
+        <TabsContent value="insumos" className="mt-0">
+          <div className="border border-gray-200 rounded-lg bg-white">
+            <div className="px-5 py-3 border-b border-gray-100">
+              <h3 className="font-medium text-gray-900">Gestión de Productos</h3>
+              <p className="text-sm text-gray-600 mt-0.5">
+                Inventario de productos de cocina
               </p>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="p-5">
               <InsumosManager />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
-        <TabsContent value="relationships">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestión de Relaciones</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Configure compatibilidades entre materiales
+        <TabsContent value="relationships" className="mt-0">
+          <div className="border border-gray-200 rounded-lg bg-white">
+            <div className="px-5 py-3 border-b border-gray-100">
+              <h3 className="font-medium text-gray-900">Gestión de Relaciones</h3>
+              <p className="text-sm text-gray-600 mt-0.5">
+                Compatibilidades entre materiales
               </p>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="p-5">
               <RelationshipsManager />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

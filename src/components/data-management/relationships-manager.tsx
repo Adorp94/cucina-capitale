@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, Edit, Trash2, Loader2, Link, ArrowRight } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, Link, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 interface MaterialRelationship {
@@ -50,6 +50,7 @@ export default function RelationshipsManager() {
   const [editingRelationship, setEditingRelationship] = useState<MaterialRelationship | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const itemsPerPage = 20;
   
   const { toast } = useToast();
@@ -206,15 +207,14 @@ export default function RelationshipsManager() {
     }
   };
 
-  // Bulk create relationships for a tablero
   const createBulkRelationships = async (tableroId: number, cubrecantosIds: number[]) => {
     try {
-      const relationships = cubrecantosIds.map(cubrecantosId => ({
+      const relationships = cubrecantosIds.map(cubrecanto_id => ({
         material_id_primary: tableroId,
-        material_id_secondary: cubrecantosId,
+        material_id_secondary: cubrecanto_id,
         relationship_type: 'tablero_cubrecanto'
       }));
-      
+
       const { error } = await supabase
         .from('material_relationships')
         .insert(relationships);
@@ -223,10 +223,11 @@ export default function RelationshipsManager() {
       
       toast({
         title: "Éxito",
-        description: `Se crearon ${relationships.length} relaciones correctamente`
+        description: `${relationships.length} relaciones creadas correctamente`
       });
       
       fetchData();
+      setIsBulkDialogOpen(false);
     } catch (error) {
       console.error('Error creating bulk relationships:', error);
       toast({
@@ -272,27 +273,10 @@ export default function RelationshipsManager() {
     };
 
     return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <Label htmlFor="relationship_type">Tipo de Relación</Label>
-            <Select 
-              value={formData.relationship_type} 
-              onValueChange={(value) => setFormData({...formData, relationship_type: value})}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tablero_cubrecanto">Tablero → Cubrecanto</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="material_id_primary">Tablero (Principal) *</Label>
+            <Label htmlFor="material_primary">Material Principal *</Label>
             <Select 
               value={formData.material_id_primary.toString()} 
               onValueChange={(value) => setFormData({...formData, material_id_primary: parseInt(value)})}
@@ -301,7 +285,7 @@ export default function RelationshipsManager() {
                 <SelectValue placeholder="Seleccionar tablero" />
               </SelectTrigger>
               <SelectContent>
-                {tableros.map(tablero => (
+                {tableros.map((tablero) => (
                   <SelectItem key={tablero.id_material} value={tablero.id_material.toString()}>
                     {tablero.nombre}
                   </SelectItem>
@@ -311,7 +295,7 @@ export default function RelationshipsManager() {
           </div>
           
           <div>
-            <Label htmlFor="material_id_secondary">Cubrecanto (Secundario) *</Label>
+            <Label htmlFor="material_secondary">Material Secundario *</Label>
             <Select 
               value={formData.material_id_secondary.toString()} 
               onValueChange={(value) => setFormData({...formData, material_id_secondary: parseInt(value)})}
@@ -320,7 +304,7 @@ export default function RelationshipsManager() {
                 <SelectValue placeholder="Seleccionar cubrecanto" />
               </SelectTrigger>
               <SelectContent>
-                {cubrecantos.map(cubrecanto => (
+                {cubrecantos.map((cubrecanto) => (
                   <SelectItem key={cubrecanto.id_material} value={cubrecanto.id_material.toString()}>
                     {cubrecanto.nombre}
                   </SelectItem>
@@ -331,19 +315,39 @@ export default function RelationshipsManager() {
         </div>
 
         <div>
+          <Label htmlFor="relationship_type">Tipo de Relación *</Label>
+          <Select 
+            value={formData.relationship_type} 
+            onValueChange={(value) => setFormData({...formData, relationship_type: value})}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tablero_cubrecanto">Tablero → Cubrecanto</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
           <Label htmlFor="notes">Notas</Label>
-          <Textarea 
+          <Textarea
+            id="notes"
+            placeholder="Comentarios adicionales sobre esta relación..."
             value={formData.notes}
             onChange={(e) => setFormData({...formData, notes: e.target.value})}
-            placeholder="Notas adicionales sobre esta relación..."
+            rows={3}
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="flex justify-end gap-3 pt-4">
           <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={!formData.material_id_primary || !formData.material_id_secondary}>
+          <Button 
+            type="submit"
+            disabled={!formData.material_id_primary || !formData.material_id_secondary}
+          >
             {relationship ? 'Actualizar' : 'Crear'} Relación
           </Button>
         </div>
@@ -356,31 +360,28 @@ export default function RelationshipsManager() {
       tablero_id: 0,
       cubrecanto_ids: [] as number[]
     });
-    const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
 
     const handleBulkSubmit = () => {
       if (bulkFormData.tablero_id && bulkFormData.cubrecanto_ids.length > 0) {
         createBulkRelationships(bulkFormData.tablero_id, bulkFormData.cubrecanto_ids);
-        setIsBulkDialogOpen(false);
-        setBulkFormData({ tablero_id: 0, cubrecanto_ids: [] });
       }
     };
 
     return (
       <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline">
+          <Button variant="outline" className="shrink-0 h-8 px-3 text-sm">
             <Plus className="h-4 w-4 mr-2" />
             Crear Múltiples
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Crear Relaciones Múltiples</DialogTitle>
+            <DialogTitle>Crear Múltiples Relaciones</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <Label>Tablero</Label>
+              <Label htmlFor="bulk_tablero">Seleccionar Tablero</Label>
               <Select 
                 value={bulkFormData.tablero_id.toString()} 
                 onValueChange={(value) => setBulkFormData({...bulkFormData, tablero_id: parseInt(value)})}
@@ -389,7 +390,7 @@ export default function RelationshipsManager() {
                   <SelectValue placeholder="Seleccionar tablero" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tableros.map(tablero => (
+                  {tableros.map((tablero) => (
                     <SelectItem key={tablero.id_material} value={tablero.id_material.toString()}>
                       {tablero.nombre}
                     </SelectItem>
@@ -399,10 +400,10 @@ export default function RelationshipsManager() {
             </div>
             
             <div>
-              <Label>Cubrecantos Compatibles</Label>
-              <div className="border rounded-lg p-4 max-h-64 overflow-y-auto space-y-2">
-                {cubrecantos.map(cubrecanto => (
-                  <label key={cubrecanto.id_material} className="flex items-center space-x-2">
+              <Label>Seleccionar Cubrecantos</Label>
+              <div className="border rounded-lg p-4 max-h-60 overflow-y-auto space-y-2">
+                {cubrecantos.map((cubrecanto) => (
+                  <label key={cubrecanto.id_material} className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={bulkFormData.cubrecanto_ids.includes(cubrecanto.id_material)}
@@ -446,36 +447,35 @@ export default function RelationshipsManager() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Cargando relaciones...</span>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex items-center space-x-3 text-sm text-gray-600">
+          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+          <span>Cargando relaciones...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Controls */}
-      <div className="flex gap-4 items-end">
-        <div className="flex-1">
-          <Label htmlFor="search">Buscar</Label>
-          <div className="relative">
+    <div className="space-y-4">
+      {/* Enhanced Controls Section */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-1">
+          {/* Clean Search Input */}
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              id="search"
               placeholder="Buscar por nombre de material..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-8 border-gray-200 focus:border-gray-300 focus:ring-1 focus:ring-gray-200"
             />
           </div>
-        </div>
-        
-        <div>
-          <Label htmlFor="type-filter">Tipo</Label>
+          
+          {/* Clean Filter Select */}
           <Select value={relationshipTypeFilter} onValueChange={setRelationshipTypeFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
+            <SelectTrigger className="w-48 h-8 border-gray-200">
+              <SelectValue placeholder="Todos los tipos" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los tipos</SelectItem>
@@ -484,116 +484,136 @@ export default function RelationshipsManager() {
           </Select>
         </div>
 
-        <BulkCreateDialog />
-
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingRelationship(null)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva Relación
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingRelationship ? 'Editar Relación' : 'Nueva Relación'}
-              </DialogTitle>
-            </DialogHeader>
-            <RelationshipForm relationship={editingRelationship} onSave={saveRelationship} />
-          </DialogContent>
-        </Dialog>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <BulkCreateDialog />
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                onClick={() => setEditingRelationship(null)}
+                className="h-8 px-3 bg-gray-900 hover:bg-gray-800 text-sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nueva Relación
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-lg font-medium">
+                  {editingRelationship ? 'Editar Relación' : 'Nueva Relación'}
+                </DialogTitle>
+              </DialogHeader>
+              <RelationshipForm relationship={editingRelationship} onSave={saveRelationship} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Results Info */}
-      <div className="flex justify-between items-center">
+      {/* Enhanced Results Info & Pagination */}
+      <div className="flex justify-between items-center py-1">
         <p className="text-sm text-gray-600">
-          Mostrando {paginatedRelationships.length} de {filteredRelationships.length} relaciones
+          Mostrando <span className="font-medium">{paginatedRelationships.length}</span> de <span className="font-medium">{filteredRelationships.length}</span> relaciones
         </p>
         
         {totalPages > 1 && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
+              className="h-7 w-7 p-0"
             >
-              Anterior
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="py-2 px-3 text-sm">
-              Página {currentPage} de {totalPages}
+            <span className="px-3 py-1 text-sm text-gray-600">
+              Página <span className="font-medium">{currentPage}</span> de <span className="font-medium">{totalPages}</span>
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
+              className="h-7 w-7 p-0"
             >
-              Siguiente
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}
       </div>
 
-      {/* Table */}
-      <div className="border rounded-lg">
+      {/* Enhanced Table */}
+      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Material Principal</TableHead>
-              <TableHead className="w-12"></TableHead>
-              <TableHead>Material Secundario</TableHead>
-              <TableHead>Notas</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead className="w-32">Acciones</TableHead>
+            <TableRow className="bg-gray-50 border-b border-gray-200">
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Tipo</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Material Principal</TableHead>
+              <TableHead className="w-10 px-4 py-2.5"></TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Material Secundario</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Notas</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Fecha</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5 w-28">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedRelationships.map((relationship) => (
-              <TableRow key={relationship.id}>
-                <TableCell>
-                  <Badge variant="outline">{relationship.relationship_type.replace('_', ' → ')}</Badge>
+              <TableRow key={relationship.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                <TableCell className="px-4 py-3">
+                  <Badge variant="outline" className="text-xs border-gray-200 text-gray-700">
+                    {relationship.relationship_type.replace('_', ' → ')}
+                  </Badge>
                 </TableCell>
-                <TableCell className="font-medium">
+                <TableCell className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{relationship.primary_material?.tipo}</Badge>
-                    {relationship.primary_material?.nombre}
+                    <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                      {relationship.primary_material?.tipo}
+                    </Badge>
+                    <span className="font-medium text-gray-900">{relationship.primary_material?.nombre}</span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <ArrowRight className="h-4 w-4 text-gray-400" />
+                <TableCell className="px-4 py-3">
+                  <ArrowRight className="h-3.5 w-3.5 text-gray-400" />
                 </TableCell>
-                <TableCell>
+                <TableCell className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{relationship.secondary_material?.tipo}</Badge>
-                    {relationship.secondary_material?.nombre}
+                    <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      {relationship.secondary_material?.tipo}
+                    </Badge>
+                    <span className="font-medium text-gray-900">{relationship.secondary_material?.nombre}</span>
                   </div>
                 </TableCell>
-                <TableCell className="max-w-xs truncate">
-                  {relationship.notes || '-'}
+                <TableCell className="px-4 py-3 max-w-xs">
+                  <span className="text-sm text-gray-600 truncate block">
+                    {relationship.notes || '—'}
+                  </span>
                 </TableCell>
-                <TableCell className="text-sm text-gray-500">
-                  {new Date(relationship.created_at).toLocaleDateString()}
+                <TableCell className="px-4 py-3">
+                  <span className="text-sm text-gray-500">
+                    {new Date(relationship.created_at).toLocaleDateString('es-ES')}
+                  </span>
                 </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
+                <TableCell className="px-4 py-3">
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => {
                         setEditingRelationship(relationship);
                         setIsDialogOpen(true);
                       }}
+                      className="h-7 w-7 p-0 hover:bg-gray-100"
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit className="h-3.5 w-3.5 text-gray-600" />
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => deleteRelationship(relationship.id)}
+                      className="h-7 w-7 p-0 hover:bg-red-50"
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
                     </Button>
                   </div>
                 </TableCell>
