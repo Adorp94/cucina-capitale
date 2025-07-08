@@ -13,32 +13,64 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const supabase = await createServerSupabaseClient();
+  let supabase;
+  let cotizaciones = null;
+  let cotizacionesError = null;
+  let cotizacionesMes = null;
   
-  // Fetch recent cotizaciones with clients in a single query
-  const { data: cotizaciones, error: cotizacionesError } = await supabase
-    .from('cotizaciones')
-    .select(`
-      *,
-      cliente:clientes (
-        id_cliente,
-        nombre,
-        correo,
-        celular
-      )
-    `)
-    .order('created_at', { ascending: false })
-    .limit(5);
-  
-  // Calculate summary data
-  const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  
-  // Fetch cotizaciones for the current month
-  const { data: cotizacionesMes } = await supabase
-    .from('cotizaciones')
-    .select('*')
-    .gte('created_at', firstDayOfMonth.toISOString());
+  try {
+    console.log('📊 Dashboard: Starting to create Supabase client...');
+    supabase = await createServerSupabaseClient();
+    console.log('✅ Dashboard: Supabase client created successfully');
+    
+    // Fetch recent cotizaciones with clients in a single query
+    console.log('🔍 Dashboard: Fetching recent cotizaciones...');
+    const { data: cotizacionesData, error: cotizacionesErr } = await supabase
+      .from('cotizaciones')
+      .select(`
+        *,
+        cliente:clientes (
+          id_cliente,
+          nombre,
+          correo,
+          celular
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    
+    cotizaciones = cotizacionesData;
+    cotizacionesError = cotizacionesErr;
+    
+    if (cotizacionesErr) {
+      console.error('❌ Dashboard: Error fetching cotizaciones:', cotizacionesErr);
+    } else {
+      console.log('✅ Dashboard: Fetched cotizaciones:', cotizacionesData?.length || 0);
+    }
+    
+    // Calculate summary data
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    // Fetch cotizaciones for the current month
+    console.log('🔍 Dashboard: Fetching monthly cotizaciones...');
+    const { data: cotizacionesMesData, error: monthError } = await supabase
+      .from('cotizaciones')
+      .select('*')
+      .gte('created_at', firstDayOfMonth.toISOString());
+    
+    cotizacionesMes = cotizacionesMesData;
+    
+    if (monthError) {
+      console.error('❌ Dashboard: Error fetching monthly cotizaciones:', monthError);
+    } else {
+      console.log('✅ Dashboard: Fetched monthly cotizaciones:', cotizacionesMesData?.length || 0);
+    }
+    
+  } catch (error) {
+    console.error('🚨 Dashboard: Critical error:', error);
+    cotizacionesError = error;
+  }
   
   const resumen = {
     cotizacionesMes: cotizacionesMes?.length || 0,
@@ -69,6 +101,17 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground">
           Bienvenido al panel de administración de Cucina Capital.
         </p>
+        {cotizacionesError && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+            <h3 className="text-red-800 font-medium">Error de conexión a la base de datos</h3>
+            <p className="text-red-600 text-sm mt-1">
+              {cotizacionesError.message || 'Error desconocido al cargar los datos'}
+            </p>
+            <p className="text-red-500 text-xs mt-2">
+              Verifica que las variables de entorno estén configuradas en Vercel.
+            </p>
+          </div>
+        )}
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -220,12 +263,14 @@ export default async function DashboardPage() {
               ) : (
                 <>
                   <div className="py-4 text-center text-muted-foreground">
-                    No hay cotizaciones para mostrar
+                    {cotizacionesError ? 'Error al cargar cotizaciones' : 'No hay cotizaciones para mostrar'}
                   </div>
                   {cotizacionesError && (
                     <div className="py-2 text-xs text-red-500 bg-red-50 p-2 rounded-md">
                       <div><strong>Error:</strong> {cotizacionesError.message}</div>
-                      <div><strong>Detalles:</strong> {cotizacionesError.details}</div>
+                      {cotizacionesError.details && (
+                        <div><strong>Detalles:</strong> {cotizacionesError.details}</div>
+                      )}
                     </div>
                   )}
                 </>
@@ -254,11 +299,15 @@ export default async function DashboardPage() {
                 Crear Nueva Cotización
               </Link>
             </Button>
-            <Button disabled variant="outline" className="w-full cursor-not-allowed opacity-60" title="En desarrollo">
-              Gestionar Clientes
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/clientes">
+                Gestionar Clientes
+              </Link>
             </Button>
-            <Button disabled variant="outline" className="w-full cursor-not-allowed opacity-60" title="En desarrollo">
-              Gestionar Productos
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/datos">
+                Gestionar Datos
+              </Link>
             </Button>
             <Button disabled variant="outline" className="w-full cursor-not-allowed opacity-60" title="En desarrollo">
               Ver Reportes

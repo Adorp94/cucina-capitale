@@ -22,33 +22,33 @@ export default function DataManagementPage() {
               value="materiales" 
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
             >
-              <Package className="h-4 w-4" />
+            <Package className="h-4 w-4" />
               <span>Materiales</span>
               <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
                 1,713
               </Badge>
-            </TabsTrigger>
+          </TabsTrigger>
             <TabsTrigger 
               value="insumos" 
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
             >
-              <Hammer className="h-4 w-4" />
+            <Hammer className="h-4 w-4" />
               <span>Productos</span>
               <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
                 99,014
               </Badge>
-            </TabsTrigger>
+          </TabsTrigger>
             <TabsTrigger 
               value="relationships" 
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
             >
-              <Link className="h-4 w-4" />
+            <Link className="h-4 w-4" />
               <span>Relaciones</span>
               <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
                 544
               </Badge>
-            </TabsTrigger>
-          </TabsList>
+          </TabsTrigger>
+        </TabsList>
         </div>
 
         {/* Compact content areas */}

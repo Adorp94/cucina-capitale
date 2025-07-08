@@ -220,7 +220,7 @@ export default function RelationshipsManager() {
         material_id_secondary: cubrecanto_id,
         relationship_type: 'tablero_cubrecanto'
       }));
-
+      
       const { error } = await supabase
         .from('material_relationships')
         .insert(relationships);
@@ -337,7 +337,7 @@ export default function RelationshipsManager() {
 
         <div>
           <Label htmlFor="notes">Notas</Label>
-          <Textarea
+          <Textarea 
             id="notes"
             placeholder="Comentarios adicionales sobre esta relación..."
             value={formData.notes}
@@ -476,8 +476,8 @@ export default function RelationshipsManager() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-8 border-gray-200 focus:border-gray-300 focus:ring-1 focus:ring-gray-200"
             />
-          </div>
-          
+        </div>
+        
           {/* Clean Filter Select */}
           <Select value={relationshipTypeFilter} onValueChange={setRelationshipTypeFilter}>
             <SelectTrigger className="w-48 h-8 border-gray-200">
@@ -492,27 +492,27 @@ export default function RelationshipsManager() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <BulkCreateDialog />
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
+        <BulkCreateDialog />
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
               <Button 
                 onClick={() => setEditingRelationship(null)}
                 className="h-8 px-3 bg-gray-900 hover:bg-gray-800 text-sm"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Relación
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Relación
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
                 <DialogTitle className="text-lg font-medium">
-                  {editingRelationship ? 'Editar Relación' : 'Nueva Relación'}
-                </DialogTitle>
-              </DialogHeader>
-              <RelationshipForm relationship={editingRelationship} onSave={saveRelationship} />
-            </DialogContent>
-          </Dialog>
+                {editingRelationship ? 'Editar Relación' : 'Nueva Relación'}
+              </DialogTitle>
+            </DialogHeader>
+            <RelationshipForm relationship={editingRelationship} onSave={saveRelationship} />
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
 

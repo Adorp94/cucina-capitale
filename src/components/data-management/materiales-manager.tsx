@@ -104,7 +104,7 @@ export default function MaterialesManager() {
         .range(from, to);
 
       const { data, error, count } = await query;
-
+        
       if (error) {
         console.error('❌ Fetch error:', error);
         throw error;
@@ -357,10 +357,10 @@ export default function MaterialesManager() {
             {loading && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-              </div>
-            )}
           </div>
-          
+            )}
+        </div>
+        
           {/* Clean Filter Select */}
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-48 h-8 border-gray-200">
@@ -487,28 +487,28 @@ export default function MaterialesManager() {
                   </TableCell>
                   <TableCell className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
+                    <Button
+                      variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setEditingMaterial(material);
-                          setIsDialogOpen(true);
-                        }}
+                      onClick={() => {
+                        setEditingMaterial(material);
+                        setIsDialogOpen(true);
+                      }}
                         className="h-7 w-7 p-0 hover:bg-gray-100"
-                      >
+                    >
                         <Edit className="h-3.5 w-3.5 text-gray-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
+                    </Button>
+                    <Button
+                      variant="ghost"
                         size="sm"
-                        onClick={() => deleteMaterial(material.id_material)}
+                      onClick={() => deleteMaterial(material.id_material)}
                         className="h-7 w-7 p-0 hover:bg-red-50"
-                      >
+                    >
                         <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
               ))
             )}
           </TableBody>

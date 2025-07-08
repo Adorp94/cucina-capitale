@@ -335,17 +335,17 @@ export default function InsumosManager() {
       const placeholder = step === "1" ? "0" : "0.00";
       
       return (
-        <div>
-          <Label htmlFor={field}>{label}</Label>
-          <Input 
-            type="number" 
-            step={step}
+      <div>
+        <Label htmlFor={field}>{label}</Label>
+        <Input 
+          type="number" 
+          step={step}
             placeholder={placeholder}
             value={value === 0 ? '' : value}
             onChange={(e) => setFormData({...formData, [field]: parseFloat(e.target.value) || 0})}
-          />
-        </div>
-      );
+        />
+      </div>
+    );
     };
 
     return (
@@ -357,7 +357,7 @@ export default function InsumosManager() {
             <div>
               <Label htmlFor="categoria">Categoría *</Label>
               <Input 
-                value={formData.categoria}
+                value={formData.categoria} 
                 onChange={(e) => setFormData({...formData, categoria: e.target.value})}
                 required 
               />
@@ -370,7 +370,7 @@ export default function InsumosManager() {
               />
             </div>
           </div>
-          
+
           <div>
             <Label htmlFor="descripcion">Descripción *</Label>
             <Textarea 
@@ -380,7 +380,7 @@ export default function InsumosManager() {
               rows={2}
             />
           </div>
-          
+
           <div>
             <Label htmlFor="mueble">Mueble *</Label>
             <Input 
@@ -444,7 +444,7 @@ export default function InsumosManager() {
                 value={formData.tipo}
                 onChange={(e) => setFormData({...formData, tipo: e.target.value})}
               />
-            </div>
+          </div>
             <NumberInput label="CIF" field="cif" />
             <NumberInput label="U TL" field="u_tl" />
             <NumberInput label="T TL" field="t_tl" />
@@ -480,10 +480,10 @@ export default function InsumosManager() {
             {loading && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-              </div>
-            )}
           </div>
-          
+            )}
+        </div>
+        
           {/* Clean Filter Select */}
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-48 h-8 border-gray-200">
@@ -614,28 +614,28 @@ export default function InsumosManager() {
                   </TableCell>
                   <TableCell className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
+                    <Button
+                      variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setEditingInsumo(insumo);
-                          setIsDialogOpen(true);
-                        }}
+                      onClick={() => {
+                        setEditingInsumo(insumo);
+                        setIsDialogOpen(true);
+                      }}
                         className="h-7 w-7 p-0 hover:bg-gray-100"
-                      >
+                    >
                         <Edit className="h-3.5 w-3.5 text-gray-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
+                    </Button>
+                    <Button
+                      variant="ghost"
                         size="sm"
-                        onClick={() => deleteInsumo(insumo.insumo_id)}
+                      onClick={() => deleteInsumo(insumo.insumo_id)}
                         className="h-7 w-7 p-0 hover:bg-red-50"
-                      >
+                    >
                         <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
               ))
             )}
           </TableBody>
