@@ -2,6 +2,9 @@
 
 import React from 'react';
 import { Suspense } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Upload } from 'lucide-react';
 import DataManagementPage from '@/components/data-management/data-management-page';
 
 export default function DatosPage() {
@@ -9,13 +12,21 @@ export default function DatosPage() {
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto">
         <div className="px-6 py-4 border-b border-gray-100">
-          <div className="max-w-2xl">
-            <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
-              Gestión de Datos
-            </h1>
-            <p className="text-sm text-gray-600 mt-1 leading-relaxed">
-              Administre materiales, productos y relaciones
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="max-w-2xl">
+              <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
+                Gestión de Datos
+              </h1>
+              <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                Administre materiales, productos y relaciones
+              </p>
+            </div>
+            <Link href="/datos/importacion">
+              <Button variant="outline" size="sm" className="h-8">
+                <Upload className="h-4 w-4 mr-2" />
+                Importación Masiva
+              </Button>
+            </Link>
           </div>
         </div>
         
