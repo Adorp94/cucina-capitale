@@ -5,14 +5,9 @@
 // Public routes that don't require authentication
 export const publicRoutes = [
   '/',
-  '/login',
-  '/sign-in',
-  '/register',
-  '/sign-up',
-  '/reset-password',
-  '/api/(.*)', // API routes
-  '/callback', // Auth0 callback route
-  '/auth-test', // Auth0 test page
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/health(.*)', // Health check API
   '/not-found',
   '/favicon.ico',
   '/_next/(.*)' // Next.js static assets

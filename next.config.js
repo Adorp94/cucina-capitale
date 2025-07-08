@@ -22,23 +22,25 @@ const nextConfig = {
   // Environment variables
   env: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_AUTH0_DOMAIN: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
-    NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
   },
   // Output standalone for Vercel
   output: 'standalone',
-  // External packages configuration moved from experimental
-  serverExternalPackages: ['@auth0/auth0-react'],
   // Simplified experimental options
   experimental: {
     optimizeCss: true,
   },
   images: {
-    domains: ['s.gravatar.com', 'lh3.googleusercontent.com'],
+    domains: ['s.gravatar.com', 'lh3.googleusercontent.com', 'img.clerk.com'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**.auth0.com',
+        hostname: '**.clerk.accounts.dev',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.clerk.com',
       },
     ],
   },
