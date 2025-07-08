@@ -184,12 +184,18 @@ export default function RelationshipsManager() {
     if (!confirm('¿Está seguro de que desea eliminar esta relación?')) return;
     
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('material_relationships')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('id');
         
       if (error) throw error;
+      
+      // Verify the delete actually happened
+      if (!data || data.length === 0) {
+        throw new Error('No se pudo eliminar la relación. Verifique los permisos.');
+      }
       
       toast({
         title: "Éxito",
@@ -201,7 +207,7 @@ export default function RelationshipsManager() {
       console.error('Error deleting relationship:', error);
       toast({
         title: "Error",
-        description: "No se pudo eliminar la relación",
+        description: error instanceof Error ? error.message : "No se pudo eliminar la relación",
         variant: "destructive"
       });
     }

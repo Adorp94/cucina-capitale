@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, Loader2, Package } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Insumo {
   insumo_id: number;
@@ -41,17 +41,43 @@ interface Insumo {
   t_tl?: number;
 }
 
+interface SearchResult {
+  data: Insumo[];
+  count: number;
+  totalPages: number;
+  categories: string[];
+}
+
+const ITEMS_PER_PAGE = 25;
+
+// Custom hook for debounced search
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function InsumosManager() {
   const [insumos, setInsumos] = useState<Insumo[]>([]);
-  const [filteredInsumos, setFilteredInsumos] = useState<Insumo[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   
   const { toast } = useToast();
   
@@ -60,52 +86,117 @@ export default function InsumosManager() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const fetchInsumos = useCallback(async () => {
+  // Debounce search to avoid too many API calls
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+  // Server-side search and pagination
+  const fetchInsumos = useCallback(async (
+    page: number = 1,
+    search: string = '',
+    category: string = 'all'
+  ): Promise<SearchResult> => {
+    console.log('🔍 Fetching insumos:', { page, search, category });
     setLoading(true);
+    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('insumos')
-        .select('*')
+        .select('*', { count: 'exact' });
+
+      // Apply category filter
+      if (category !== 'all') {
+        query = query.eq('categoria', category);
+      }
+
+      // Apply search filter - search across multiple fields
+      if (search.trim()) {
+        query = query.or(
+          `descripcion.ilike.%${search}%,mueble.ilike.%${search}%,categoria.ilike.%${search}%,tipo_mueble.ilike.%${search}%`
+        );
+      }
+
+      // Apply pagination
+      const from = (page - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+      
+      query = query
         .order('categoria')
         .order('descripcion')
-        .limit(500); // Limit for performance
+        .range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        console.error('❌ Fetch error:', error);
+        throw error;
+      }
+
+      // Fetch categories separately for filter dropdown
+      let categoriesData: string[] = [];
+      if (page === 1) { // Only fetch categories on first page
+        const { data: catData, error: catError } = await supabase
+          .from('insumos')
+          .select('categoria')
+          .not('categoria', 'is', null);
         
-      if (error) throw error;
-      setInsumos(data || []);
+        if (!catError && catData) {
+          categoriesData = [...new Set(catData.map(item => item.categoria).filter(Boolean))].sort();
+        }
+      }
+
+      const totalPages = Math.ceil((count || 0) / ITEMS_PER_PAGE);
       
-      // Extract unique categories
-      const uniqueCategories = [...new Set(data?.map(item => item.categoria).filter(Boolean))];
-      setCategories(uniqueCategories.sort());
+      console.log('✅ Insumos fetched:', {
+        records: data?.length || 0,
+        total: count,
+        page,
+        totalPages,
+        categories: categoriesData.length
+      });
+
+      return {
+        data: data || [],
+        count: count || 0,
+        totalPages,
+        categories: categoriesData
+      };
+      
     } catch (error) {
-      console.error('Error fetching insumos:', error);
+      console.error('💥 Error fetching insumos:', error);
       toast({
         title: "Error",
         description: "No se pudieron cargar los productos",
         variant: "destructive"
       });
+      return { data: [], count: 0, totalPages: 0, categories: [] };
     } finally {
       setLoading(false);
     }
   }, [supabase, toast]);
 
-  const filterInsumos = useCallback(() => {
-    let filtered = insumos;
-    
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter(i => i.categoria === categoryFilter);
+  // Load data when filters change
+  useEffect(() => {
+    const loadData = async () => {
+      const result = await fetchInsumos(currentPage, debouncedSearchQuery, categoryFilter);
+      setInsumos(result.data);
+      setTotalCount(result.count);
+      setTotalPages(result.totalPages);
+      
+      // Update categories only on first page
+      if (currentPage === 1 && result.categories.length > 0) {
+        setCategories(result.categories);
+      }
+    };
+
+    loadData();
+  }, [fetchInsumos, currentPage, debouncedSearchQuery, categoryFilter]);
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
     }
-    
-    if (searchQuery) {
-      filtered = filtered.filter(i => 
-        i.descripcion?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        i.mueble?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        i.categoria?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    setFilteredInsumos(filtered);
-    setCurrentPage(1);
-  }, [insumos, categoryFilter, searchQuery]);
+  }, [debouncedSearchQuery, categoryFilter]);
 
   const saveInsumo = async (insumoData: Omit<Insumo, 'insumo_id'> & { insumo_id?: number }) => {
     try {
@@ -136,7 +227,12 @@ export default function InsumosManager() {
         });
       }
       
-      fetchInsumos();
+      // Refresh current page
+      const result = await fetchInsumos(currentPage, debouncedSearchQuery, categoryFilter);
+      setInsumos(result.data);
+      setTotalCount(result.count);
+      setTotalPages(result.totalPages);
+      
       setIsDialogOpen(false);
       setEditingInsumo(null);
     } catch (error) {
@@ -153,43 +249,39 @@ export default function InsumosManager() {
     if (!confirm('¿Está seguro de que desea eliminar este producto?')) return;
     
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('insumos')
         .delete()
-        .eq('insumo_id', id);
+        .eq('insumo_id', id)
+        .select('insumo_id');
         
       if (error) throw error;
+      
+      // Verify the delete actually happened
+      if (!data || data.length === 0) {
+        throw new Error('No se pudo eliminar el producto. Verifique los permisos.');
+      }
       
       toast({
         title: "Éxito",
         description: "Producto eliminado correctamente"
       });
       
-      fetchInsumos();
+      // Refresh current page
+      const result = await fetchInsumos(currentPage, debouncedSearchQuery, categoryFilter);
+      setInsumos(result.data);
+      setTotalCount(result.count);
+      setTotalPages(result.totalPages);
+      
     } catch (error) {
       console.error('Error deleting insumo:', error);
       toast({
         title: "Error",
-        description: "No se pudo eliminar el producto",
+        description: error instanceof Error ? error.message : "No se pudo eliminar el producto",
         variant: "destructive"
       });
     }
   };
-
-  useEffect(() => {
-    fetchInsumos();
-  }, [fetchInsumos]);
-
-  useEffect(() => {
-    filterInsumos();
-  }, [filterInsumos]);
-
-  const paginatedInsumos = filteredInsumos.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-  
-  const totalPages = Math.ceil(filteredInsumos.length / itemsPerPage);
 
   const InsumoForm = ({ insumo, onSave }: { 
     insumo?: Insumo | null; 
@@ -219,7 +311,7 @@ export default function InsumosManager() {
       tipo_mueble: insumo?.tipo_mueble || '',
       tipo: insumo?.tipo || '',
       u_tl: insumo?.u_tl || 0,
-      t_tl: insumo?.t_tl || 0
+      t_tl: insumo?.t_tl || 0,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -238,45 +330,38 @@ export default function InsumosManager() {
       label: string; 
       field: keyof typeof formData; 
       step?: string;
-    }) => (
-      <div>
-        <Label htmlFor={field}>{label}</Label>
-        <Input 
-          type="number" 
-          step={step}
-          value={formData[field] || 0}
-          onChange={(e) => setFormData({
-            ...formData, 
-            [field]: parseFloat(e.target.value) || 0
-          })}
-        />
-      </div>
-    );
+    }) => {
+      const value = formData[field] as number;
+      const placeholder = step === "1" ? "0" : "0.00";
+      
+      return (
+        <div>
+          <Label htmlFor={field}>{label}</Label>
+          <Input 
+            type="number" 
+            step={step}
+            placeholder={placeholder}
+            value={value === 0 ? '' : value}
+            onChange={(e) => setFormData({...formData, [field]: parseFloat(e.target.value) || 0})}
+          />
+        </div>
+      );
+    };
 
     return (
-      <form onSubmit={handleSubmit} className="space-y-6 max-h-[70vh] overflow-y-auto">
+      <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
         {/* Basic Info */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Información Básica</h3>
-          
+        <div className="space-y-4 p-4 border border-gray-200 rounded-lg">
+          <h3 className="font-medium text-gray-900">Información Básica</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="categoria">Categoría *</Label>
-              <Select 
-                value={formData.categoria} 
-                onValueChange={(value) => setFormData({...formData, categoria: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input 
+                value={formData.categoria}
+                onChange={(e) => setFormData({...formData, categoria: e.target.value})}
+                required 
+              />
             </div>
-            
             <div>
               <Label htmlFor="tipo_mueble">Tipo de Mueble</Label>
               <Input 
@@ -285,70 +370,67 @@ export default function InsumosManager() {
               />
             </div>
           </div>
-
+          
           <div>
             <Label htmlFor="descripcion">Descripción *</Label>
-            <Input 
+            <Textarea 
               value={formData.descripcion}
               onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
               required 
+              rows={2}
             />
           </div>
-
+          
           <div>
-            <Label htmlFor="mueble">Mueble</Label>
+            <Label htmlFor="mueble">Mueble *</Label>
             <Input 
               value={formData.mueble}
               onChange={(e) => setFormData({...formData, mueble: e.target.value})}
+              required 
             />
           </div>
         </div>
 
-        {/* Component Quantities */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Componentes</h3>
-          
+        {/* Components */}
+        <div className="space-y-4 p-4 border border-gray-200 rounded-lg">
+          <h3 className="font-medium text-gray-900">Componentes</h3>
           <div className="grid grid-cols-3 gap-4">
-            <NumberInput label="Cajones" field="cajones" />
-            <NumberInput label="Puertas" field="puertas" />
-            <NumberInput label="Entrepaños" field="entrepaños" />
+            <NumberInput label="Cajones" field="cajones" step="1" />
+            <NumberInput label="Puertas" field="puertas" step="1" />
+            <NumberInput label="Entrepaños" field="entrepaños" step="1" />
           </div>
         </div>
 
         {/* Materials */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Materiales (m²)</h3>
-          
+        <div className="space-y-4 p-4 border border-gray-200 rounded-lg">
+          <h3 className="font-medium text-gray-900">Materiales</h3>
           <div className="grid grid-cols-2 gap-4">
-            <NumberInput label="Material Huacal" field="mat_huacal" />
-            <NumberInput label="Material Vista" field="mat_vista" />
-            <NumberInput label="Chapacinta Huacal" field="chap_huacal" />
-            <NumberInput label="Chapacinta Vista" field="chap_vista" />
+            <NumberInput label="Mat. Huacal" field="mat_huacal" />
+            <NumberInput label="Mat. Vista" field="mat_vista" />
+            <NumberInput label="Chap. Huacal" field="chap_huacal" />
+            <NumberInput label="Chap. Vista" field="chap_vista" />
           </div>
         </div>
 
         {/* Hardware */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Herrajes</h3>
-          
+        <div className="space-y-4 p-4 border border-gray-200 rounded-lg">
+          <h3 className="font-medium text-gray-900">Herrajes</h3>
           <div className="grid grid-cols-3 gap-4">
-            <NumberInput label="Jaladera" field="jaladera" />
-            <NumberInput label="Corredera" field="corredera" />
-            <NumberInput label="Bisagras" field="bisagras" />
-            <NumberInput label="Patas" field="patas" />
-            <NumberInput label="Clip Patas" field="clip_patas" />
-            <NumberInput label="Ménsulas" field="mensulas" />
+            <NumberInput label="Jaladera" field="jaladera" step="1" />
+            <NumberInput label="Corredera" field="corredera" step="1" />
+            <NumberInput label="Bisagras" field="bisagras" step="1" />
+            <NumberInput label="Patas" field="patas" step="1" />
+            <NumberInput label="Clip Patas" field="clip_patas" step="1" />
+            <NumberInput label="Ménsulas" field="mensulas" step="1" />
+            <NumberInput label="Tipón Largo" field="tipon_largo" step="1" />
+            <NumberInput label="Kit Tornillo" field="kit_tornillo" step="1" />
           </div>
         </div>
 
-        {/* Special Components */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Componentes Especiales</h3>
-          
+        {/* Additional Info */}
+        <div className="space-y-4 p-4 border border-gray-200 rounded-lg">
+          <h3 className="font-medium text-gray-900">Información Adicional</h3>
           <div className="grid grid-cols-2 gap-4">
-            <NumberInput label="Tip-on Largo" field="tipon_largo" />
-            <NumberInput label="Kit Tornillo" field="kit_tornillo" />
-            <NumberInput label="CIF" field="cif" />
             <div>
               <Label htmlFor="empaque">Empaque</Label>
               <Input 
@@ -356,20 +438,20 @@ export default function InsumosManager() {
                 onChange={(e) => setFormData({...formData, empaque: e.target.value})}
               />
             </div>
-          </div>
-        </div>
-
-        {/* TL Values */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Valores TL</h3>
-          
-          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="tipo">Tipo</Label>
+              <Input 
+                value={formData.tipo}
+                onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+              />
+            </div>
+            <NumberInput label="CIF" field="cif" />
             <NumberInput label="U TL" field="u_tl" />
             <NumberInput label="T TL" field="t_tl" />
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
           <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
             Cancelar
           </Button>
@@ -381,43 +463,36 @@ export default function InsumosManager() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Cargando productos...</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Controls */}
-      <div className="flex gap-4 items-end">
-        <div className="flex-1">
-          <Label htmlFor="search">Buscar</Label>
-          <div className="relative">
+    <div className="space-y-4">
+      {/* Enhanced Search & Filter Controls */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-1">
+          {/* Enhanced Search Input */}
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              id="search"
-              placeholder="Buscar por descripción, mueble..."
+              placeholder="Buscar productos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-8 border-gray-200 focus:border-gray-300 focus:ring-1 focus:ring-gray-200"
             />
+            {loading && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+              </div>
+            )}
           </div>
-        </div>
-        
-        <div>
-          <Label htmlFor="category-filter">Categoría</Label>
+          
+          {/* Clean Filter Select */}
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
+            <SelectTrigger className="w-48 h-8 border-gray-200">
+              <SelectValue placeholder="Todas las categorías" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las categorías</SelectItem>
-              {categories.map(cat => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              {categories.map(categoria => (
+                <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -425,14 +500,17 @@ export default function InsumosManager() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingInsumo(null)}>
+            <Button 
+              onClick={() => setEditingInsumo(null)}
+              className="h-8 px-3 bg-gray-900 hover:bg-gray-800 text-sm"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Producto
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-lg font-medium">
                 {editingInsumo ? 'Editar Producto' : 'Nuevo Producto'}
               </DialogTitle>
             </DialogHeader>
@@ -441,93 +519,125 @@ export default function InsumosManager() {
         </Dialog>
       </div>
 
-      {/* Results Info */}
-      <div className="flex justify-between items-center">
+      {/* Enhanced Results Info & Pagination */}
+      <div className="flex justify-between items-center py-1">
         <p className="text-sm text-gray-600">
-          Mostrando {paginatedInsumos.length} de {filteredInsumos.length} productos
+          Mostrando <span className="font-medium">{insumos.length}</span> de <span className="font-medium">{totalCount}</span> productos
+          {searchQuery && <span> • Búsqueda: "{searchQuery}"</span>}
+          {categoryFilter !== 'all' && <span> • Categoría: {categoryFilter}</span>}
         </p>
         
         {totalPages > 1 && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || loading}
+              className="h-7 w-7 p-0"
             >
-              Anterior
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="py-2 px-3 text-sm">
-              Página {currentPage} de {totalPages}
+            <span className="px-3 py-1 text-sm text-gray-600">
+              Página <span className="font-medium">{currentPage}</span> de <span className="font-medium">{totalPages}</span>
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || loading}
+              className="h-7 w-7 p-0"
             >
-              Siguiente
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}
       </div>
 
-      {/* Table */}
-      <div className="border rounded-lg">
+      {/* Enhanced Table */}
+      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Descripción</TableHead>
-              <TableHead>Mueble</TableHead>
-              <TableHead>Mat. Huacal</TableHead>
-              <TableHead>Mat. Vista</TableHead>
-              <TableHead>Herrajes</TableHead>
-              <TableHead className="w-32">Acciones</TableHead>
+            <TableRow className="bg-gray-50 border-b border-gray-200">
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Categoría</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Descripción</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Mueble</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Tipo</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Componentes</TableHead>
+              <TableHead className="font-medium text-gray-900 px-4 py-2.5 w-28">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedInsumos.map((insumo) => (
-              <TableRow key={insumo.insumo_id}>
-                <TableCell>
-                  <Badge variant="outline">{insumo.categoria}</Badge>
-                </TableCell>
-                <TableCell className="font-medium max-w-xs truncate">
-                  {insumo.descripcion}
-                </TableCell>
-                <TableCell className="max-w-xs truncate">{insumo.mueble || '-'}</TableCell>
-                <TableCell>{insumo.mat_huacal || 0}</TableCell>
-                <TableCell>{insumo.mat_vista || 0}</TableCell>
-                <TableCell>
-                  <div className="text-xs space-y-1">
-                    {insumo.jaladera ? <div>J: {insumo.jaladera}</div> : null}
-                    {insumo.corredera ? <div>C: {insumo.corredera}</div> : null}
-                    {insumo.bisagras ? <div>B: {insumo.bisagras}</div> : null}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditingInsumo(insumo);
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteInsumo(insumo.insumo_id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex items-center justify-center space-x-3">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <span className="text-gray-500">Cargando productos...</span>
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : insumos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="text-gray-500">
+                    {searchQuery || categoryFilter !== 'all' 
+                      ? 'No se encontraron productos con los filtros aplicados' 
+                      : 'No hay productos registrados'
+                    }
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              insumos.map((insumo) => (
+                <TableRow key={insumo.insumo_id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                  <TableCell className="px-4 py-3">
+                    <Badge variant="outline" className="text-xs border-gray-200 text-gray-700">
+                      {insumo.categoria}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <span className="font-medium text-gray-900">{insumo.descripcion}</span>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <span className="text-gray-600">{insumo.mueble}</span>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <span className="text-gray-600">{insumo.tipo_mueble || '—'}</span>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <div className="flex gap-1 text-xs text-gray-500">
+                      {insumo.cajones ? <span>C:{insumo.cajones}</span> : null}
+                      {insumo.puertas ? <span>P:{insumo.puertas}</span> : null}
+                      {insumo.entrepaños ? <span>E:{insumo.entrepaños}</span> : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingInsumo(insumo);
+                          setIsDialogOpen(true);
+                        }}
+                        className="h-7 w-7 p-0 hover:bg-gray-100"
+                      >
+                        <Edit className="h-3.5 w-3.5 text-gray-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteInsumo(insumo.insumo_id)}
+                        className="h-7 w-7 p-0 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
