@@ -1589,94 +1589,69 @@ function CotizacionForm() {
         throw new Error(`Error al guardar los items: ${itemsError.message}`);
       }
       
-      // Save materials to cotizacion_materiales table
+      // Save materials to cotizacion_materiales table with historical snapshot data
       const materialsToSave = [];
       
-      // Helper function to find material cost by ID
-      const getMaterialCost = (materialId: string, collection: any[]) => {
+      // Helper function to find material and create snapshot data
+      const createMaterialSnapshot = (materialId: string, tipo: string, collection: any[]) => {
         const material = collection.find(m => m.id_material.toString() === materialId);
-        return material ? material.costo : 0;
+        if (!material) return null;
+        
+        return {
+          id_cotizacion: quotation.id_cotizacion,
+          tipo: tipo,
+          // Legacy fields for backward compatibility
+          id_material: parseInt(materialId),
+          costo_usado: parseFloat(material.costo),
+          // New snapshot fields for historical preservation
+          material_name: material.nombre,
+          material_category: material.categoria || '',
+          material_subcategoria: material.subcategoria || '',
+          material_comentario: material.comentario || '',
+          cost_at_quotation_time: parseFloat(material.costo),
+          material_id_reference: parseInt(materialId)
+        };
       };
       
       // Process each material if it's not "none"
       if (data.matHuacal && data.matHuacal !== "none") {
-        const costo = getMaterialCost(data.matHuacal, tabletosMaterials);
-        materialsToSave.push({
-          id_cotizacion: quotation.id_cotizacion,
-          tipo: "matHuacal",
-          id_material: parseInt(data.matHuacal),
-          costo_usado: costo
-        });
+        const materialSnapshot = createMaterialSnapshot(data.matHuacal, "matHuacal", tabletosMaterials);
+        if (materialSnapshot) materialsToSave.push(materialSnapshot);
       }
       
       if (data.matVista && data.matVista !== "none") {
-        const costo = getMaterialCost(data.matVista, tabletosMaterials);
-        materialsToSave.push({
-          id_cotizacion: quotation.id_cotizacion,
-          tipo: "matVista",
-          id_material: parseInt(data.matVista),
-          costo_usado: costo
-        });
+        const materialSnapshot = createMaterialSnapshot(data.matVista, "matVista", tabletosMaterials);
+        if (materialSnapshot) materialsToSave.push(materialSnapshot);
       }
       
       if (data.chapHuacal && data.chapHuacal !== "none") {
-        const costo = getMaterialCost(data.chapHuacal, chapacintaMaterials);
-        materialsToSave.push({
-          id_cotizacion: quotation.id_cotizacion,
-          tipo: "chapHuacal",
-          id_material: parseInt(data.chapHuacal),
-          costo_usado: costo
-        });
+        const materialSnapshot = createMaterialSnapshot(data.chapHuacal, "chapHuacal", chapacintaMaterials);
+        if (materialSnapshot) materialsToSave.push(materialSnapshot);
       }
       
       if (data.chapVista && data.chapVista !== "none") {
-        const costo = getMaterialCost(data.chapVista, chapacintaMaterials);
-        materialsToSave.push({
-          id_cotizacion: quotation.id_cotizacion,
-          tipo: "chapVista",
-          id_material: parseInt(data.chapVista),
-          costo_usado: costo
-        });
+        const materialSnapshot = createMaterialSnapshot(data.chapVista, "chapVista", chapacintaMaterials);
+        if (materialSnapshot) materialsToSave.push(materialSnapshot);
       }
       
       if (data.jaladera && data.jaladera !== "none") {
-        const costo = getMaterialCost(data.jaladera, jaladeraMaterials);
-        materialsToSave.push({
-          id_cotizacion: quotation.id_cotizacion,
-          tipo: "jaladera",
-          id_material: parseInt(data.jaladera),
-          costo_usado: costo
-        });
+        const materialSnapshot = createMaterialSnapshot(data.jaladera, "jaladera", jaladeraMaterials);
+        if (materialSnapshot) materialsToSave.push(materialSnapshot);
       }
       
       if (data.corredera && data.corredera !== "none") {
-        const costo = getMaterialCost(data.corredera, correderasMaterials);
-        materialsToSave.push({
-          id_cotizacion: quotation.id_cotizacion,
-          tipo: "corredera",
-          id_material: parseInt(data.corredera),
-          costo_usado: costo
-        });
+        const materialSnapshot = createMaterialSnapshot(data.corredera, "corredera", correderasMaterials);
+        if (materialSnapshot) materialsToSave.push(materialSnapshot);
       }
       
       if (data.bisagras && data.bisagras !== "none") {
-        const costo = getMaterialCost(data.bisagras, bisagrasMaterials);
-        materialsToSave.push({
-          id_cotizacion: quotation.id_cotizacion,
-          tipo: "bisagras",
-          id_material: parseInt(data.bisagras),
-          costo_usado: costo
-        });
+        const materialSnapshot = createMaterialSnapshot(data.bisagras, "bisagras", bisagrasMaterials);
+        if (materialSnapshot) materialsToSave.push(materialSnapshot);
       }
       
       if (data.tipOnLargo && data.tipOnLargo !== "none") {
-        const costo = getMaterialCost(data.tipOnLargo, tipOnLargoMaterials);
-        materialsToSave.push({
-          id_cotizacion: quotation.id_cotizacion,
-          tipo: "tipOnLargo",
-          id_material: parseInt(data.tipOnLargo),
-          costo_usado: costo
-        });
+        const materialSnapshot = createMaterialSnapshot(data.tipOnLargo, "tipOnLargo", tipOnLargoMaterials);
+        if (materialSnapshot) materialsToSave.push(materialSnapshot);
       }
       
       console.log("Saving materials:", materialsToSave);

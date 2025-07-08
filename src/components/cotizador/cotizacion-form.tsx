@@ -1033,15 +1033,23 @@ export default function CotizacionForm() {
         throw new Error(`Error al guardar los items: ${itemsError.message}`);
       }
 
-      // Insert materials used
+      // Insert materials used with historical snapshot data
       if (data.materialsData) {
         const materialsToInsert = Object.entries(data.materialsData)
           .filter(([_, material]) => material && material.id_material)
           .map(([tipo, material]) => ({
             id_cotizacion: quotation.id_cotizacion,
-            id_material: material.id_material,
             tipo: tipo,
-            costo_usado: material.costo
+            // Legacy fields for backward compatibility
+            id_material: material.id_material,
+            costo_usado: parseFloat(material.costo),
+            // New snapshot fields for historical preservation
+            material_name: material.nombre,
+            material_category: material.categoria || '',
+            material_subcategoria: material.subcategoria || '',
+            material_comentario: material.comentario || '',
+            cost_at_quotation_time: parseFloat(material.costo),
+            material_id_reference: material.id_material
           }));
 
         if (materialsToInsert.length > 0) {
