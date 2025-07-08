@@ -1,12 +1,54 @@
-import { Metadata } from 'next';
-import Link from 'next/link';
-import CotizacionForm from '@/components/cotizador/cotizacion-form';
-import { Button } from '@/components/ui/button';
+'use client';
 
-export const metadata: Metadata = {
-  title: 'Nueva Cotización | GRUPO UCMV',
-  description: 'Crear una nueva cotización para un cliente',
-};
+import { Suspense, useState } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the enhanced CotizacionForm component with no SSR
+const CotizacionForm = dynamic(
+  () => import('@/components/cotizador/cotizacion-form-simplified'),
+  { 
+    ssr: false,
+    loading: () => <div className="p-6">Cargando formulario...</div> 
+  }
+);
+
+// Error boundary component for handling form errors
+function FormErrorBoundary({ children }: { children: React.ReactNode }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center text-red-600">
+            <AlertCircle className="h-5 w-5 mr-2" />
+            Error al cargar el formulario
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4">
+            Ocurrió un error al cargar el formulario. Por favor, intenta de nuevo o contacta a soporte.
+          </div>
+          <Button asChild>
+            <Link href="/cotizaciones">Volver a Cotizaciones</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  try {
+    return <>{children}</>;
+  } catch (error) {
+    console.error("Error in form:", error);
+    setHasError(true);
+    return null;
+  }
+}
 
 export default function NuevaCotizacionPage() {
   return (
@@ -25,7 +67,11 @@ export default function NuevaCotizacionPage() {
         </Button>
       </div>
       
-      <CotizacionForm />
+      <Suspense fallback={<div>Cargando formulario de cotización...</div>}>
+        <FormErrorBoundary>
+          <CotizacionForm />
+        </FormErrorBoundary>
+      </Suspense>
     </div>
   );
 }
