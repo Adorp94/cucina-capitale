@@ -37,6 +37,13 @@ interface InsumoRecord {
   t_tl?: number;
 }
 
+interface AccesorioRecord {
+  accesorios: string;
+  costo?: number;
+  categoria?: string;
+  comentario?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { table, data } = await request.json();
@@ -48,10 +55,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!['materiales', 'insumos'].includes(table)) {
+    if (!['materiales', 'insumos', 'accesorios'].includes(table)) {
       return NextResponse.json({
         success: false,
-        errors: ['Tabla inválida: debe ser "materiales" o "insumos"']
+        errors: ['Tabla inválida: debe ser "materiales", "insumos" o "accesorios"']
       }, { status: 400 });
     }
 
@@ -99,6 +106,32 @@ export async function POST(request: NextRequest) {
         // Validate required fields
         if (!processed.nombre) {
           errors.push(`Fila ${index + 1}: El campo 'nombre' es requerido`);
+        }
+
+        return processed;
+      });
+    } else if (table === 'accesorios') {
+      processedData = data.map((row: any, index: number) => {
+        const processed: any = {};
+        
+        // Clean and validate data
+        if (row.accesorios) processed.accesorios = String(row.accesorios).trim();
+        if (row.categoria) processed.categoria = String(row.categoria).trim();
+        if (row.comentario) processed.comentario = String(row.comentario).trim();
+        
+        // Handle numeric fields
+        if (row.costo && row.costo !== '') {
+          const costo = parseFloat(row.costo);
+          if (!isNaN(costo)) {
+            processed.costo = costo;
+          } else {
+            errors.push(`Fila ${index + 1}: Costo inválido: ${row.costo}`);
+          }
+        }
+
+        // Validate required fields
+        if (!processed.accesorios) {
+          errors.push(`Fila ${index + 1}: El campo 'accesorios' es requerido`);
         }
 
         return processed;

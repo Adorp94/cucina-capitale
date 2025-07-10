@@ -39,25 +39,31 @@ export default function ImportacionPage() {
   const [uploadStatus, setUploadStatus] = useState<{
     materiales: 'idle' | 'validating' | 'uploading' | 'success' | 'error';
     insumos: 'idle' | 'validating' | 'uploading' | 'success' | 'error';
+    accesorios: 'idle' | 'validating' | 'uploading' | 'success' | 'error';
   }>({
     materiales: 'idle',
-    insumos: 'idle'
+    insumos: 'idle',
+    accesorios: 'idle'
   });
   
   const [validationResults, setValidationResults] = useState<{
     materiales: ValidationResult | null;
     insumos: ValidationResult | null;
+    accesorios: ValidationResult | null;
   }>({
     materiales: null,
-    insumos: null
+    insumos: null,
+    accesorios: null
   });
 
   const [uploadResults, setUploadResults] = useState<{
     materiales: UploadResult | null;
     insumos: UploadResult | null;
+    accesorios: UploadResult | null;
   }>({
     materiales: null,
-    insumos: null
+    insumos: null,
+    accesorios: null
   });
 
   // CSV Template definitions
@@ -97,13 +103,33 @@ export default function ImportacionPage() {
     't_tl'
   ];
 
-  const generateCSVTemplate = (table: 'materiales' | 'insumos') => {
-    const headers = table === 'materiales' ? materialesTemplate : insumosTemplate;
+  const accesoriosTemplate = [
+    'accesorios',
+    'costo',
+    'categoria',
+    'comentario'
+  ];
+
+  const generateCSVTemplate = (table: 'materiales' | 'insumos' | 'accesorios') => {
+    let headers: string[];
+    let sampleData: string[];
     
-    // Add sample data row
-    const sampleData = table === 'materiales' 
-      ? ['Madera', 'Tablero MDF 18mm', '850.50', 'Tableros', 'Material de alta calidad', 'MDF']
-      : ['Mobiliario', 'Mueble de cocina base', 'Base 60cm', '2', '1', '1', '0.5', '0.3', '0.2', '0.1', '1', '2', '4', '4', '8', '2', '0', '1', 'Caja individual', '150.75', 'Base', 'Estándar', '1.2', '2.4'];
+    switch (table) {
+      case 'materiales':
+        headers = materialesTemplate;
+        sampleData = ['Madera', 'Tablero MDF 18mm', '850.50', 'Tableros', 'Material de alta calidad', 'MDF'];
+        break;
+      case 'insumos':
+        headers = insumosTemplate;
+        sampleData = ['Mobiliario', 'Mueble de cocina base', 'Base 60cm', '2', '1', '1', '0.5', '0.3', '0.2', '0.1', '1', '2', '4', '4', '8', '2', '0', '1', 'Caja individual', '150.75', 'Base', 'Estándar', '1.2', '2.4'];
+        break;
+      case 'accesorios':
+        headers = accesoriosTemplate;
+        sampleData = ['Tapete antihumedad', '495', 'Herraje', 'Tapete para proteger de humedad'];
+        break;
+      default:
+        return;
+    }
 
     const csvContent = [
       headers.join(','),
@@ -138,10 +164,24 @@ export default function ImportacionPage() {
     });
   };
 
-  const validateData = (data: any[], table: 'materiales' | 'insumos'): ValidationResult => {
+  const validateData = (data: any[], table: 'materiales' | 'insumos' | 'accesorios'): ValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
-    const expectedHeaders = table === 'materiales' ? materialesTemplate : insumosTemplate;
+    let expectedHeaders: string[];
+    
+    switch (table) {
+      case 'materiales':
+        expectedHeaders = materialesTemplate;
+        break;
+      case 'insumos':
+        expectedHeaders = insumosTemplate;
+        break;
+      case 'accesorios':
+        expectedHeaders = accesoriosTemplate;
+        break;
+      default:
+        expectedHeaders = [];
+    }
 
     // Check if data is empty
     if (data.length === 0) {
@@ -169,6 +209,14 @@ export default function ImportacionPage() {
         // Required fields for materiales
         if (!row.nombre?.trim()) {
           errors.push(`Fila ${rowNum}: El campo 'nombre' es requerido.`);
+        }
+        if (row.costo && isNaN(parseFloat(row.costo))) {
+          errors.push(`Fila ${rowNum}: El campo 'costo' debe ser un número válido.`);
+        }
+      } else if (table === 'accesorios') {
+        // Required fields for accesorios
+        if (!row.accesorios?.trim()) {
+          errors.push(`Fila ${rowNum}: El campo 'accesorios' es requerido.`);
         }
         if (row.costo && isNaN(parseFloat(row.costo))) {
           errors.push(`Fila ${rowNum}: El campo 'costo' debe ser un número válido.`);
@@ -206,7 +254,7 @@ export default function ImportacionPage() {
     };
   };
 
-  const handleFileUpload = async (file: File, table: 'materiales' | 'insumos') => {
+  const handleFileUpload = async (file: File, table: 'materiales' | 'insumos' | 'accesorios') => {
     try {
       setUploadStatus(prev => ({ ...prev, [table]: 'validating' }));
       setValidationResults(prev => ({ ...prev, [table]: null }));
@@ -268,13 +316,13 @@ export default function ImportacionPage() {
     }
   };
 
-  const resetUpload = (table: 'materiales' | 'insumos') => {
+  const resetUpload = (table: 'materiales' | 'insumos' | 'accesorios') => {
     setUploadStatus(prev => ({ ...prev, [table]: 'idle' }));
     setValidationResults(prev => ({ ...prev, [table]: null }));
     setUploadResults(prev => ({ ...prev, [table]: null }));
   };
 
-  const UploadSection = ({ table }: { table: 'materiales' | 'insumos' }) => {
+  const UploadSection = ({ table }: { table: 'materiales' | 'insumos' | 'accesorios' }) => {
     const status = uploadStatus[table];
     const validation = validationResults[table];
     const result = uploadResults[table];
@@ -509,9 +557,10 @@ export default function ImportacionPage() {
 
         {/* Upload Tabs */}
         <Tabs defaultValue="materiales" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="materiales">Materiales</TabsTrigger>
             <TabsTrigger value="insumos">Insumos</TabsTrigger>
+            <TabsTrigger value="accesorios">Accesorios</TabsTrigger>
           </TabsList>
 
           <TabsContent value="materiales">
@@ -520,6 +569,10 @@ export default function ImportacionPage() {
 
           <TabsContent value="insumos">
             <UploadSection table="insumos" />
+          </TabsContent>
+
+          <TabsContent value="accesorios">
+            <UploadSection table="accesorios" />
           </TabsContent>
         </Tabs>
       </div>

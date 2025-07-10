@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Package, Hammer, Link } from 'lucide-react';
+import { Package, Hammer, Link, Wrench } from 'lucide-react';
 
 import MaterialesManager from './materiales-manager';
 import InsumosManager from './insumos-manager';
 import RelationshipsManager from './relationships-manager';
+import AccesoriosManager from './accesorios-manager';
 
 export default function DataManagementPage() {
   const [activeTab, setActiveTab] = useState('materiales');
@@ -36,6 +37,16 @@ export default function DataManagementPage() {
               <span>Productos</span>
               <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
                 99,014
+              </Badge>
+          </TabsTrigger>
+            <TabsTrigger 
+              value="accesorios" 
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
+            >
+            <Wrench className="h-4 w-4" />
+              <span>Accesorios</span>
+              <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
+                59
               </Badge>
           </TabsTrigger>
             <TabsTrigger 
@@ -80,12 +91,26 @@ export default function DataManagementPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="accesorios" className="mt-0">
+          <div className="border border-gray-200 rounded-lg bg-white">
+            <div className="px-5 py-3 border-b border-gray-100">
+              <h3 className="font-medium text-gray-900">Gestión de Accesorios</h3>
+              <p className="text-sm text-gray-600 mt-0.5">
+                Herrajes, lámbrines, puertas, vidrios y mano de obra
+              </p>
+            </div>
+            <div className="p-5">
+              <AccesoriosManager />
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="relationships" className="mt-0">
           <div className="border border-gray-200 rounded-lg bg-white">
             <div className="px-5 py-3 border-b border-gray-100">
               <h3 className="font-medium text-gray-900">Gestión de Relaciones</h3>
               <p className="text-sm text-gray-600 mt-0.5">
-                Compatibilidades entre materiales
+                Vínculos entre materiales y productos
               </p>
             </div>
             <div className="p-5">
