@@ -40,7 +40,11 @@ interface InsumoRecord {
 interface AccesorioRecord {
   accesorios: string;
   costo?: number;
+  gf?: string;
   categoria?: string;
+  subcategoria?: string;
+  proveedor?: string;
+  link?: string;
   comentario?: string;
 }
 
@@ -114,15 +118,25 @@ export async function POST(request: NextRequest) {
       processedData = data.map((row: any, index: number) => {
         const processed: any = {};
         
-        // Clean and validate data
+        // Clean and validate data - handle all fields
         if (row.accesorios) processed.accesorios = String(row.accesorios).trim();
         if (row.categoria) processed.categoria = String(row.categoria).trim();
+        if (row.subcategoria) processed.subcategoria = String(row.subcategoria).trim();
+        if (row.proveedor) processed.proveedor = String(row.proveedor).trim();
         if (row.comentario) processed.comentario = String(row.comentario).trim();
+        if (row.gf) processed.gf = String(row.gf).trim();
         
-        // Handle numeric fields
-        if (row.costo && row.costo !== '') {
-          const costo = parseFloat(row.costo);
-          if (!isNaN(costo)) {
+        // Handle link field - simplified validation (just clean it, don't require HTTP)
+        if (row.link && String(row.link).trim() !== '' && String(row.link).trim().toLowerCase() !== 'n/a') {
+          processed.link = String(row.link).trim();
+        }
+        
+        // Handle numeric fields - simplified costo validation
+        if (row.costo && row.costo !== '' && row.costo !== 'N/A' && row.costo !== 'n/a') {
+          // Try to parse as number, but be more forgiving
+          const costoStr = String(row.costo).replace(/[,$]/g, '').trim();
+          const costo = parseFloat(costoStr);
+          if (!isNaN(costo) && costo >= 0) {
             processed.costo = costo;
           } else {
             errors.push(`Fila ${index + 1}: Costo inválido: ${row.costo}`);
