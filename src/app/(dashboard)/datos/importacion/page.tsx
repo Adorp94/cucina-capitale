@@ -106,7 +106,11 @@ export default function ImportacionPage() {
   const accesoriosTemplate = [
     'accesorios',
     'costo',
+    'gf',
     'categoria',
+    'subcategoria',
+    'proveedor',
+    'link',
     'comentario'
   ];
 
@@ -125,7 +129,7 @@ export default function ImportacionPage() {
         break;
       case 'accesorios':
         headers = accesoriosTemplate;
-        sampleData = ['Tapete antihumedad', '495', 'Herraje', 'Tapete para proteger de humedad'];
+        sampleData = ['Basurero TIPO A 17 LTS', '776.00', 'No', 'Accesorio', 'Basurero', 'Bulnes', 'https://cymisa.com.mx/catalogo', 'Tapete para proteger de humedad'];
         break;
       default:
         return;
@@ -220,6 +224,10 @@ export default function ImportacionPage() {
         }
         if (row.costo && isNaN(parseFloat(row.costo))) {
           errors.push(`Fila ${rowNum}: El campo 'costo' debe ser un número válido.`);
+        }
+        // Validate URL format for link if provided
+        if (row.link && row.link.trim() && !row.link.startsWith('http')) {
+          warnings.push(`Fila ${rowNum}: El campo 'link' debería comenzar con http:// o https://`);
         }
       } else {
         // Required fields for insumos

@@ -46,7 +46,7 @@ export default function DataManagementPage() {
             <Wrench className="h-4 w-4" />
               <span>Accesorios</span>
               <Badge variant="secondary" className="ml-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border-0 font-medium">
-                59
+                450
               </Badge>
           </TabsTrigger>
             <TabsTrigger 

@@ -15,21 +15,33 @@ export type Database = {
           categoria: string | null
           comentario: string | null
           costo: number | null
+          gf: string | null
           id_accesorios: number
+          link: string | null
+          proveedor: string | null
+          subcategoria: string | null
         }
         Insert: {
           accesorios?: string | null
           categoria?: string | null
           comentario?: string | null
           costo?: number | null
-          id_accesorios: number
+          gf?: string | null
+          id_accesorios?: number
+          link?: string | null
+          proveedor?: string | null
+          subcategoria?: string | null
         }
         Update: {
           accesorios?: string | null
           categoria?: string | null
           comentario?: string | null
           costo?: number | null
+          gf?: string | null
           id_accesorios?: number
+          link?: string | null
+          proveedor?: string | null
+          subcategoria?: string | null
         }
         Relationships: []
       }

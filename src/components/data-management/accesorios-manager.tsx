@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, Loader2, ChevronLeft, ChevronRight, Wrench } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, ChevronLeft, ChevronRight, Wrench, ExternalLink } from 'lucide-react';
 
 interface Accesorio {
   id_accesorios: number;
@@ -19,6 +19,10 @@ interface Accesorio {
   costo: number;
   categoria: string;
   comentario?: string;
+  gf?: string;
+  subcategoria?: string;
+  proveedor?: string;
+  link?: string;
 }
 
 interface SearchResult {
@@ -46,8 +50,9 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const ITEMS_PER_PAGE = 50;
 
-// Categories available for accesorios
+// Updated categories based on migrated data (for filtering)
 const CATEGORIAS_ACCESORIO = [
+  'Accesorio',
   'Herraje',
   'Lambrín', 
   'Mano de obra',
@@ -95,10 +100,10 @@ export default function AccesoriosManager() {
         query = query.eq('categoria', category);
       }
 
-      // Apply search filter - search across multiple fields
+      // Apply search filter - search across multiple fields including new ones
       if (search.trim()) {
         query = query.or(
-          `accesorios.ilike.%${search}%,categoria.ilike.%${search}%,comentario.ilike.%${search}%`
+          `accesorios.ilike.%${search}%,categoria.ilike.%${search}%,comentario.ilike.%${search}%,subcategoria.ilike.%${search}%,proveedor.ilike.%${search}%`
         );
       }
 
@@ -229,14 +234,14 @@ export default function AccesoriosManager() {
         description: "Accesorio eliminado correctamente"
       });
       
-      // Refresh current page or go to previous page if current page becomes empty
-      let targetPage = currentPage;
+      // Refresh current page, but adjust if we're on the last item of the last page
+      let pageToLoad = currentPage;
       if (accesorios.length === 1 && currentPage > 1) {
-        targetPage = currentPage - 1;
-        setCurrentPage(targetPage);
+        pageToLoad = currentPage - 1;
+        setCurrentPage(pageToLoad);
       }
       
-      const result = await fetchAccesorios(targetPage, debouncedSearchQuery, categoryFilter);
+      const result = await fetchAccesorios(pageToLoad, debouncedSearchQuery, categoryFilter);
       setAccesorios(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
@@ -250,6 +255,13 @@ export default function AccesoriosManager() {
     }
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(amount);
+  };
+
   const AccesorioForm = ({ accesorio, onSave, onCancel }: {
     accesorio: Accesorio | null;
     onSave: (data: Omit<Accesorio, 'id_accesorios'> & { id_accesorios?: number }) => void;
@@ -259,8 +271,26 @@ export default function AccesoriosManager() {
       accesorios: accesorio?.accesorios || '',
       costo: accesorio?.costo || 0,
       categoria: accesorio?.categoria || '',
-      comentario: accesorio?.comentario || ''
+      comentario: accesorio?.comentario || '',
+      gf: accesorio?.gf || '',
+      subcategoria: accesorio?.subcategoria || '',
+      proveedor: accesorio?.proveedor || '',
+      link: accesorio?.link || ''
     });
+
+    // Update form data when accesorio prop changes
+    useEffect(() => {
+      setFormData({
+        accesorios: accesorio?.accesorios || '',
+        costo: accesorio?.costo || 0,
+        categoria: accesorio?.categoria || '',
+        comentario: accesorio?.comentario || '',
+        gf: accesorio?.gf || '',
+        subcategoria: accesorio?.subcategoria || '',
+        proveedor: accesorio?.proveedor || '',
+        link: accesorio?.link || ''
+      });
+    }, [accesorio]);
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -272,61 +302,102 @@ export default function AccesoriosManager() {
 
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="accesorios">Nombre del Accesorio *</Label>
+            <Input
+              id="accesorios"
+              value={formData.accesorios}
+              onChange={(e) => setFormData(prev => ({ ...prev, accesorios: e.target.value }))}
+              placeholder="Ej: Basurero TIPO A 17 LTS"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="costo">Costo *</Label>
+            <Input
+              id="costo"
+              type="number"
+              step="0.01"
+              value={formData.costo}
+              onChange={(e) => setFormData(prev => ({ ...prev, costo: parseFloat(e.target.value) || 0 }))}
+              placeholder="0.00"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="categoria">Categoría *</Label>
+            <Input
+              id="categoria"
+              value={formData.categoria}
+              onChange={(e) => setFormData(prev => ({ ...prev, categoria: e.target.value }))}
+              placeholder="Ej: Accesorio, Herraje, etc."
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="subcategoria">Subcategoría</Label>
+            <Input
+              id="subcategoria"
+              value={formData.subcategoria}
+              onChange={(e) => setFormData(prev => ({ ...prev, subcategoria: e.target.value }))}
+              placeholder="Ej: Basurero, Organizador, etc."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gf">Gastos Fijos (GF)</Label>
+            <Select
+              value={formData.gf}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, gf: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona GF" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="No">No</SelectItem>
+                <SelectItem value="Sí">Sí</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="proveedor">Proveedor</Label>
+            <Input
+              id="proveedor"
+              value={formData.proveedor}
+              onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
+              placeholder="Ej: Bulnes, DAO, etc."
+            />
+          </div>
+        </div>
+
         <div className="space-y-2">
-          <Label htmlFor="accesorios">Nombre del Accesorio</Label>
+          <Label htmlFor="link">Link</Label>
           <Input
-            id="accesorios"
-            value={formData.accesorios}
-            onChange={(e) => setFormData(prev => ({ ...prev, accesorios: e.target.value }))}
-            placeholder="Ej: Tapete antihumedad"
-            required
+            id="link"
+            type="url"
+            value={formData.link}
+            onChange={(e) => setFormData(prev => ({ ...prev, link: e.target.value }))}
+            placeholder="https://ejemplo.com/producto"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="categoria">Categoría</Label>
-          <Select
-            value={formData.categoria}
-            onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
-            required
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona una categoría" />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIAS_ACCESORIO.map(categoria => (
-                <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="costo">Costo</Label>
-          <Input
-            id="costo"
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.costo}
-            onChange={(e) => setFormData(prev => ({ ...prev, costo: parseFloat(e.target.value) || 0 }))}
-            placeholder="0.00"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="comentario">Comentario (opcional)</Label>
+          <Label htmlFor="comentario">Comentario</Label>
           <Textarea
             id="comentario"
             value={formData.comentario}
             onChange={(e) => setFormData(prev => ({ ...prev, comentario: e.target.value }))}
-            placeholder="Información adicional sobre el accesorio..."
+            placeholder="Comentarios adicionales..."
             rows={3}
           />
         </div>
 
-        <div className="flex justify-end space-x-2">
+        <div className="flex justify-end gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
@@ -338,14 +409,6 @@ export default function AccesoriosManager() {
     );
   };
 
-  // Format currency for display
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(amount);
-  };
-
   return (
     <div className="space-y-4">
       {/* Enhanced Search & Filter Controls */}
@@ -355,7 +418,7 @@ export default function AccesoriosManager() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Buscar accesorios..."
+              placeholder="Buscar accesorios, proveedores, categorías..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-8 border-gray-200 focus:border-gray-300 focus:ring-1 focus:ring-gray-200"
@@ -393,7 +456,7 @@ export default function AccesoriosManager() {
               Nuevo Accesorio
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[700px]">
             <DialogHeader>
               <DialogTitle>
                 {editingAccesorio ? 'Editar Accesorio' : 'Nuevo Accesorio'}
@@ -428,91 +491,133 @@ export default function AccesoriosManager() {
         )}
       </div>
 
-      {/* Enhanced Results Table */}
+      {/* Enhanced Results Table with all fields */}
       <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-        <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow className="border-gray-200">
-              <TableHead className="font-medium text-gray-900 py-3">ID</TableHead>
-              <TableHead className="font-medium text-gray-900">Accesorio</TableHead>
-              <TableHead className="font-medium text-gray-900">Categoría</TableHead>
-              <TableHead className="font-medium text-gray-900">Costo</TableHead>
-              <TableHead className="font-medium text-gray-900">Comentario</TableHead>
-              <TableHead className="font-medium text-gray-900 w-20">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {accesorios.map((accesorio) => (
-              <TableRow key={accesorio.id_accesorios} className="hover:bg-gray-50 border-gray-100">
-                <TableCell className="text-sm text-gray-600 py-3">
-                  {accesorio.id_accesorios}
-                </TableCell>
-                <TableCell className="font-medium py-3">
-                  {accesorio.accesorios}
-                </TableCell>
-                <TableCell className="py-3">
-                  <Badge variant="outline" className="text-xs">
-                    {accesorio.categoria}
-                  </Badge>
-                </TableCell>
-                <TableCell className="font-mono text-sm py-3">
-                  {formatCurrency(accesorio.costo)}
-                </TableCell>
-                <TableCell className="text-sm text-gray-600 py-3 max-w-xs truncate">
-                  {accesorio.comentario || '-'}
-                </TableCell>
-                <TableCell className="py-3">
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 hover:bg-gray-100"
-                      onClick={() => {
-                        setEditingAccesorio(accesorio);
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 hover:bg-red-50 text-red-600 hover:text-red-700"
-                      onClick={() => deleteAccesorio(accesorio)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50">
+              <TableRow className="border-gray-200">
+                <TableHead className="font-medium text-gray-900 min-w-[200px]">Accesorio</TableHead>
+                <TableHead className="font-medium text-gray-900">Categoría</TableHead>
+                <TableHead className="font-medium text-gray-900">Subcategoría</TableHead>
+                <TableHead className="font-medium text-gray-900">Costo</TableHead>
+                <TableHead className="font-medium text-gray-900">GF</TableHead>
+                <TableHead className="font-medium text-gray-900">Proveedor</TableHead>
+                <TableHead className="font-medium text-gray-900">Link</TableHead>
+                <TableHead className="font-medium text-gray-900 w-20">Acciones</TableHead>
               </TableRow>
-            ))}
-            
-            {accesorios.length === 0 && !loading && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                  <div className="flex flex-col items-center gap-2">
-                    <Wrench className="h-8 w-8 text-gray-300" />
-                    <p>No se encontraron accesorios</p>
-                    {(searchQuery.trim() || categoryFilter !== 'all') && (
-                      <p className="text-sm">Intenta ajustar los filtros de búsqueda</p>
+            </TableHeader>
+            <TableBody>
+              {accesorios.map((accesorio) => (
+                <TableRow key={accesorio.id_accesorios} className="hover:bg-gray-50 border-gray-100">
+                  <TableCell className="font-medium py-3">
+                    <div className="max-w-xs">
+                      <div className="truncate" title={accesorio.accesorios}>
+                        {accesorio.accesorios}
+                      </div>
+                      {accesorio.comentario && (
+                        <div className="text-xs text-gray-500 truncate mt-1" title={accesorio.comentario}>
+                          {accesorio.comentario}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Badge variant="outline" className="text-xs">
+                      {accesorio.categoria?.trim() || '-'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <span className="text-sm text-gray-600">
+                      {accesorio.subcategoria?.trim() || '-'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm py-3">
+                    {formatCurrency(accesorio.costo)}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Badge 
+                      variant={accesorio.gf?.trim() === 'No' ? 'secondary' : 'default'} 
+                      className="text-xs"
+                    >
+                      {accesorio.gf?.trim() || '-'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <span className="text-sm text-gray-600">
+                      {accesorio.proveedor?.trim() || '-'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {accesorio.link?.trim() && 
+                     accesorio.link.trim().toLowerCase() !== 'n/a' && 
+                     accesorio.link.trim().startsWith('http') ? (
+                      <a 
+                        href={accesorio.link.trim()} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span className="text-xs">Ver</span>
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 text-xs">-</span>
                     )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-            
-            {loading && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <div className="flex items-center justify-center gap-2 text-gray-500">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Cargando accesorios...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 hover:bg-gray-100"
+                        onClick={() => {
+                          setEditingAccesorio(accesorio);
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 hover:bg-red-50 text-red-600 hover:text-red-700"
+                        onClick={() => deleteAccesorio(accesorio)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              
+              {accesorios.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <div className="flex flex-col items-center gap-2">
+                      <Wrench className="h-8 w-8 text-gray-300" />
+                      <p>No se encontraron accesorios</p>
+                      {(searchQuery.trim() || categoryFilter !== 'all') && (
+                        <p className="text-sm">Intenta ajustar los filtros de búsqueda</p>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+              
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    <div className="flex items-center justify-center gap-2 text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Cargando accesorios...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Enhanced Pagination */}
