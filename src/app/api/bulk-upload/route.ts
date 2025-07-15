@@ -126,20 +126,33 @@ export async function POST(request: NextRequest) {
         if (row.comentario) processed.comentario = String(row.comentario).trim();
         if (row.gf) processed.gf = String(row.gf).trim();
         
-        // Handle link field - simplified validation (just clean it, don't require HTTP)
-        if (row.link && String(row.link).trim() !== '' && String(row.link).trim().toLowerCase() !== 'n/a') {
-          processed.link = String(row.link).trim();
+        // Handle link field - allow empty/null/blank values, no validation required
+        if (row.link) {
+          const linkStr = String(row.link).trim();
+          // Only add link if it's not empty and not 'N/A' variations
+          if (linkStr !== '' && linkStr.toLowerCase() !== 'n/a' && linkStr.toLowerCase() !== 'null' && linkStr.toLowerCase() !== 'undefined') {
+            processed.link = linkStr;
+          }
         }
         
-        // Handle numeric fields - simplified costo validation
-        if (row.costo && row.costo !== '' && row.costo !== 'N/A' && row.costo !== 'n/a') {
-          // Try to parse as number, but be more forgiving
-          const costoStr = String(row.costo).replace(/[,$]/g, '').trim();
-          const costo = parseFloat(costoStr);
-          if (!isNaN(costo) && costo >= 0) {
-            processed.costo = costo;
+        // Handle numeric fields - improved costo validation for decimals
+        if (row.costo !== undefined && row.costo !== null && row.costo !== '') {
+          const costoStr = String(row.costo).trim();
+          
+          // Skip obvious non-numeric values
+          if (costoStr.toLowerCase() === 'n/a' || costoStr.toLowerCase() === 'null' || costoStr.toLowerCase() === 'undefined') {
+            // Skip this field, don't add it to processed
           } else {
-            errors.push(`Fila ${index + 1}: Costo inválido: ${row.costo}`);
+            // Clean the string: remove currency symbols, commas, spaces
+            const cleanedCosto = costoStr.replace(/[,$\s]/g, '').replace(/[^\d.-]/g, '');
+            const costo = parseFloat(cleanedCosto);
+            
+            if (!isNaN(costo) && isFinite(costo) && costo >= 0) {
+              // Round to 2 decimal places to handle floating point precision
+              processed.costo = Math.round(costo * 100) / 100;
+            } else {
+              errors.push(`Fila ${index + 1}: Costo inválido: ${row.costo}`);
+            }
           }
         }
 

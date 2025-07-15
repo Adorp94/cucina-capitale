@@ -106,12 +106,12 @@ export default function ImportacionPage() {
   const accesoriosTemplate = [
     'accesorios',
     'costo',
-    'gf',
     'categoria',
+    'comentario',
+    'gf',
     'subcategoria',
     'proveedor',
-    'link',
-    'comentario'
+    'link'
   ];
 
   const generateCSVTemplate = (table: 'materiales' | 'insumos' | 'accesorios') => {
@@ -121,7 +121,7 @@ export default function ImportacionPage() {
     switch (table) {
       case 'materiales':
         headers = materialesTemplate;
-        sampleData = ['Madera', 'Tablero MDF 18mm', '850.50', 'Tableros', 'Material de alta calidad', 'MDF'];
+        sampleData = ['Madera', '"Tablero MDF 18mm"', '850.50', 'Tableros', '"Material de alta calidad"', 'MDF'];
         break;
       case 'insumos':
         headers = insumosTemplate;
@@ -129,7 +129,7 @@ export default function ImportacionPage() {
         break;
       case 'accesorios':
         headers = accesoriosTemplate;
-        sampleData = ['Basurero TIPO A 17 LTS', '776.00', 'No', 'Accesorio', 'Basurero', 'Bulnes', 'https://cymisa.com.mx/catalogo', 'Tapete para proteger de humedad'];
+        sampleData = ['"Basurero TIPO A 17 LTS"', '776.00', 'Accesorio', '"Tapete para proteger de humedad"', 'No', 'Basurero', 'Bulnes', 'https://cymisa.com.mx/catalogo'];
         break;
       default:
         return;
@@ -154,18 +154,56 @@ export default function ImportacionPage() {
 
   const parseCSV = (csvText: string): any[] => {
     const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
+    const headers = parseCSVLine(lines[0]);
     
     return lines.slice(1).map((line, index) => {
-      const values = line.split(',').map(v => v.trim());
+      const values = parseCSVLine(line);
       const row: any = { _rowNumber: index + 2 }; // +2 because header is row 1, data starts at row 2
       
       headers.forEach((header, i) => {
-        row[header] = values[i] || '';
+        row[header.trim()] = (values[i] || '').trim();
       });
       
       return row;
     });
+  };
+
+  // Proper CSV line parser that handles quoted fields with commas
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+    
+    while (i < line.length) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+      
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Escaped quote inside quoted field
+          current += '"';
+          i += 2;
+        } else {
+          // Start or end of quoted field
+          inQuotes = !inQuotes;
+          i++;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // Field separator outside quotes
+        result.push(current);
+        current = '';
+        i++;
+      } else {
+        // Regular character
+        current += char;
+        i++;
+      }
+    }
+    
+    // Add the last field
+    result.push(current);
+    return result;
   };
 
   const validateData = (data: any[], table: 'materiales' | 'insumos' | 'accesorios'): ValidationResult => {
@@ -214,19 +252,53 @@ export default function ImportacionPage() {
         if (!row.nombre?.trim()) {
           errors.push(`Fila ${rowNum}: El campo 'nombre' es requerido.`);
         }
-        if (row.costo && isNaN(parseFloat(row.costo))) {
-          errors.push(`Fila ${rowNum}: El campo 'costo' debe ser un número válido.`);
+        if (row.costo && row.costo.toString().trim() !== '') {
+          const costoStr = row.costo.toString().trim();
+          // Skip obvious non-numeric values
+          if (costoStr.toLowerCase() !== 'n/a' && costoStr.toLowerCase() !== 'null' && costoStr.toLowerCase() !== 'undefined') {
+            // Clean the string: remove currency symbols, commas, spaces, and handle encoding issues
+            let cleanedCosto = costoStr
+              .replace(/[,$\s\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, '') // Remove various space characters
+              .replace(/[^\d.-]/g, '') // Keep only digits, dots, and dashes
+              .replace(/^-+|-+$/g, '') // Remove leading/trailing dashes
+              .replace(/\.{2,}/g, '.'); // Replace multiple dots with single dot
+              
+            const costo = parseFloat(cleanedCosto);
+            
+            if (isNaN(costo) || !isFinite(costo) || costo < 0) {
+              // Add debug info to see what's being parsed
+              console.log(`Debug fila ${rowNum}: original="${costoStr}", cleaned="${cleanedCosto}", parsed=${costo}`);
+              errors.push(`Fila ${rowNum}: El campo 'costo' debe ser un número válido. (valor: "${costoStr}")`);
+            }
+          }
         }
       } else if (table === 'accesorios') {
         // Required fields for accesorios
         if (!row.accesorios?.trim()) {
           errors.push(`Fila ${rowNum}: El campo 'accesorios' es requerido.`);
         }
-        if (row.costo && isNaN(parseFloat(row.costo))) {
-          errors.push(`Fila ${rowNum}: El campo 'costo' debe ser un número válido.`);
+        if (row.costo && row.costo.toString().trim() !== '') {
+          const costoStr = row.costo.toString().trim();
+          // Skip obvious non-numeric values
+          if (costoStr.toLowerCase() !== 'n/a' && costoStr.toLowerCase() !== 'null' && costoStr.toLowerCase() !== 'undefined') {
+            // Clean the string: remove currency symbols, commas, spaces, and handle encoding issues
+            let cleanedCosto = costoStr
+              .replace(/[,$\s\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, '') // Remove various space characters
+              .replace(/[^\d.-]/g, '') // Keep only digits, dots, and dashes
+              .replace(/^-+|-+$/g, '') // Remove leading/trailing dashes
+              .replace(/\.{2,}/g, '.'); // Replace multiple dots with single dot
+              
+            const costo = parseFloat(cleanedCosto);
+            
+            if (isNaN(costo) || !isFinite(costo) || costo < 0) {
+              // Add debug info to see what's being parsed
+              console.log(`Debug fila ${rowNum}: original="${costoStr}", cleaned="${cleanedCosto}", parsed=${costo}`);
+              errors.push(`Fila ${rowNum}: El campo 'costo' debe ser un número válido. (valor: "${costoStr}")`);
+            }
+          }
         }
-        // Validate URL format for link if provided
-        if (row.link && row.link.trim() && !row.link.startsWith('http')) {
+        // Validate URL format for link if provided - allow empty/blank values
+        if (row.link && row.link.trim() && row.link.trim().toLowerCase() !== 'n/a' && !row.link.startsWith('http')) {
           warnings.push(`Fila ${rowNum}: El campo 'link' debería comenzar con http:// o https://`);
         }
       } else {
@@ -247,8 +319,25 @@ export default function ImportacionPage() {
           'clip_patas', 'mensulas', 'tipon_largo', 'kit_tornillo', 'cif', 'u_tl', 't_tl'];
         
         numericFields.forEach(field => {
-          if (row[field] && row[field] !== '' && isNaN(parseFloat(row[field]))) {
-            errors.push(`Fila ${rowNum}: El campo '${field}' debe ser un número válido.`);
+          if (row[field] && row[field].toString().trim() !== '') {
+            const fieldStr = row[field].toString().trim();
+            // Skip obvious non-numeric values
+            if (fieldStr.toLowerCase() !== 'n/a' && fieldStr.toLowerCase() !== 'null' && fieldStr.toLowerCase() !== 'undefined') {
+              // Clean the string: remove currency symbols, commas, spaces, and handle encoding issues
+              let cleanedValue = fieldStr
+                .replace(/[,$\s\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, '') // Remove various space characters
+                .replace(/[^\d.-]/g, '') // Keep only digits, dots, and dashes
+                .replace(/^-+|-+$/g, '') // Remove leading/trailing dashes
+                .replace(/\.{2,}/g, '.'); // Replace multiple dots with single dot
+                
+              const value = parseFloat(cleanedValue);
+              
+              if (isNaN(value) || !isFinite(value) || value < 0) {
+                // Add debug info to see what's being parsed
+                console.log(`Debug fila ${rowNum} field ${field}: original="${fieldStr}", cleaned="${cleanedValue}", parsed=${value}`);
+                errors.push(`Fila ${rowNum}: El campo '${field}' debe ser un número válido. (valor: "${fieldStr}")`);
+              }
+            }
           }
         });
       }
