@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { SortableColumnHeader, type SortDirection } from '@/components/ui/sortable-column-header';
 import { Plus, Search, Edit, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Material {
@@ -61,6 +62,17 @@ export default function MaterialesManager() {
   
   const { toast } = useToast();
   
+  // Server-side sorting state
+  const [sortConfig, setSortConfig] = useState<{ column: string; direction: SortDirection }>({
+    column: '',
+    direction: 'none'
+  });
+
+  const handleSort = (column: string, direction: SortDirection) => {
+    setSortConfig({ column, direction });
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+  
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -69,13 +81,15 @@ export default function MaterialesManager() {
   // Debounce search to avoid too many API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  // Server-side search and pagination
+  // Server-side search, pagination, and sorting
   const fetchMaterials = useCallback(async (
     page: number = 1,
     search: string = '',
-    type: string = 'all'
+    type: string = 'all',
+    sortColumn: string = '',
+    sortDirection: SortDirection = 'none'
   ): Promise<SearchResult> => {
-    console.log('🔍 Fetching materials:', { page, search, type });
+    console.log('🔍 Fetching materials:', { page, search, type, sortColumn, sortDirection });
     setLoading(true);
     
     try {
@@ -95,13 +109,20 @@ export default function MaterialesManager() {
         );
       }
 
+      // Apply sorting
+      if (sortDirection !== 'none' && sortColumn) {
+        const ascending = sortDirection === 'asc';
+        query = query.order(sortColumn, { ascending });
+      } else {
+        // Default sorting by nombre when no sort is applied
+        query = query.order('nombre');
+      }
+
       // Apply pagination
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
       
-      query = query
-        .order('nombre')
-        .range(from, to);
+      query = query.range(from, to);
 
       const { data, error, count } = await query;
         
@@ -138,19 +159,25 @@ export default function MaterialesManager() {
     }
   }, [supabase, toast]);
 
-  // Load data when filters change
+  // Load data when filters or sort change
   useEffect(() => {
     const loadData = async () => {
-      const result = await fetchMaterials(currentPage, debouncedSearchQuery, typeFilter);
+      const result = await fetchMaterials(
+        currentPage, 
+        debouncedSearchQuery, 
+        typeFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setMaterials(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
     };
 
     loadData();
-  }, [fetchMaterials, currentPage, debouncedSearchQuery, typeFilter]);
+  }, [fetchMaterials, currentPage, debouncedSearchQuery, typeFilter, sortConfig]);
 
-  // Reset to page 1 when search or filter changes
+  // Reset to page 1 when search or filter changes (but not when sort changes since handleSort already does this)
   useEffect(() => {
     if (currentPage !== 1) {
       setCurrentPage(1);
@@ -187,7 +214,13 @@ export default function MaterialesManager() {
       }
       
       // Refresh current page
-      const result = await fetchMaterials(currentPage, debouncedSearchQuery, typeFilter);
+      const result = await fetchMaterials(
+        currentPage, 
+        debouncedSearchQuery, 
+        typeFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setMaterials(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
@@ -227,7 +260,13 @@ export default function MaterialesManager() {
       });
       
       // Refresh current page
-      const result = await fetchMaterials(currentPage, debouncedSearchQuery, typeFilter);
+      const result = await fetchMaterials(
+        currentPage, 
+        debouncedSearchQuery, 
+        typeFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setMaterials(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
@@ -436,11 +475,31 @@ export default function MaterialesManager() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 border-b border-gray-200">
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Tipo</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Nombre</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Costo</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Categoría</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Subcategoría</TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="tipo" currentSort={sortConfig} onSort={handleSort}>
+                  Tipo
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="nombre" currentSort={sortConfig} onSort={handleSort}>
+                  Nombre
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="costo" currentSort={sortConfig} onSort={handleSort}>
+                  Costo
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="categoria" currentSort={sortConfig} onSort={handleSort}>
+                  Categoría
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="subcategoria" currentSort={sortConfig} onSort={handleSort}>
+                  Subcategoría
+                </SortableColumnHeader>
+              </TableHead>
               <TableHead className="font-medium text-gray-900 px-4 py-2.5 w-28">Acciones</TableHead>
             </TableRow>
           </TableHeader>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { SortableColumnHeader, type SortDirection } from '@/components/ui/sortable-column-header';
 import { Plus, Search, Edit, Trash2, Loader2, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Insumo {
@@ -81,6 +82,17 @@ export default function InsumosManager() {
   
   const { toast } = useToast();
   
+  // Server-side sorting state
+  const [sortConfig, setSortConfig] = useState<{ column: string; direction: SortDirection }>({
+    column: '',
+    direction: 'none'
+  });
+
+  const handleSort = (column: string, direction: SortDirection) => {
+    setSortConfig({ column, direction });
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+  
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -89,13 +101,15 @@ export default function InsumosManager() {
   // Debounce search to avoid too many API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  // Server-side search and pagination
+  // Server-side search, pagination, and sorting
   const fetchInsumos = useCallback(async (
     page: number = 1,
     search: string = '',
-    category: string = 'all'
+    category: string = 'all',
+    sortColumn: string = '',
+    sortDirection: SortDirection = 'none'
   ): Promise<SearchResult> => {
-    console.log('🔍 Fetching insumos:', { page, search, category });
+    console.log('🔍 Fetching insumos:', { page, search, category, sortColumn, sortDirection });
     setLoading(true);
     
     try {
@@ -115,14 +129,25 @@ export default function InsumosManager() {
         );
       }
 
+      // Apply sorting
+      if (sortDirection !== 'none' && sortColumn) {
+        const ascending = sortDirection === 'asc';
+        // Map the column names used in UI to actual database column names
+        let dbColumn = sortColumn;
+        if (sortColumn === 'tipo') {
+          dbColumn = 'tipo_mueble';
+        }
+        query = query.order(dbColumn, { ascending });
+      } else {
+        // Default sorting by categoria then descripcion when no sort is applied
+        query = query.order('categoria').order('descripcion');
+      }
+
       // Apply pagination
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
       
-      query = query
-        .order('categoria')
-        .order('descripcion')
-        .range(from, to);
+      query = query.range(from, to);
 
       const { data, error, count } = await query;
 
@@ -174,10 +199,16 @@ export default function InsumosManager() {
     }
   }, [supabase, toast]);
 
-  // Load data when filters change
+  // Load data when filters or sort change
   useEffect(() => {
     const loadData = async () => {
-      const result = await fetchInsumos(currentPage, debouncedSearchQuery, categoryFilter);
+      const result = await fetchInsumos(
+        currentPage, 
+        debouncedSearchQuery, 
+        categoryFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setInsumos(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
@@ -189,7 +220,7 @@ export default function InsumosManager() {
     };
 
     loadData();
-  }, [fetchInsumos, currentPage, debouncedSearchQuery, categoryFilter]);
+  }, [fetchInsumos, currentPage, debouncedSearchQuery, categoryFilter, sortConfig]);
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
@@ -228,7 +259,13 @@ export default function InsumosManager() {
       }
       
       // Refresh current page
-      const result = await fetchInsumos(currentPage, debouncedSearchQuery, categoryFilter);
+      const result = await fetchInsumos(
+        currentPage, 
+        debouncedSearchQuery, 
+        categoryFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setInsumos(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
@@ -268,7 +305,13 @@ export default function InsumosManager() {
       });
       
       // Refresh current page
-      const result = await fetchInsumos(currentPage, debouncedSearchQuery, categoryFilter);
+      const result = await fetchInsumos(
+        currentPage, 
+        debouncedSearchQuery, 
+        categoryFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setInsumos(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
@@ -559,10 +602,26 @@ export default function InsumosManager() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 border-b border-gray-200">
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Categoría</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Descripción</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Mueble</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Tipo</TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="categoria" currentSort={sortConfig} onSort={handleSort}>
+                  Categoría
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="descripcion" currentSort={sortConfig} onSort={handleSort}>
+                  Descripción
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="mueble" currentSort={sortConfig} onSort={handleSort}>
+                  Mueble
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="tipo" currentSort={sortConfig} onSort={handleSort}>
+                  Tipo
+                </SortableColumnHeader>
+              </TableHead>
               <TableHead className="font-medium text-gray-900 px-4 py-2.5">Componentes</TableHead>
               <TableHead className="font-medium text-gray-900 px-4 py-2.5 w-28">Acciones</TableHead>
             </TableRow>

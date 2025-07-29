@@ -40,30 +40,36 @@ export default function ImportacionPage() {
     materiales: 'idle' | 'validating' | 'uploading' | 'success' | 'error';
     insumos: 'idle' | 'validating' | 'uploading' | 'success' | 'error';
     accesorios: 'idle' | 'validating' | 'uploading' | 'success' | 'error';
+    relaciones: 'idle' | 'validating' | 'uploading' | 'success' | 'error';
   }>({
     materiales: 'idle',
     insumos: 'idle',
-    accesorios: 'idle'
+    accesorios: 'idle',
+    relaciones: 'idle'
   });
   
   const [validationResults, setValidationResults] = useState<{
     materiales: ValidationResult | null;
     insumos: ValidationResult | null;
     accesorios: ValidationResult | null;
+    relaciones: ValidationResult | null;
   }>({
     materiales: null,
     insumos: null,
-    accesorios: null
+    accesorios: null,
+    relaciones: null
   });
 
   const [uploadResults, setUploadResults] = useState<{
     materiales: UploadResult | null;
     insumos: UploadResult | null;
     accesorios: UploadResult | null;
+    relaciones: UploadResult | null;
   }>({
     materiales: null,
     insumos: null,
-    accesorios: null
+    accesorios: null,
+    relaciones: null
   });
 
   // CSV Template definitions
@@ -114,7 +120,14 @@ export default function ImportacionPage() {
     'link'
   ];
 
-  const generateCSVTemplate = (table: 'materiales' | 'insumos' | 'accesorios') => {
+  const relacionesTemplate = [
+    'tipo_relacion',
+    'material_principal',
+    'material_secundario',
+    'notas'
+  ];
+
+  const generateCSVTemplate = (table: 'materiales' | 'insumos' | 'accesorios' | 'relaciones') => {
     let headers: string[];
     let sampleData: string[];
     
@@ -130,6 +143,10 @@ export default function ImportacionPage() {
       case 'accesorios':
         headers = accesoriosTemplate;
         sampleData = ['"Basurero TIPO A 17 LTS"', '776.00', 'Accesorio', '"Tapete para proteger de humedad"', 'No', 'Basurero', 'Bulnes', 'https://cymisa.com.mx/catalogo'];
+        break;
+      case 'relaciones':
+        headers = relacionesTemplate;
+        sampleData = ['tablero_cubrecanto', '"MDF Natural 18mm"', '"Color 22 mm x 1 mm"', '"Combinación recomendada para acabados naturales"'];
         break;
       default:
         return;
@@ -206,7 +223,7 @@ export default function ImportacionPage() {
     return result;
   };
 
-  const validateData = (data: any[], table: 'materiales' | 'insumos' | 'accesorios'): ValidationResult => {
+  const validateData = (data: any[], table: 'materiales' | 'insumos' | 'accesorios' | 'relaciones'): ValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
     let expectedHeaders: string[];
@@ -220,6 +237,9 @@ export default function ImportacionPage() {
         break;
       case 'accesorios':
         expectedHeaders = accesoriosTemplate;
+        break;
+      case 'relaciones':
+        expectedHeaders = relacionesTemplate;
         break;
       default:
         expectedHeaders = [];
@@ -301,6 +321,21 @@ export default function ImportacionPage() {
         if (row.link && row.link.trim() && row.link.trim().toLowerCase() !== 'n/a' && !row.link.startsWith('http')) {
           warnings.push(`Fila ${rowNum}: El campo 'link' debería comenzar con http:// o https://`);
         }
+      } else if (table === 'relaciones') {
+        // Required fields for relaciones
+        if (!row.tipo_relacion?.trim()) {
+          errors.push(`Fila ${rowNum}: El campo 'tipo_relacion' es requerido.`);
+        }
+        if (!row.material_principal?.trim()) {
+          errors.push(`Fila ${rowNum}: El campo 'material_principal' es requerido.`);
+        }
+        if (!row.material_secundario?.trim()) {
+          errors.push(`Fila ${rowNum}: El campo 'material_secundario' es requerido.`);
+        }
+        // Validate relationship type format - suggest tablero_cubrecanto format
+        if (row.tipo_relacion && row.tipo_relacion.toLowerCase().trim() !== 'tablero_cubrecanto') {
+          warnings.push(`Fila ${rowNum}: Se recomienda usar 'tablero_cubrecanto' como tipo de relación`);
+        }
       } else {
         // Required fields for insumos
         if (!row.categoria?.trim()) {
@@ -351,7 +386,7 @@ export default function ImportacionPage() {
     };
   };
 
-  const handleFileUpload = async (file: File, table: 'materiales' | 'insumos' | 'accesorios') => {
+  const handleFileUpload = async (file: File, table: 'materiales' | 'insumos' | 'accesorios' | 'relaciones') => {
     try {
       setUploadStatus(prev => ({ ...prev, [table]: 'validating' }));
       setValidationResults(prev => ({ ...prev, [table]: null }));
@@ -413,13 +448,13 @@ export default function ImportacionPage() {
     }
   };
 
-  const resetUpload = (table: 'materiales' | 'insumos' | 'accesorios') => {
+  const resetUpload = (table: 'materiales' | 'insumos' | 'accesorios' | 'relaciones') => {
     setUploadStatus(prev => ({ ...prev, [table]: 'idle' }));
     setValidationResults(prev => ({ ...prev, [table]: null }));
     setUploadResults(prev => ({ ...prev, [table]: null }));
   };
 
-  const UploadSection = ({ table }: { table: 'materiales' | 'insumos' | 'accesorios' }) => {
+  const UploadSection = ({ table }: { table: 'materiales' | 'insumos' | 'accesorios' | 'relaciones' }) => {
     const status = uploadStatus[table];
     const validation = validationResults[table];
     const result = uploadResults[table];
@@ -631,7 +666,7 @@ export default function ImportacionPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Importación Masiva</h1>
-            <p className="text-gray-600">Sube datos en lote para materiales e insumos</p>
+            <p className="text-gray-600">Sube datos en lote para materiales, insumos, accesorios y relaciones tablero-cubrecanto</p>
           </div>
         </div>
 
@@ -646,7 +681,9 @@ export default function ImportacionPage() {
                 <li>Llena la plantilla con tus datos, respetando el formato</li>
                 <li>Los campos requeridos deben tener valores válidos</li>
                 <li>Los números deben usar punto (.) como separador decimal</li>
+                <li>Para relaciones: Los tableros y cubrecantos deben existir en sus catálogos respectivos</li>
                 <li>Guarda el archivo en formato CSV antes de subirlo</li>
+                <li>Máximo 100,000 registros por importación</li>
               </ul>
             </div>
           </AlertDescription>
@@ -654,10 +691,11 @@ export default function ImportacionPage() {
 
         {/* Upload Tabs */}
         <Tabs defaultValue="materiales" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="materiales">Materiales</TabsTrigger>
             <TabsTrigger value="insumos">Insumos</TabsTrigger>
             <TabsTrigger value="accesorios">Accesorios</TabsTrigger>
+            <TabsTrigger value="relaciones">Relaciones</TabsTrigger>
           </TabsList>
 
           <TabsContent value="materiales">
@@ -670,6 +708,10 @@ export default function ImportacionPage() {
 
           <TabsContent value="accesorios">
             <UploadSection table="accesorios" />
+          </TabsContent>
+
+          <TabsContent value="relaciones">
+            <UploadSection table="relaciones" />
           </TabsContent>
         </Tabs>
       </div>

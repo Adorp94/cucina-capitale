@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { SortableColumnHeader, type SortDirection } from '@/components/ui/sortable-column-header';
 import { Plus, Search, Edit, Trash2, Loader2, ChevronLeft, ChevronRight, Wrench, ExternalLink } from 'lucide-react';
 
 interface Accesorio {
@@ -73,6 +74,17 @@ export default function AccesoriosManager() {
   
   const { toast } = useToast();
   
+  // Server-side sorting state
+  const [sortConfig, setSortConfig] = useState<{ column: string; direction: SortDirection }>({
+    column: '',
+    direction: 'none'
+  });
+
+  const handleSort = (column: string, direction: SortDirection) => {
+    setSortConfig({ column, direction });
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+  
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -81,13 +93,15 @@ export default function AccesoriosManager() {
   // Debounce search to avoid too many API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  // Server-side search and pagination
+  // Server-side search, pagination, and sorting
   const fetchAccesorios = useCallback(async (
     page: number = 1,
     search: string = '',
-    category: string = 'all'
+    category: string = 'all',
+    sortColumn: string = '',
+    sortDirection: SortDirection = 'none'
   ): Promise<SearchResult> => {
-    console.log('🔍 Fetching accesorios:', { page, search, category });
+    console.log('🔍 Fetching accesorios:', { page, search, category, sortColumn, sortDirection });
     setLoading(true);
     
     try {
@@ -107,13 +121,20 @@ export default function AccesoriosManager() {
         );
       }
 
+      // Apply sorting
+      if (sortDirection !== 'none' && sortColumn) {
+        const ascending = sortDirection === 'asc';
+        query = query.order(sortColumn, { ascending });
+      } else {
+        // Default sorting by accesorios when no sort is applied
+        query = query.order('accesorios');
+      }
+
       // Apply pagination
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
       
-      query = query
-        .order('accesorios')
-        .range(from, to);
+      query = query.range(from, to);
 
       const { data, error, count } = await query;
         
@@ -150,17 +171,23 @@ export default function AccesoriosManager() {
     }
   }, [supabase, toast]);
 
-  // Load data when filters change
+  // Load data when filters or sort change
   useEffect(() => {
     const loadData = async () => {
-      const result = await fetchAccesorios(currentPage, debouncedSearchQuery, categoryFilter);
+      const result = await fetchAccesorios(
+        currentPage, 
+        debouncedSearchQuery, 
+        categoryFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setAccesorios(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
     };
 
     loadData();
-  }, [fetchAccesorios, currentPage, debouncedSearchQuery, categoryFilter]);
+  }, [fetchAccesorios, currentPage, debouncedSearchQuery, categoryFilter, sortConfig]);
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
@@ -199,7 +226,13 @@ export default function AccesoriosManager() {
       }
       
       // Refresh current page
-      const result = await fetchAccesorios(currentPage, debouncedSearchQuery, categoryFilter);
+      const result = await fetchAccesorios(
+        currentPage, 
+        debouncedSearchQuery, 
+        categoryFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setAccesorios(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
@@ -241,7 +274,13 @@ export default function AccesoriosManager() {
         setCurrentPage(pageToLoad);
       }
       
-      const result = await fetchAccesorios(pageToLoad, debouncedSearchQuery, categoryFilter);
+      const result = await fetchAccesorios(
+        pageToLoad, 
+        debouncedSearchQuery, 
+        categoryFilter, 
+        sortConfig.column, 
+        sortConfig.direction
+      );
       setAccesorios(result.data);
       setTotalCount(result.count);
       setTotalPages(result.totalPages);
@@ -497,14 +536,38 @@ export default function AccesoriosManager() {
           <Table>
             <TableHeader className="bg-gray-50">
               <TableRow className="border-gray-200">
-                <TableHead className="font-medium text-gray-900 min-w-[200px]">Accesorio</TableHead>
-                <TableHead className="font-medium text-gray-900">Categoría</TableHead>
-                <TableHead className="font-medium text-gray-900">Subcategoría</TableHead>
-                <TableHead className="font-medium text-gray-900">Costo</TableHead>
-                <TableHead className="font-medium text-gray-900">GF</TableHead>
-                <TableHead className="font-medium text-gray-900">Proveedor</TableHead>
-                <TableHead className="font-medium text-gray-900">Link</TableHead>
-                <TableHead className="font-medium text-gray-900 w-20">Acciones</TableHead>
+                <TableHead className="min-w-[200px] px-4 py-2.5">
+                  <SortableColumnHeader column="accesorios" currentSort={sortConfig} onSort={handleSort}>
+                    Accesorio
+                  </SortableColumnHeader>
+                </TableHead>
+                <TableHead className="px-4 py-2.5">
+                  <SortableColumnHeader column="categoria" currentSort={sortConfig} onSort={handleSort}>
+                    Categoría
+                  </SortableColumnHeader>
+                </TableHead>
+                <TableHead className="px-4 py-2.5">
+                  <SortableColumnHeader column="subcategoria" currentSort={sortConfig} onSort={handleSort}>
+                    Subcategoría
+                  </SortableColumnHeader>
+                </TableHead>
+                <TableHead className="px-4 py-2.5">
+                  <SortableColumnHeader column="costo" currentSort={sortConfig} onSort={handleSort}>
+                    Costo
+                  </SortableColumnHeader>
+                </TableHead>
+                <TableHead className="px-4 py-2.5">
+                  <SortableColumnHeader column="gf" currentSort={sortConfig} onSort={handleSort}>
+                    GF
+                  </SortableColumnHeader>
+                </TableHead>
+                <TableHead className="px-4 py-2.5">
+                  <SortableColumnHeader column="proveedor" currentSort={sortConfig} onSort={handleSort}>
+                    Proveedor
+                  </SortableColumnHeader>
+                </TableHead>
+                <TableHead className="font-medium text-gray-900 px-4 py-2.5">Link</TableHead>
+                <TableHead className="font-medium text-gray-900 w-20 px-4 py-2.5">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

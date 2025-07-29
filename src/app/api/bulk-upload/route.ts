@@ -48,6 +48,13 @@ interface AccesorioRecord {
   comentario?: string;
 }
 
+interface RelacionRecord {
+  tipo_relacion: string;
+  material_principal: string;
+  material_secundario: string;
+  notas?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { table, data } = await request.json();
@@ -59,10 +66,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!['materiales', 'insumos', 'accesorios'].includes(table)) {
+    if (!['materiales', 'insumos', 'accesorios', 'relaciones'].includes(table)) {
       return NextResponse.json({
         success: false,
-        errors: ['Tabla inválida: debe ser "materiales", "insumos" o "accesorios"']
+        errors: ['Tabla inválida: debe ser "materiales", "insumos", "accesorios" o "relaciones"']
       }, { status: 400 });
     }
 
@@ -73,10 +80,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (data.length > 1000) {
+    if (data.length > 100000) {
       return NextResponse.json({
         success: false,
-        errors: ['Máximo 1000 registros por importación']
+        errors: ['Máximo 100,000 registros por importación']
       }, { status: 400 });
     }
 
@@ -163,6 +170,77 @@ export async function POST(request: NextRequest) {
 
         return processed;
       });
+    } else if (table === 'relaciones') {
+      // First, we need to get material IDs for the material names, specifically filtering by type
+      const { data: tablerosData, error: tablerosError } = await supabase
+        .from('materiales')
+        .select('id_material, nombre')
+        .eq('tipo', 'Tableros');
+      
+      const { data: cubrecantosData, error: cubrecantosError } = await supabase
+        .from('materiales')
+        .select('id_material, nombre')
+        .eq('tipo', 'Cubrecantos');
+      
+      if (tablerosError || cubrecantosError) {
+        errors.push('Error al cargar materiales para validar relaciones');
+        return NextResponse.json({
+          success: false,
+          errors
+        }, { status: 400 });
+      }
+
+      // Create separate maps for tableros and cubrecantos
+      const tablerosMap = new Map<string, number>();
+      const cubrecantosMap = new Map<string, number>();
+      
+      tablerosData?.forEach(tablero => {
+        tablerosMap.set(tablero.nombre.toLowerCase().trim(), tablero.id_material);
+      });
+      
+      cubrecantosData?.forEach(cubrecanto => {
+        cubrecantosMap.set(cubrecanto.nombre.toLowerCase().trim(), cubrecanto.id_material);
+      });
+
+      processedData = data.map((row: any, index: number) => {
+        const processed: any = {};
+        
+        // Clean and validate data
+        if (row.tipo_relacion) processed.relationship_type = String(row.tipo_relacion).trim();
+        if (row.notas) processed.notes = String(row.notas).trim();
+        
+        // Find material IDs for the material names with proper type validation
+        const principalName = String(row.material_principal || '').toLowerCase().trim();
+        const secundarioName = String(row.material_secundario || '').toLowerCase().trim();
+        
+        const principalId = tablerosMap.get(principalName);
+        const secundarioId = cubrecantosMap.get(secundarioName);
+        
+        if (!principalId) {
+          errors.push(`Fila ${index + 1}: Tablero no encontrado en el catálogo: "${row.material_principal}"`);
+        } else {
+          processed.material_id_primary = principalId;
+        }
+        
+        if (!secundarioId) {
+          errors.push(`Fila ${index + 1}: Cubrecanto no encontrado en el catálogo: "${row.material_secundario}"`);
+        } else {
+          processed.material_id_secondary = secundarioId;
+        }
+
+        // Validate required fields
+        if (!processed.relationship_type) {
+          errors.push(`Fila ${index + 1}: El campo 'tipo_relacion' es requerido`);
+        }
+        if (!row.material_principal?.trim()) {
+          errors.push(`Fila ${index + 1}: El campo 'material_principal' es requerido`);
+        }
+        if (!row.material_secundario?.trim()) {
+          errors.push(`Fila ${index + 1}: El campo 'material_secundario' es requerido`);
+        }
+
+        return processed;
+      });
     } else {
       // insumos
       processedData = data.map((row: any, index: number) => {
@@ -232,8 +310,11 @@ export async function POST(request: NextRequest) {
       const batch = processedData.slice(i, i + batchSize);
       
       try {
+        // Map table names to actual database table names
+        const dbTableName = table === 'relaciones' ? 'material_relationships' : table;
+        
         const { data: insertedData, error } = await supabase
-          .from(table)
+          .from(dbTableName)
           .insert(batch)
           .select('*');
 

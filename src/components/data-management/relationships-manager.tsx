@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { SortableColumnHeader, type SortDirection } from '@/components/ui/sortable-column-header';
 import { Plus, Search, Edit, Trash2, Loader2, Link, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -55,23 +56,68 @@ export default function RelationshipsManager() {
   
   const { toast } = useToast();
   
+  // Server-side sorting state
+  const [sortConfig, setSortConfig] = useState<{ column: string; direction: SortDirection }>({
+    column: '',
+    direction: 'none'
+  });
+
+  const handleSort = (column: string, direction: SortDirection) => {
+    setSortConfig({ column, direction });
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+  
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (
+    sortColumn: string = '',
+    sortDirection: SortDirection = 'none'
+  ) => {
     setLoading(true);
     try {
-      // Fetch relationships with material details
-      const { data: relationshipsData, error: relationshipsError } = await supabase
+      // Build query for relationships with material details
+      let query = supabase
         .from('material_relationships')
         .select(`
           *,
           primary_material:materiales!material_relationships_material_id_primary_fkey(nombre, tipo),
           secondary_material:materiales!material_relationships_material_id_secondary_fkey(nombre, tipo)
-        `)
-        .order('created_at', { ascending: false });
+        `);
+
+      // Apply sorting
+      if (sortDirection !== 'none' && sortColumn) {
+        const ascending = sortDirection === 'asc';
+        // Map UI column names to actual database column names
+        let dbColumn = sortColumn;
+        switch (sortColumn) {
+          case 'tipo':
+            dbColumn = 'relationship_type';
+            break;
+          case 'fecha':
+            dbColumn = 'created_at';
+            break;
+          case 'notas':
+            dbColumn = 'notes';
+            break;
+          // For 'principal' and 'secundario', we can't sort directly by joined fields in this query
+          // So we'll handle those client-side after fetching
+        }
+        
+        if (sortColumn !== 'principal' && sortColumn !== 'secundario') {
+          query = query.order(dbColumn, { ascending });
+        } else {
+          // Default sort when we can't sort by joined fields
+          query = query.order('created_at', { ascending: false });
+        }
+      } else {
+        // Default sorting by created_at when no sort is applied
+        query = query.order('created_at', { ascending: false });
+      }
+
+      const { data: relationshipsData, error: relationshipsError } = await query;
         
       if (relationshipsError) throw relationshipsError;
       setRelationships(relationshipsData || []);
@@ -122,10 +168,31 @@ export default function RelationshipsManager() {
         r.notes?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
+
+    // Apply client-side sorting for joined fields that can't be sorted server-side
+    if (sortConfig.direction !== 'none' && (sortConfig.column === 'principal' || sortConfig.column === 'secundario')) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue = '';
+        let bValue = '';
+        
+        if (sortConfig.column === 'principal') {
+          aValue = a.primary_material?.nombre || '';
+          bValue = b.primary_material?.nombre || '';
+        } else if (sortConfig.column === 'secundario') {
+          aValue = a.secondary_material?.nombre || '';
+          bValue = b.secondary_material?.nombre || '';
+        }
+        
+        const comparison = aValue.toLowerCase().localeCompare(bValue.toLowerCase());
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+    }
     
     setFilteredRelationships(filtered);
-    setCurrentPage(1);
-  }, [relationships, relationshipTypeFilter, searchQuery]);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [relationships, relationshipTypeFilter, searchQuery, sortConfig, currentPage]);
 
   const saveRelationship = async (relationshipData: Omit<MaterialRelationship, 'id' | 'created_at' | 'updated_at'> & { id?: number }) => {
     try {
@@ -167,7 +234,7 @@ export default function RelationshipsManager() {
         });
       }
       
-      fetchData();
+      fetchData(sortConfig.column, sortConfig.direction);
       setIsDialogOpen(false);
       setEditingRelationship(null);
     } catch (error) {
@@ -202,7 +269,7 @@ export default function RelationshipsManager() {
         description: "Relación eliminada correctamente"
       });
       
-      fetchData();
+      fetchData(sortConfig.column, sortConfig.direction);
     } catch (error) {
       console.error('Error deleting relationship:', error);
       toast({
@@ -232,7 +299,7 @@ export default function RelationshipsManager() {
         description: `${relationships.length} relaciones creadas correctamente`
       });
       
-      fetchData();
+      fetchData(sortConfig.column, sortConfig.direction);
       setIsBulkDialogOpen(false);
     } catch (error) {
       console.error('Error creating bulk relationships:', error);
@@ -245,8 +312,9 @@ export default function RelationshipsManager() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(sortConfig.column, sortConfig.direction);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortConfig, fetchData]);
 
   useEffect(() => {
     filterRelationships();
@@ -554,12 +622,32 @@ export default function RelationshipsManager() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 border-b border-gray-200">
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Tipo</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Material Principal</TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="tipo" currentSort={sortConfig} onSort={handleSort}>
+                  Tipo
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="principal" currentSort={sortConfig} onSort={handleSort}>
+                  Material Principal
+                </SortableColumnHeader>
+              </TableHead>
               <TableHead className="w-10 px-4 py-2.5"></TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Material Secundario</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Notas</TableHead>
-              <TableHead className="font-medium text-gray-900 px-4 py-2.5">Fecha</TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="secundario" currentSort={sortConfig} onSort={handleSort}>
+                  Material Secundario
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="notas" currentSort={sortConfig} onSort={handleSort}>
+                  Notas
+                </SortableColumnHeader>
+              </TableHead>
+              <TableHead className="px-4 py-2.5">
+                <SortableColumnHeader column="fecha" currentSort={sortConfig} onSort={handleSort}>
+                  Fecha
+                </SortableColumnHeader>
+              </TableHead>
               <TableHead className="font-medium text-gray-900 px-4 py-2.5 w-28">Acciones</TableHead>
             </TableRow>
           </TableHeader>
